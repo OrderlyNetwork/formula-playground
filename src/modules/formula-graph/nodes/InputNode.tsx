@@ -1,0 +1,89 @@
+import { Handle, Position } from "reactflow";
+import type { FormulaNodeData } from "../../../types/formula";
+import { cn } from "../../../lib/utils";
+import { Input } from "../../../components/common/Input";
+import { Select } from "../../../components/common/Select";
+import { useFormulaStore } from "../../../store/formulaStore";
+
+interface InputNodeProps {
+  data: FormulaNodeData;
+}
+
+/**
+ * InputNode - Custom React Flow node for formula inputs
+ */
+export function InputNode({ data }: InputNodeProps) {
+  const { updateInput } = useFormulaStore();
+
+  const handleTextOrNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let newValue: string | number = e.target.value;
+    if (data.inputType === "number") {
+      const parsed = parseFloat(newValue);
+      newValue = isNaN(parsed) ? 0 : parsed;
+    }
+    updateInput(data.id, newValue);
+  };
+
+  const handleBooleanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newValue = e.target.value === "true";
+    updateInput(data.id, newValue);
+  };
+
+  return (
+    <div
+      className={cn(
+        "px-4 py-3 rounded-lg border-2 bg-white shadow-sm min-w-[180px]",
+        "border-blue-400",
+        data.isError && "border-red-500"
+      )}
+    >
+      <div className="flex flex-col gap-1">
+        <div className="text-xs font-semibold text-blue-600 uppercase">
+          Input
+        </div>
+        <div className="font-medium text-gray-900">{data.label}</div>
+        <div className="mt-1">
+          {data.inputType === "boolean" ? (
+            <Select
+              aria-label={data.label}
+              value={String(Boolean(data.value))}
+              onChange={handleBooleanChange}
+              options={[
+                { value: "true", label: "true" },
+                { value: "false", label: "false" },
+              ]}
+            />
+          ) : (
+            (() => {
+              const valueForInput: string | number =
+                data.inputType === "number"
+                  ? typeof data.value === "number"
+                    ? data.value
+                    : 0
+                  : String(data.value ?? "");
+              return (
+                <Input
+                  aria-label={data.label}
+                  type={data.inputType === "number" ? "number" : "text"}
+                  value={valueForInput}
+                  onChange={handleTextOrNumberChange}
+                />
+              );
+            })()
+          )}
+          {data.unit && (
+            <div className="text-xs text-gray-500 mt-1">Unit: {data.unit}</div>
+          )}
+        </div>
+        {data.description && (
+          <div className="text-xs text-gray-500 mt-1">{data.description}</div>
+        )}
+      </div>
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="w-3 h-3 bg-blue-500"
+      />
+    </div>
+  );
+}

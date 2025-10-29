@@ -1,0 +1,28 @@
+{
+  "formulaRules": {
+    "namingConventions": ["calculate*", "compute*", "formula*"],
+    "excludePatterns": ["test*", "mock*", "debug*"],
+    "requireJSDoc": false
+  },
+  "formulaOverrides": {
+    "calculateFundingFee": {
+      "id": "funding_fee",
+      "name": "Funding Fee Calculation",
+      "description": "Calculates the funding fee for a perpetual contract position",
+      "tags": ["perpetual", "fee", "financial"],
+      "version": "1.2.0",
+      "engineHints": {
+        "ts": { "rounding": "round", "scale": 8 },
+        "rust": { "rounding": "trunc", "scale": 7 }
+      }
+    }
+  },
+  "globalSettings": {
+    "defaultRounding": "round",
+    "defaultScale": 8,
+    "errorThreshold": 1e-12,
+    "maxHistoryRecords": 1000,
+    "historyRetentionDays": 30
+  }
+}
+
