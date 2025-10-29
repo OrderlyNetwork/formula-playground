@@ -90,6 +90,7 @@ export const FormulaNode = memo(function FormulaNode({
                 top:
                   HEADER_HEIGHT +
                   HEADER_TO_FIRST_HANDLE_GAP +
+                  6 +
                   index * HANDLE_GAP,
               }}
               isConnectable={!occupiedTargetHandles.has(input.key)}

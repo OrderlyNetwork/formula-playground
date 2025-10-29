@@ -14,11 +14,11 @@ export function LeftPanel() {
   } = useFormulaStore();
 
   return (
-    <div className="w-80 border-r border-gray-200 bg-gray-50 overflow-y-auto">
-      <div className="p-4 space-y-4">
+    <div className=" bg-gray-50 overflow-y-auto">
+      <div className="space-y-4">
         {/* Formula List */}
         <Card title="Formulas">
-          <div className="space-y-2">
+          <div>
             {formulaDefinitions.length === 0 ? (
               <p className="text-sm text-gray-500">No formulas loaded</p>
             ) : (
@@ -26,7 +26,7 @@ export function LeftPanel() {
                 <button
                   key={formula.id}
                   onClick={() => selectFormula(formula.id)}
-                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                  className={`w-full text-left px-3 py-2 text-sm transition-colors ${
                     selectedFormulaId === formula.id
                       ? "bg-blue-100 text-blue-900 font-medium"
                       : "bg-white hover:bg-gray-100 text-gray-700"

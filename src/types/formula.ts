@@ -1,9 +1,14 @@
 // Type definitions for Formula Playground
 import type { Node, Edge } from "reactflow";
 
-export type FormulaInputType = "number" | "string" | "boolean";
+export type FormulaInputType = "number" | "string" | "boolean" | "object";
 export type RoundingStrategy = "floor" | "ceil" | "round" | "trunc";
-export type FormulaScalar = number | string | boolean;
+export type FormulaScalar =
+  | number
+  | string
+  | boolean
+  | Record<string, unknown>
+  | unknown[];
 
 /**
  * @description Calculation factor type definition
@@ -18,6 +23,15 @@ export interface FactorType {
   };
   nullable?: boolean;
   array?: boolean;
+  // For object types: describe properties
+  properties?: Array<{
+    key: string;
+    type: FormulaInputType;
+    factorType: FactorType;
+    unit?: string;
+    default?: unknown;
+    description?: string;
+  }>;
 }
 
 /**
@@ -62,7 +76,7 @@ export interface FormulaDefinition {
  */
 export interface FormulaNodeData {
   id: string; // Corresponding formula ID or parameter/output KEY
-  type: "formula" | "input" | "output" | "operator"; // Node type
+  type: "formula" | "input" | "output" | "operator" | "object"; // Node type
   label: string; // Node display text
   value?: FormulaScalar; // Runtime parameter or result value
   unit?: string; // Unit
@@ -74,6 +88,8 @@ export interface FormulaNodeData {
   inputs?: FormulaDefinition["inputs"];
   // For input nodes: the base input type to drive inline editors
   inputType?: FormulaInputType;
+  // Factor type for rendering hints
+  factorType?: FactorType;
 }
 
 /**

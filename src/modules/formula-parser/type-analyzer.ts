@@ -36,6 +36,13 @@ export class TypeAnalyzer {
    * Get base type from TypeScript type
    */
   private getBaseType(tsType: Type): FormulaInputType {
+    // If it's an array, derive element base type
+    if (tsType.isArray()) {
+      const elem = tsType.getArrayElementType();
+      if (elem) return this.getBaseType(elem);
+      return "object";
+    }
+
     const typeText = tsType.getText();
 
     if (tsType.isNumber() || typeText.includes("number")) {
@@ -54,7 +61,8 @@ export class TypeAnalyzer {
       if (types.includes("boolean")) return "boolean";
     }
 
-    return "number"; // Default type
+    // Fallback to object for complex types
+    return "object";
   }
 
   /**

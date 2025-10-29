@@ -16,29 +16,89 @@ export async function generateFormulaGraph(
 
   // Create input nodes
   formula.inputs.forEach((input) => {
-    nodes.push({
-      id: `input-${input.key}`,
-      type: "input",
-      position: { x: 0, y: 0 }, // Will be set by layout
-      data: {
-        id: input.key,
+    if (input.type !== "object") {
+      nodes.push({
+        id: `input-${input.key}`,
         type: "input",
-        label: input.key,
-        value: input.default,
-        inputType: input.type,
-        unit: input.unit,
-        description: input.description,
-      },
-    });
+        position: { x: 0, y: 0 }, // Will be set by layout
+        data: {
+          id: input.key,
+          type: "input",
+          label: input.key,
+          value: input.default,
+          inputType: input.type,
+          unit: input.unit,
+          description: input.description,
+          factorType: input.factorType,
+        },
+      });
 
-    // Create edge from input to formula
-    edges.push({
-      id: `e-input-${input.key}-formula`,
-      source: `input-${input.key}`,
-      target: "formula",
-      targetHandle: input.key,
-      animated: true,
-    });
+      // Create edge from input to formula
+      edges.push({
+        id: `e-input-${input.key}-formula`,
+        source: `input-${input.key}`,
+        target: "formula",
+        targetHandle: input.key,
+        animated: true,
+      });
+    } else {
+      // Object input: create an object node and child input nodes
+      const props = input.factorType?.properties ?? [];
+      nodes.push({
+        id: `object-${input.key}`,
+        type: "object",
+        position: { x: 0, y: 0 },
+        data: {
+          id: input.key,
+          type: "object",
+          label: input.key,
+          description: input.description,
+          inputs: props.map((p) => ({
+            key: p.key,
+            type: p.type,
+            factorType: p.factorType,
+            unit: p.unit,
+            default: p.default,
+            description: p.description,
+          })),
+        },
+      });
+
+      // Child input nodes connect into the object node by handle id = property key
+      for (const p of props) {
+        nodes.push({
+          id: `input-${input.key}.${p.key}`,
+          type: "input",
+          position: { x: 0, y: 0 },
+          data: {
+            id: `${input.key}.${p.key}`,
+            type: "input",
+            label: `${p.key}`,
+            value: p.default,
+            inputType: p.type,
+            unit: p.unit,
+            description: p.description,
+            factorType: p.factorType,
+          },
+        });
+        edges.push({
+          id: `e-input-${input.key}.${p.key}-object-${input.key}`,
+          source: `input-${input.key}.${p.key}`,
+          target: `object-${input.key}`,
+          targetHandle: p.key,
+          animated: true,
+        });
+      }
+
+      // Object node connects to the formula handle of the object parameter
+      edges.push({
+        id: `e-object-${input.key}-formula`,
+        source: `object-${input.key}`,
+        target: "formula",
+        targetHandle: input.key,
+        animated: true,
+      });
+    }
   });
 
   // Create formula node
@@ -92,14 +152,19 @@ async function applyELKLayout(
   nodes: FormulaNode[],
   edges: FormulaEdge[]
 ): Promise<{ nodes: FormulaNode[]; edges: FormulaEdge[] }> {
-  const elkNodes: ElkNode["children"] = nodes.map((node) => ({
-    id: node.id,
-    width: node.type === "formula" ? 220 : 180,
-    height:
-      node.type === "formula"
-        ? Math.max(100, 80 + (node.data.inputs?.length ?? 0) * 24)
-        : 80,
-  }));
+  const elkNodes: ElkNode["children"] = nodes.map((node) => {
+    const isBoxWithHandles = node.type === "formula" || node.type === "object";
+    const baseHeight = node.type === "formula" ? 100 : 80;
+    const handles = node.data.inputs?.length ?? 0;
+    const handleHeight = isBoxWithHandles
+      ? Math.max(1, handles) * 24 + (node.type === "formula" ? 80 : 40)
+      : 0;
+    return {
+      id: node.id,
+      width: isBoxWithHandles ? 220 : 180,
+      height: isBoxWithHandles ? Math.max(baseHeight, handleHeight) : 80,
+    };
+  });
 
   const elkEdges = edges.map((edge) => ({
     id: edge.id,

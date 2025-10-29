@@ -5,6 +5,7 @@ import type { RunRecord } from "../types/history";
 import { FormulaParser } from "../modules/formula-parser";
 import { FormulaExecutor } from "../modules/formula-executor";
 import { historyManager } from "../modules/history-manager";
+import { enrichFormulasWithSource } from "../lib/formula-source-loader";
 
 interface FormulaStore {
   // State
@@ -19,9 +20,10 @@ interface FormulaStore {
   runHistory: RunRecord[];
 
   // Actions
-  loadFormulas: (sourceFiles: string[]) => Promise<void>;
+  loadFormulas: (sourceFiles?: string[] | FormulaDefinition[]) => Promise<void>;
   selectFormula: (formulaId: string) => void;
   updateInput: (key: string, value: any) => void;
+  updateInputAt: (path: string, value: any) => void;
   setInputs: (inputs: Record<string, any>) => void;
   executeFormula: () => Promise<void>;
   switchEngine: (engine: "ts" | "rust") => void;
@@ -59,8 +61,8 @@ export const useFormulaStore = create<FormulaStore>((set, get) => ({
         // Parse from source files
         formulas = await formulaParser.parseFormulas(sourceFiles as string[]);
       } else {
-        // Use pre-defined formulas
-        formulas = sourceFiles as FormulaDefinition[];
+        // Use pre-defined formulas and enrich with source code
+        formulas = enrichFormulasWithSource(sourceFiles as FormulaDefinition[]);
       }
 
       set({ formulaDefinitions: formulas, loading: false });
@@ -86,7 +88,18 @@ export const useFormulaStore = create<FormulaStore>((set, get) => ({
     // Initialize inputs with default values
     const inputs: Record<string, any> = {};
     formula.inputs.forEach((input) => {
-      inputs[input.key] = input.default ?? "";
+      if (input.type === "object") {
+        const props = input.factorType?.properties ?? [];
+        const obj: Record<string, any> = {};
+        for (const p of props) {
+          obj[p.key] =
+            p.default ??
+            (p.type === "number" ? 0 : p.type === "boolean" ? false : "");
+        }
+        inputs[input.key] = obj;
+      } else {
+        inputs[input.key] = input.default ?? "";
+      }
     });
 
     set({
@@ -103,9 +116,32 @@ export const useFormulaStore = create<FormulaStore>((set, get) => ({
 
   // Update a single input value
   updateInput: (key: string, value: any) => {
-    set((state) => ({
-      currentInputs: { ...state.currentInputs, [key]: value },
-    }));
+    if (key.includes(".")) {
+      get().updateInputAt(key, value);
+    } else {
+      set((state) => ({
+        currentInputs: { ...state.currentInputs, [key]: value },
+      }));
+    }
+  },
+
+  // Update value by dot-path, e.g., "order.price"
+  updateInputAt: (path: string, value: any) => {
+    const setByPath = (obj: any, p: string, v: any) => {
+      const parts = p.split(".");
+      const last = parts.pop()!;
+      let cur = obj;
+      for (const k of parts) {
+        if (typeof cur[k] !== "object" || cur[k] === null) cur[k] = {};
+        cur = cur[k];
+      }
+      cur[last] = v;
+    };
+    set((state) => {
+      const next = { ...state.currentInputs };
+      setByPath(next, path, value);
+      return { currentInputs: next };
+    });
   },
 
   // Set all inputs at once

@@ -2,7 +2,13 @@ import { useEffect } from "react";
 import { Toolbar } from "./components/Toolbar";
 import { LeftPanel } from "./components/LeftPanel";
 import { CenterCanvas } from "./components/CenterCanvas";
-import { RightPanel } from "./components/RightPanel";
+import { FormulaDocs } from "./components/FormulaDocs";
+import { FormulaCode } from "./components/FormulaCode";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 import { useFormulaStore } from "../../store/formulaStore";
 import { mockFormulas } from "../../constants/mockFormulas";
 
@@ -12,7 +18,7 @@ export function PlaygroundPage() {
   useEffect(() => {
     // Load pre-defined mock formulas for MVP
     // In production, this would parse from SDK source code
-    loadFormulas(mockFormulas as any);
+    loadFormulas(mockFormulas);
   }, [loadFormulas]);
 
   return (
@@ -27,10 +33,36 @@ export function PlaygroundPage() {
         </div>
       )}
 
-      <div className="flex-1 flex overflow-hidden">
-        <LeftPanel />
-        <CenterCanvas />
-        <RightPanel />
+      <div className="flex-1 overflow-hidden">
+        <ResizablePanelGroup direction="horizontal" className="h-full">
+          <ResizablePanel defaultSize={22} minSize={15} maxSize={40}>
+            <div className="h-full">
+              <LeftPanel />
+            </div>
+          </ResizablePanel>
+          <ResizableHandle />
+          <ResizablePanel defaultSize={78} minSize={40}>
+            <ResizablePanelGroup direction="vertical" className="h-full">
+              <ResizablePanel defaultSize={60} minSize={40}>
+                <div className="h-full">
+                  <CenterCanvas />
+                </div>
+              </ResizablePanel>
+              <ResizableHandle />
+              <ResizablePanel defaultSize={40} minSize={20}>
+                <ResizablePanelGroup direction="horizontal" className="h-full">
+                  <ResizablePanel defaultSize={50} minSize={20}>
+                    <FormulaDocs />
+                  </ResizablePanel>
+                  <ResizableHandle />
+                  <ResizablePanel defaultSize={50} minSize={20}>
+                    <FormulaCode />
+                  </ResizablePanel>
+                </ResizablePanelGroup>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
     </div>
   );

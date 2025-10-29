@@ -2,9 +2,10 @@ import { Handle, Position } from "reactflow";
 import { memo } from "react";
 import type { FormulaNodeData } from "../../../types/formula";
 import { cn } from "../../../lib/utils";
-import { Input } from "../../../components/common/Input";
+// import { Input } from "../../../components/common/Input";
 import { Select } from "../../../components/common/Select";
 import { useFormulaStore } from "../../../store/formulaStore";
+import { Input } from "@/components/ui/input";
 
 interface InputNodeProps {
   data: FormulaNodeData;
@@ -14,7 +15,7 @@ interface InputNodeProps {
  * InputNode - Custom React Flow node for formula inputs
  */
 export const InputNode = memo(function InputNode({ data }: InputNodeProps) {
-  const { updateInput } = useFormulaStore();
+  const { updateInput, updateInputAt } = useFormulaStore();
 
   const handleTextOrNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let newValue: string | number = e.target.value;
@@ -22,12 +23,14 @@ export const InputNode = memo(function InputNode({ data }: InputNodeProps) {
       const parsed = parseFloat(newValue);
       newValue = isNaN(parsed) ? 0 : parsed;
     }
-    updateInput(data.id, newValue);
+    const fn = data.id.includes(".") ? updateInputAt : updateInput;
+    fn(data.id, newValue);
   };
 
   const handleBooleanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newValue = e.target.value === "true";
-    updateInput(data.id, newValue);
+    const fn = data.id.includes(".") ? updateInputAt : updateInput;
+    fn(data.id, newValue);
   };
 
   return (
@@ -38,7 +41,7 @@ export const InputNode = memo(function InputNode({ data }: InputNodeProps) {
         data.isError && "border-red-500"
       )}
     >
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1 items-start">
         <div className="font-medium text-gray-900">{data.label}</div>
         <div className="mt-1">
           {data.inputType === "boolean" ? (
@@ -68,9 +71,6 @@ export const InputNode = memo(function InputNode({ data }: InputNodeProps) {
                 />
               );
             })()
-          )}
-          {data.unit && (
-            <div className="text-xs text-gray-500 mt-1">Unit: {data.unit}</div>
           )}
         </div>
         {data.description && (

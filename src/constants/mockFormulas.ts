@@ -45,6 +45,141 @@ export const mockFormulas: FormulaDefinition[] = [
     ],
   },
   {
+    id: "est_liq_price",
+    name: "Estimated Liquidation Price",
+    version: "1.0.0",
+    description: "Estimate liquidation price based on inputs object.",
+    tags: ["risk", "liquidation", "object-param"],
+    engineHints: {
+      ts: { rounding: "round", scale: 6 },
+    },
+    inputs: [
+      {
+        key: "inputs",
+        type: "object",
+        factorType: {
+          baseType: "object",
+          properties: [
+            {
+              key: "totalCollateral",
+              type: "number",
+              factorType: { baseType: "number" },
+              default: 10000,
+              description: "Total collateral amount",
+            },
+            {
+              key: "markPrice",
+              type: "number",
+              factorType: { baseType: "number" },
+              default: 50000,
+              description: "Current mark price",
+            },
+            {
+              key: "baseMMR",
+              type: "number",
+              factorType: { baseType: "number" },
+              default: 0.005,
+              description: "Base maintenance margin rate",
+            },
+            {
+              key: "baseIMR",
+              type: "number",
+              factorType: { baseType: "number" },
+              default: 0.1,
+              description: "Base initial margin rate",
+            },
+            {
+              key: "IMR_Factor",
+              type: "number",
+              factorType: { baseType: "number" },
+              default: 1,
+              description: "Initial margin factor",
+            },
+            {
+              key: "orderFee",
+              type: "number",
+              factorType: { baseType: "number" },
+              default: 0,
+              description: "Order fee",
+            },
+            {
+              key: "positions",
+              type: "object",
+              factorType: {
+                baseType: "object",
+                array: true,
+                properties: [
+                  {
+                    key: "position_qty",
+                    type: "number",
+                    factorType: { baseType: "number" },
+                    default: 0,
+                  },
+                  {
+                    key: "mark_price",
+                    type: "number",
+                    factorType: { baseType: "number" },
+                    default: 0,
+                  },
+                  {
+                    key: "symbol",
+                    type: "string",
+                    factorType: { baseType: "string" },
+                    default: "BTCUSDT",
+                  },
+                  {
+                    key: "mmr",
+                    type: "number",
+                    factorType: { baseType: "number" },
+                    default: 0.005,
+                  },
+                ],
+              },
+              description: "Positions array (JSON)",
+            },
+            {
+              key: "newOrder",
+              type: "object",
+              factorType: {
+                baseType: "object",
+                properties: [
+                  {
+                    key: "symbol",
+                    type: "string",
+                    factorType: { baseType: "string" },
+                    default: "BTCUSDT",
+                  },
+                  {
+                    key: "qty",
+                    type: "number",
+                    factorType: { baseType: "number" },
+                    default: 1,
+                  },
+                  {
+                    key: "price",
+                    type: "number",
+                    factorType: { baseType: "number" },
+                    default: 50000,
+                  },
+                ],
+              },
+              description: "New order object (JSON)",
+            },
+          ],
+        },
+        description: "Inputs object per estLiqPrice signature",
+      },
+    ],
+    outputs: [
+      {
+        key: "result",
+        type: "number",
+        factorType: { baseType: "number" },
+        description: "Estimated liquidation price",
+      },
+    ],
+  },
+  {
     id: "liquidation_price",
     name: "Liquidation Price Calculation",
     version: "1.0.0",
@@ -217,6 +352,59 @@ export const mockFormulas: FormulaDefinition[] = [
         factorType: { baseType: "number" },
         unit: "%",
         description: "The percentage change.",
+      },
+    ],
+  },
+  {
+    id: "order_fee",
+    name: "Order Fee",
+    version: "1.0.0",
+    description: "Calculate order fee from an object payload.",
+    tags: ["order", "fee"],
+    engineHints: {
+      ts: { rounding: "round", scale: 8 },
+    },
+    inputs: [
+      {
+        key: "order",
+        type: "object",
+        factorType: {
+          baseType: "object",
+          properties: [
+            {
+              key: "price",
+              type: "number",
+              factorType: { baseType: "number" },
+              unit: "USD",
+              default: 100,
+              description: "Order price",
+            },
+            {
+              key: "qty",
+              type: "number",
+              factorType: { baseType: "number" },
+              default: 1,
+              description: "Order quantity",
+            },
+            {
+              key: "isMaker",
+              type: "boolean",
+              factorType: { baseType: "boolean" },
+              default: true,
+              description: "Is maker order",
+            },
+          ],
+        },
+        description: "Order payload",
+      },
+    ],
+    outputs: [
+      {
+        key: "result",
+        type: "number",
+        factorType: { baseType: "number" },
+        unit: "USD",
+        description: "Calculated order fee.",
       },
     ],
   },

@@ -12,6 +12,7 @@ import "reactflow/dist/style.css";
 import { InputNode } from "../../../modules/formula-graph/nodes/InputNode";
 import { FormulaNode } from "../../../modules/formula-graph/nodes/FormulaNode";
 import { OutputNode } from "../../../modules/formula-graph/nodes/OutputNode";
+import { ObjectNode } from "../../../modules/formula-graph/nodes/ObjectNode";
 import { useFormulaStore } from "../../../store/formulaStore";
 import { useGraphStore } from "../../../store/graphStore";
 import { generateFormulaGraph } from "../../../modules/formula-graph";
@@ -20,6 +21,7 @@ const nodeTypes = {
   input: InputNode,
   formula: FormulaNode,
   output: OutputNode,
+  object: ObjectNode,
 };
 
 export function CenterCanvas() {
@@ -50,6 +52,21 @@ export function CenterCanvas() {
     });
   }, [selectedFormulaId, formulaDefinitions, setNodes, setEdges]);
 
+  // helper to read by dot path
+  function getByPath(obj: unknown, path: string) {
+    if (obj == null || typeof obj !== "object") return undefined;
+    return path.split(".").reduce<unknown>((acc, key) => {
+      if (
+        acc &&
+        typeof acc === "object" &&
+        key in (acc as Record<string, unknown>)
+      ) {
+        return (acc as Record<string, unknown>)[key];
+      }
+      return undefined;
+    }, obj);
+  }
+
   // Update node values when inputs or results change
   useEffect(() => {
     const prev = useGraphStore.getState().nodes;
@@ -58,7 +75,7 @@ export function CenterCanvas() {
       // Update input nodes with current input values
       if (node.type === "input" && node.id.startsWith("input-")) {
         const inputKey = node.id.replace("input-", "");
-        const newValue = currentInputs[inputKey];
+        const newValue = getByPath(currentInputs, inputKey);
         if (node.data?.value !== newValue) {
           hasChange = true;
           return {
@@ -123,7 +140,7 @@ export function CenterCanvas() {
   }
 
   return (
-    <div className="flex-1 bg-gray-50">
+    <div className="h-full bg-gray-50">
       <ReactFlow
         nodes={storeNodes}
         edges={storeEdges}

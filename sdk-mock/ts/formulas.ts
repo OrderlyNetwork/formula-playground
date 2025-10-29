@@ -129,3 +129,80 @@ export function calculatePercentageChange(
   }
   return ((newValue - oldValue) / oldValue) * 100;
 }
+
+/**
+ * @formulaId order_fee
+ * @name Order Fee
+ * @description Calculate order fee from an object payload.
+ * @tags ["order", "fee"]
+ * @version 1.0.0
+ * @engineHint.ts.rounding round
+ * @engineHint.ts.scale 8
+ *
+ * @param {object} order - Order payload
+ * @returns {number} Calculated order fee. @unit USD
+ */
+export function calculateOrderFee(order: {
+  price: number;
+  qty: number;
+  isMaker: boolean;
+}): number {
+  const orderValue = order.price * order.qty;
+  const feeRate = order.isMaker ? 0.0002 : 0.0005; // Maker: 0.02%, Taker: 0.05%
+  return orderValue * feeRate;
+}
+
+/**
+ * @formulaId est_liq_price
+ * @name Estimated Liquidation Price
+ * @description Estimate liquidation price based on inputs object.
+ * @tags ["risk", "liquidation", "object-param"]
+ * @version 1.0.0
+ * @engineHint.ts.rounding round
+ * @engineHint.ts.scale 6
+ *
+ * @param {object} inputs - Inputs object per estLiqPrice signature
+ * @returns {number} Estimated liquidation price
+ */
+export function estLiqPrice(inputs: {
+  totalCollateral: number;
+  markPrice: number;
+  baseMMR: number;
+  baseIMR: number;
+  IMR_Factor: number;
+  orderFee: number;
+  positions: Array<{
+    position_qty: number;
+    mark_price: number;
+    symbol: string;
+    mmr: number;
+  }>;
+  newOrder: {
+    symbol: string;
+    qty: number;
+    price: number;
+  };
+}): number {
+  // Simplified liquidation price estimation
+  const { totalCollateral, markPrice, baseMMR, positions, newOrder } = inputs;
+
+  // Calculate total position value
+  let totalPositionValue = 0;
+  for (const pos of positions) {
+    totalPositionValue += Math.abs(pos.position_qty) * pos.mark_price;
+  }
+
+  // Add new order position value
+  const newOrderValue = newOrder.qty * newOrder.price;
+  totalPositionValue += newOrderValue;
+
+  // Calculate maintenance margin requirement
+  const maintenanceMargin = totalPositionValue * baseMMR;
+
+  // Estimate liquidation price
+  const liquidationPrice =
+    markPrice *
+    (1 - (totalCollateral - maintenanceMargin) / totalPositionValue);
+
+  return Math.max(0, liquidationPrice);
+}
