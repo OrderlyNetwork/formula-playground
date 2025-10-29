@@ -1,4 +1,5 @@
 import { Handle, Position } from "reactflow";
+import { memo } from "react";
 import type { FormulaNodeData } from "../../../types/formula";
 import { cn } from "../../../lib/utils";
 
@@ -9,7 +10,7 @@ interface OutputNodeProps {
 /**
  * OutputNode - Custom React Flow node for formula outputs
  */
-export function OutputNode({ data }: OutputNodeProps) {
+export const OutputNode = memo(function OutputNode({ data }: OutputNodeProps) {
   return (
     <div
       className={cn(
@@ -52,4 +53,4 @@ export function OutputNode({ data }: OutputNodeProps) {
       </div>
     </div>
   );
-}
+});

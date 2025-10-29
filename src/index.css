@@ -1,1 +1,25 @@
 @import "tailwindcss";
+
+/* Utility: two-line text clamp with ellipsis */
+.line-clamp-2 {
+  line-clamp: 2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* React Flow: remove default wrapper styles for input nodes so custom component controls look */
+.react-flow__node-input,
+.react-flow__node-output {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+.react-flow__node-default,
+.react-flow__node-input,
+.react-flow__node-output,
+.react-flow__node-group {
+  width: auto !important;
+}

@@ -1,5 +1,4 @@
 import { Card } from "../../../components/common/Card";
-import { ParameterInput } from "../../../components/formula-ui/ParameterInput";
 import { ResultDisplay } from "../../../components/formula-ui/ResultDisplay";
 import { ComparisonPanel } from "../../../components/formula-ui/ComparisonPanel";
 import { useFormulaStore } from "../../../store/formulaStore";
@@ -29,20 +28,6 @@ export function RightPanel() {
   return (
     <div className="w-96 border-l border-gray-200 bg-gray-50 overflow-y-auto">
       <div className="p-4 space-y-4">
-        {/* Input Parameters */}
-        <Card title="Input Parameters">
-          <div className="space-y-4">
-            {selectedFormula.inputs.map((input) => (
-              <ParameterInput
-                key={input.key}
-                input={input}
-                value={currentInputs[input.key]}
-                onChange={updateInput}
-              />
-            ))}
-          </div>
-        </Card>
-
         {/* TS Result */}
         <ResultDisplay result={tsResult} title="TS Result" />
 

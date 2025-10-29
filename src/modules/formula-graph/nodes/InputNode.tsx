@@ -1,4 +1,5 @@
 import { Handle, Position } from "reactflow";
+import { memo } from "react";
 import type { FormulaNodeData } from "../../../types/formula";
 import { cn } from "../../../lib/utils";
 import { Input } from "../../../components/common/Input";
@@ -12,7 +13,7 @@ interface InputNodeProps {
 /**
  * InputNode - Custom React Flow node for formula inputs
  */
-export function InputNode({ data }: InputNodeProps) {
+export const InputNode = memo(function InputNode({ data }: InputNodeProps) {
   const { updateInput } = useFormulaStore();
 
   const handleTextOrNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,9 +39,6 @@ export function InputNode({ data }: InputNodeProps) {
       )}
     >
       <div className="flex flex-col gap-1">
-        <div className="text-xs font-semibold text-blue-600 uppercase">
-          Input
-        </div>
         <div className="font-medium text-gray-900">{data.label}</div>
         <div className="mt-1">
           {data.inputType === "boolean" ? (
@@ -86,4 +84,4 @@ export function InputNode({ data }: InputNodeProps) {
       />
     </div>
   );
-}
+});
