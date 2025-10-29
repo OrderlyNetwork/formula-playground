@@ -16,7 +16,7 @@ export class TypeAnalyzer {
     const baseType = this.getBaseType(type);
 
     // Extract constraint information
-    const constraints = this.extractConstraints(typeNode, type);
+    const constraints = this.extractConstraints(typeNode);
 
     // Check nullability
     const nullable = type.isNullable();
@@ -24,12 +24,20 @@ export class TypeAnalyzer {
     // Check array type
     const array = type.isArray();
 
-    return {
+    const factor: FactorType = {
       baseType,
       constraints,
       nullable,
       array,
     };
+
+    // For object-like parameters, extract structural properties
+    if (baseType === "object" && !array) {
+      const props = this.extractObjectProperties(type);
+      if (props.length > 0) factor.properties = props;
+    }
+
+    return factor;
   }
 
   /**
@@ -44,6 +52,11 @@ export class TypeAnalyzer {
     }
 
     const typeText = tsType.getText();
+
+    // Map common numeric wrapper types to number
+    if (/\b(Decimal|BigNumber|Big|BN)\b/.test(typeText)) {
+      return "number";
+    }
 
     if (tsType.isNumber() || typeText.includes("number")) {
       return "number";
@@ -66,11 +79,51 @@ export class TypeAnalyzer {
   }
 
   /**
+   * Extract object type properties (one-level deep, arrays handled)
+   */
+  private extractObjectProperties(
+    tsType: Type
+  ): NonNullable<FactorType["properties"]> {
+    const properties: NonNullable<FactorType["properties"]> = [];
+    const symbols = tsType.getProperties();
+    for (const symbol of symbols) {
+      const key = symbol.getName();
+      const decl =
+        symbol.getValueDeclaration() ?? symbol.getDeclarations()?.[0];
+      if (!decl) continue;
+      const propType = symbol.getTypeAtLocation(decl);
+
+      const isArray = propType.isArray();
+      const elementType = isArray
+        ? propType.getArrayElementType() ?? propType
+        : propType;
+      const baseType = this.getBaseType(elementType);
+
+      const factorType: FactorType = {
+        baseType,
+        nullable: elementType.isNullable(),
+        array: isArray,
+      };
+
+      if (baseType === "object" && !isArray) {
+        const nested = this.extractObjectProperties(elementType);
+        if (nested.length > 0) factorType.properties = nested;
+      }
+
+      properties.push({
+        key,
+        type: baseType,
+        factorType,
+      });
+    }
+    return properties;
+  }
+
+  /**
    * Extract constraints from type node
    */
   private extractConstraints(
-    typeNode: TypeNode | undefined,
-    _type: Type
+    typeNode: TypeNode | undefined
   ): FactorType["constraints"] {
     const constraints: FactorType["constraints"] = {};
 

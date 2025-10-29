@@ -3,6 +3,7 @@ import hljs from "highlight.js/lib/core";
 import typescript from "highlight.js/lib/languages/typescript";
 import rust from "highlight.js/lib/languages/rust";
 import "highlight.js/styles/github.css";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 hljs.registerLanguage("typescript", typescript);
 hljs.registerLanguage("rust", rust);
@@ -39,16 +40,14 @@ export function FormulaCode() {
   }
 
   return (
-    <div className="h-full w-full overflow-hidden bg-gray-50">
-      <div className="h-full">
-        {code ? (
-          <pre className="mt-2 max-h-[60vh] overflow-auto  text-white text-xs p-3">
-            <code dangerouslySetInnerHTML={{ __html: highlighted }} />
-          </pre>
-        ) : (
-          <p className="text-sm text-gray-500">No source code available.</p>
-        )}
-      </div>
-    </div>
+    <ScrollArea className="h-full w-full bg-gray-50">
+      {code ? (
+        <pre className="mt-2 max-h-[60vh] overflow-auto text-xs p-3">
+          <code dangerouslySetInnerHTML={{ __html: highlighted }} />
+        </pre>
+      ) : (
+        <p className="text-sm text-gray-500">No source code available.</p>
+      )}
+    </ScrollArea>
   );
 }

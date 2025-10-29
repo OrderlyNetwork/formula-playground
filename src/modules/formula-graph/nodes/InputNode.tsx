@@ -68,6 +68,7 @@ export const InputNode = memo(function InputNode({ data }: InputNodeProps) {
                   type={data.inputType === "number" ? "number" : "text"}
                   value={valueForInput}
                   onChange={handleTextOrNumberChange}
+                  className="px-2"
                 />
               );
             })()

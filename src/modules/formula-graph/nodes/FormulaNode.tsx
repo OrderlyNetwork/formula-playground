@@ -3,6 +3,7 @@ import type { Connection } from "reactflow";
 import { useCallback, useMemo, Fragment, memo } from "react";
 import type { FormulaNodeData } from "../../../types/formula";
 import { cn } from "../../../lib/utils";
+import { Calculator } from "lucide-react";
 
 interface FormulaNodeProps {
   id: string;
@@ -65,10 +66,10 @@ export const FormulaNode = memo(function FormulaNode({
       {/* Header */}
       <div
         className="flex flex-col gap-1 pr-2"
-        style={{ paddingTop: 8, paddingBottom: 8, minHeight: HEADER_HEIGHT }}
+        style={{ paddingBottom: 8, minHeight: HEADER_HEIGHT }}
       >
-        <div className="font-bold text-gray-900 text-lg truncate max-w-[240px]">
-          {data.label}
+        <div className="font-semibold text-gray-900 text-lg truncate max-w-[240px] flex items-center gap-1">
+          <Calculator size={22} strokeWidth={1.5} /> <span>{data.label}</span>
         </div>
         {data.description && (
           <div className="text-xs text-gray-600 max-w-[240px] line-clamp-2">

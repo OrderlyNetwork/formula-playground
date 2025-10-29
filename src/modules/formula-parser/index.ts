@@ -43,6 +43,27 @@ export class FormulaParser {
   }
 
   /**
+   * Parse formulas from in-memory source texts (for remote/GitHub usage)
+   */
+  async parseFormulasFromText(
+    sources: Array<{ path: string; content: string }>
+  ): Promise<FormulaDefinition[]> {
+    const formulas: FormulaDefinition[] = [];
+    for (const { path, content } of sources) {
+      try {
+        const sourceFile = this.project.createSourceFile(path, content, {
+          overwrite: true,
+        });
+        const fileFormulas = this.parseSourceFile(sourceFile);
+        formulas.push(...fileFormulas);
+      } catch (error) {
+        console.error(`Error parsing in-memory file ${path}:`, error);
+      }
+    }
+    return formulas;
+  }
+
+  /**
    * Parse a single source file
    */
   private parseSourceFile(sourceFile: SourceFile): FormulaDefinition[] {
@@ -67,23 +88,9 @@ export class FormulaParser {
   /**
    * Check if a function is a formula function
    */
-  private isFormulaFunction(func: FunctionDeclaration): boolean {
-    const name = func.getName();
-    if (!name) return false;
-
-    // Check naming convention
-    const namingPatterns = ["calculate", "compute", "formula"];
-    const matchesNaming = namingPatterns.some((pattern) =>
-      name.toLowerCase().startsWith(pattern)
-    );
-
-    // Check JSDoc tags
-    const jsDoc = func.getJsDocs()[0];
-    const hasFormulaId = jsDoc
-      ?.getTags()
-      .some((tag) => tag.getTagName() === "formulaId");
-
-    return matchesNaming || hasFormulaId || false;
+  private isFormulaFunction(_func: FunctionDeclaration): boolean {
+    // Accept all top-level functions as formulas (naming not enforced)
+    return true;
   }
 
   /**
@@ -155,8 +162,11 @@ export class FormulaParser {
 
       const description = this.extractParamDescription(paramTag, paramName);
       const unit = this.extractParamUnit(paramTag);
-      const defaultValue =
+      const defaultRaw =
         this.extractParamDefault(paramTag) ?? param.getInitializer()?.getText();
+      const defaultValue = defaultRaw as unknown as
+        | import("../../types/formula").FormulaScalar
+        | undefined;
 
       inputs.push({
         key: paramName,
@@ -240,7 +250,9 @@ export class FormulaParser {
   }
 
   private extractEngineHints(jsDoc: JSDoc) {
-    const hints: any = {};
+    const hints: Partial<
+      Record<"ts" | "rust", { rounding?: RoundingStrategy; scale?: number }>
+    > = {};
     const tags = jsDoc.getTags();
 
     for (const tag of tags) {
@@ -248,14 +260,16 @@ export class FormulaParser {
       const match = tagName.match(/^engineHint\.(ts|rust)\.(rounding|scale)$/);
 
       if (match) {
-        const [, engine, hintType] = match;
+        const [, engineRaw, hintType] = match;
+        const engine = engineRaw as "ts" | "rust";
         if (!hints[engine]) hints[engine] = {};
 
         const value = tag.getComment()?.toString();
-        if (hintType === "scale") {
-          hints[engine][hintType] = parseInt(value || "8");
+        const hint = hintType as "rounding" | "scale";
+        if (hint === "scale") {
+          hints[engine][hint] = parseInt(value || "8");
         } else {
-          hints[engine][hintType] = value as RoundingStrategy;
+          hints[engine][hint] = value as RoundingStrategy;
         }
       }
     }
@@ -283,7 +297,7 @@ export class FormulaParser {
     return match ? match[1] : undefined;
   }
 
-  private extractParamDefault(paramTag: JSDocTag | undefined): any {
+  private extractParamDefault(paramTag: JSDocTag | undefined): unknown {
     if (!paramTag) return undefined;
 
     const comment = paramTag.getComment()?.toString() || "";

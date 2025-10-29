@@ -4,19 +4,15 @@ import type { FormulaNodeData } from "../../../types/formula";
 import { cn } from "../../../lib/utils";
 
 interface ObjectNodeProps {
-  id: string;
   data: FormulaNodeData;
 }
 
-const HEADER_HEIGHT = 64;
+const HEADER_HEIGHT = 44;
 const HANDLE_GAP = 24;
 const HEADER_TO_FIRST_HANDLE_GAP = 12;
 const BOTTOM_PADDING = 12;
 
-export const ObjectNode = memo(function ObjectNode({
-  id,
-  data,
-}: ObjectNodeProps) {
+export const ObjectNode = memo(function ObjectNode({ data }: ObjectNodeProps) {
   const inputs = data.inputs ?? [];
   const handleCount = inputs.length;
   const containerMinHeight =

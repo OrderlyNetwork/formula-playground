@@ -1,5 +1,7 @@
-import { Button } from "../../../components/common/Button";
 import { useFormulaStore } from "../../../store/formulaStore";
+import { sourceLoaderService } from "../../../modules/source-loader";
+import { db } from "../../../lib/dexie";
+import { Button } from "@/components/ui/button";
 
 export function Toolbar() {
   const {
@@ -10,6 +12,28 @@ export function Toolbar() {
     switchEngine,
   } = useFormulaStore();
 
+  const handleImport = async () => {
+    const input = window.prompt(
+      "请输入 GitHub 地址列表（每行一个，支持 raw/blob/tree 链接）"
+    );
+    if (!input) return;
+    const urls = input
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (urls.length === 0) return;
+    const res = await sourceLoaderService.importFromGitHub(urls);
+    if (res.success) {
+      const defs = await db.formulas.toArray();
+      // Reload store with new formulas
+      const { loadFormulas } = useFormulaStore.getState();
+      await loadFormulas(defs);
+      alert(`已导入公式 ${res.count} 个`);
+    } else {
+      alert(`导入失败: ${res.error}`);
+    }
+  };
+
   return (
     <div className="h-16 border-b border-gray-200 bg-white px-6 flex items-center justify-between shadow-sm">
       <div className="flex items-center gap-4">
@@ -17,17 +41,15 @@ export function Toolbar() {
       </div>
 
       <div className="flex items-center gap-3">
+        <Button variant="outline" size="sm" onClick={handleImport}>
+          从 GitHub 导入
+        </Button>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">Engine:</span>
-          <Button
-            variant={activeEngine === "ts" ? "primary" : "outline"}
-            size="sm"
-            onClick={() => switchEngine("ts")}
-          >
+          <Button size="sm" onClick={() => switchEngine("ts")}>
             TS
           </Button>
           <Button
-            variant={activeEngine === "rust" ? "primary" : "outline"}
             size="sm"
             onClick={() => switchEngine("rust")}
             disabled
@@ -38,7 +60,6 @@ export function Toolbar() {
         </div>
 
         <Button
-          variant="primary"
           onClick={executeFormula}
           disabled={loading || !selectedFormulaId}
         >

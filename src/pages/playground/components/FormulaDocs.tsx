@@ -1,4 +1,4 @@
-import { Card } from "../../../components/common/Card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFormulaStore } from "../../../store/formulaStore";
 
 export function FormulaDocs() {
@@ -17,32 +17,33 @@ export function FormulaDocs() {
   }
 
   return (
-    <div className="h-full w-full overflow-y-auto p-4 bg-gray-50">
+    <ScrollArea className="h-full w-full p-4 bg-gray-50">
       <div className="space-y-4">
-        <Card title="Documentation">
-          <div className="space-y-3 text-sm text-gray-700">
-            {selectedFormula.description && (
-              <p className="leading-6">{selectedFormula.description}</p>
-            )}
-            {selectedFormula.tags && selectedFormula.tags.length > 0 && (
-              <div>
-                <div className="font-medium text-gray-900 mb-1">Tags</div>
-                <div className="flex flex-wrap gap-1">
-                  {selectedFormula.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+        <div className="space-y-3 text-sm text-gray-700">
+          <div className="font-medium text-gray-900 mb-1 text-lg">
+            Description
           </div>
-        </Card>
+          {selectedFormula.description && (
+            <p className="leading-6">{selectedFormula.description}</p>
+          )}
+          {selectedFormula.tags && selectedFormula.tags.length > 0 && (
+            <div>
+              <div className="font-medium text-gray-900 mb-1">Tags</div>
+              <div className="flex flex-wrap gap-1">
+                {selectedFormula.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
-        <Card title="Inputs">
+        {/* <Card title="Inputs">
           <div className="space-y-2">
             {selectedFormula.inputs.length === 0 ? (
               <p className="text-sm text-gray-500">No inputs</p>
@@ -94,8 +95,8 @@ export function FormulaDocs() {
               ))
             )}
           </div>
-        </Card>
+        </Card> */}
       </div>
-    </div>
+    </ScrollArea>
   );
 }

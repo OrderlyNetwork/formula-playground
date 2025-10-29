@@ -4,14 +4,8 @@ import { ComparisonPanel } from "../../../components/formula-ui/ComparisonPanel"
 import { useFormulaStore } from "../../../store/formulaStore";
 
 export function RightPanel() {
-  const {
-    formulaDefinitions,
-    selectedFormulaId,
-    currentInputs,
-    updateInput,
-    tsResult,
-    rustResult,
-  } = useFormulaStore();
+  const { formulaDefinitions, selectedFormulaId, tsResult, rustResult } =
+    useFormulaStore();
 
   const selectedFormula = formulaDefinitions.find(
     (f) => f.id === selectedFormulaId

@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "@radix-ui/react-slot": "^1.2.3",
     "@tailwindcss/vite": "^4.1.16",
     "dexie": "^4.2.1",
     "elkjs": "^0.11.0",

@@ -1,6 +1,6 @@
 import ELK from "elkjs/lib/elk.bundled.js";
 import type { ElkNode } from "elkjs/lib/elk.bundled.js";
-import type { FormulaDefinition } from "../../types/formula";
+import type { FormulaDefinition, FormulaScalar } from "../../types/formula";
 import type { FormulaNode, FormulaEdge } from "../../types/formula";
 
 const elk = new ELK();
@@ -58,7 +58,7 @@ export async function generateFormulaGraph(
             type: p.type,
             factorType: p.factorType,
             unit: p.unit,
-            default: p.default,
+            default: p.default as unknown as FormulaScalar,
             description: p.description,
           })),
         },
@@ -74,7 +74,7 @@ export async function generateFormulaGraph(
             id: `${input.key}.${p.key}`,
             type: "input",
             label: `${p.key}`,
-            value: p.default,
+            value: p.default as unknown as FormulaScalar,
             inputType: p.type,
             unit: p.unit,
             description: p.description,
@@ -177,7 +177,7 @@ async function applyELKLayout(
     layoutOptions: {
       "elk.algorithm": "layered",
       "elk.direction": "RIGHT",
-      "elk.spacing.nodeNode": "80",
+      "elk.spacing.nodeNode": "20",
       "elk.layered.spacing.nodeNodeBetweenLayers": "100",
     },
     children: elkNodes,
