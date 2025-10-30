@@ -4,6 +4,8 @@ import type {
 } from "../../../types/executor";
 import type { FormulaDefinition } from "../../../types/formula";
 import { normalizePrecision } from "../../../lib/math";
+import { TypeScriptRuntimeSandbox } from "../runtime-sandbox";
+import { CacheManager } from "../cache-manager";
 
 // Inline formula implementations for MVP
 const calculateFundingFee = (
@@ -59,6 +61,7 @@ const calculatePercentageChange = (
 
 /**
  * TypeScript SDK Adapter - Executes formulas using TS implementations
+ * Supports both hardcoded implementations and dynamic loading from jsDelivr
  */
 export class TSAdapter implements SDKAdapter {
   id: "ts" = "ts";
@@ -66,9 +69,13 @@ export class TSAdapter implements SDKAdapter {
   version = "1.0.0";
 
   private formulaMap: Map<string, Function>;
+  private sandbox: TypeScriptRuntimeSandbox;
+  private cacheManager: CacheManager;
 
   constructor() {
     this.formulaMap = new Map();
+    this.cacheManager = new CacheManager();
+    this.sandbox = new TypeScriptRuntimeSandbox(this.cacheManager);
     this.initializeFormulaMap();
   }
 
@@ -86,6 +93,7 @@ export class TSAdapter implements SDKAdapter {
 
   /**
    * Execute a formula with given inputs
+   * Priority: jsDelivr (if enabled) -> hardcoded implementation -> error
    */
   async execute(
     formula: FormulaDefinition,
@@ -94,10 +102,40 @@ export class TSAdapter implements SDKAdapter {
     const startTime = performance.now();
 
     try {
-      const func = this.formulaMap.get(formula.id);
+      let func: Function | undefined;
 
+      // Priority 1: Try jsDelivr if configured and enabled
+      if (formula.jsdelivrInfo?.enabled && formula.jsdelivrInfo.url) {
+        try {
+          func = await this.sandbox.loadFromJsDelivr(
+            formula.jsdelivrInfo.url,
+            formula.jsdelivrInfo.functionName,
+            formula.id,
+            formula.jsdelivrInfo.version
+          );
+          console.log(
+            `✓ Loaded from jsDelivr: ${formula.id}@${formula.jsdelivrInfo.version}`
+          );
+        } catch (error) {
+          console.warn(
+            `Failed to load from jsDelivr, falling back to hardcoded:`,
+            error
+          );
+          func = undefined;
+        }
+      }
+
+      // Priority 2: Fallback to hardcoded implementation
       if (!func) {
-        throw new Error(`Formula ${formula.id} not found in TS SDK`);
+        func = this.formulaMap.get(formula.id);
+      }
+
+      // No implementation found
+      if (!func) {
+        throw new Error(
+          `Formula ${formula.id} not found. ` +
+            `Please configure jsDelivr URL or ensure hardcoded implementation exists.`
+        );
       }
 
       // Convert inputs object to function arguments in the correct order

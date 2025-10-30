@@ -119,6 +119,9 @@ export class FormulaParser {
     // Extract engine hints
     const engineHints = this.extractEngineHints(jsDoc);
 
+    // Extract jsDelivr info if present
+    const jsdelivrInfo = this.extractJsDelivrInfo(jsDoc, name);
+
     return {
       id,
       name: formulaName,
@@ -130,6 +133,7 @@ export class FormulaParser {
       outputs,
       formulaText: func.getBody()?.getText(),
       sourceCode: func.getText(),
+      jsdelivrInfo,
     };
   }
 
@@ -333,5 +337,54 @@ export class FormulaParser {
     const comment = returnsTag.getComment()?.toString() || "";
     const match = comment.match(/@unit\s+(\S+)/);
     return match ? match[1] : undefined;
+  }
+
+  /**
+   * Extract jsDelivr info from JSDoc @jsdelivr tag
+   * Format: @jsdelivr https://cdn.jsdelivr.net/gh/owner/repo@v1.0.0/dist/formulas.js#functionName
+   */
+  private extractJsDelivrInfo(
+    jsDoc: JSDoc,
+    defaultFunctionName: string
+  ): FormulaDefinition["jsdelivrInfo"] | undefined {
+    const jsdelivrTag = jsDoc
+      .getTags()
+      .find((tag) => tag.getTagName() === "jsdelivr");
+
+    if (!jsdelivrTag) return undefined;
+
+    const comment = jsdelivrTag.getComment()?.toString() || "";
+    // Match URL#functionName format
+    const match = comment.match(/^(https:\/\/cdn\.jsdelivr\.net\/[^\s#]+)#(\w+)$/);
+
+    if (!match) {
+      // Try URL without #functionName (use default function name)
+      const simpleMatch = comment.match(/^(https:\/\/cdn\.jsdelivr\.net\/[^\s#]+)$/);
+      if (simpleMatch) {
+        const url = simpleMatch[1];
+        const versionMatch = url.match(/@([^/]+)\//);
+        const version = versionMatch ? versionMatch[1] : "latest";
+
+        return {
+          url,
+          functionName: defaultFunctionName,
+          version,
+          enabled: false, // User must explicitly enable
+        };
+      }
+      return undefined;
+    }
+
+    const url = match[1];
+    const functionName = match[2];
+    const versionMatch = url.match(/@([^/]+)\//);
+    const version = versionMatch ? versionMatch[1] : "latest";
+
+    return {
+      url,
+      functionName,
+      version,
+      enabled: false, // User must explicitly enable
+    };
   }
 }

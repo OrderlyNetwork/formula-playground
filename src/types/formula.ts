@@ -64,11 +64,43 @@ export interface FormulaDefinition {
     description?: string; // Description, from JSDoc @returns
   }>;
   formulaText?: string; // Original formula function body code as string
-  sourceCode?: string; // Complete original formula function source code as string
+  sourceCode?: string; // Complete original formula function source code as string (for display)
+  
+  // GitHub source info (for display and visualization)
+  githubInfo?: {
+    owner: string;
+    repo: string;
+    ref: string; // branch/tag/commit
+    path: string;
+    url: string; // full GitHub URL
+  };
+  
+  // jsDelivr execution info (separate from source)
+  jsdelivrInfo?: {
+    url: string; // e.g., "https://cdn.jsdelivr.net/gh/owner/repo@v1.0.0/dist/formulas.js"
+    functionName: string; // e.g., "calculateFundingFee"
+    version: string; // e.g., "v1.0.0"
+    enabled: boolean; // whether to use jsdelivr or fallback to hardcoded
+  };
+  
   examples?: Array<{
     inputs: Record<string, FormulaScalar>;
     outputs: Record<string, FormulaScalar>;
   }>; // Example use cases
+}
+
+/**
+ * @description Compiled formula stored in IndexedDB cache for jsDelivr executables
+ */
+export interface CompiledFormula {
+  id: string; // unique: `${formulaId}:${version}`
+  formulaId: string;
+  version: string;
+  jsdelivrUrl: string; // Source URL for this compiled version
+  compiledCode: string; // Cached compiled function code
+  functionName: string;
+  timestamp: number;
+  hash: string; // Integrity hash
 }
 
 /**

@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  createBrowserRouter,
+  RouterProvider,
+  redirect,
+  Outlet,
+} from "react-router";
 import { Toolbar } from "./components/Toolbar";
 import { LeftPanel } from "./components/LeftPanel";
 import { CenterCanvas } from "./components/CenterCanvas";
@@ -10,10 +16,10 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { useFormulaStore } from "../../store/formulaStore";
-import { useAppStore } from "../../store/appStore";
 import { CodeInput } from "./components/CodeInput";
 import { db } from "../../lib/dexie";
-import { sourceLoaderService } from "../../modules/source-loader";
+import { formulaRepository } from "@/modules/formulaRepository";
+import { parseUrlList } from "@/lib/urls";
 
 /**
  * PlaygroundPage
@@ -27,7 +33,6 @@ import { sourceLoaderService } from "../../modules/source-loader";
  */
 export function PlaygroundPage() {
   const { loadFormulas, error } = useFormulaStore();
-  const { mode } = useAppStore();
 
   // Tracks whether we need the user to import from GitHub initially
   const [needsImport, setNeedsImport] = useState(false);
@@ -67,16 +72,8 @@ export function PlaygroundPage() {
     const input = window.prompt(
       "请输入 GitHub 地址列表（每行一个，支持 raw/blob/tree 链接）"
     );
-    if (!input) return null;
-    const unique = Array.from(
-      new Set(
-        input
-          .split(/\r?\n/)
-          .map((s) => s.trim())
-          .filter(Boolean)
-      )
-    );
-    return unique.length > 0 ? unique : null;
+    const urls = parseUrlList(input);
+    return urls.length > 0 ? urls : null;
   }, []);
 
   /**
@@ -89,10 +86,11 @@ export function PlaygroundPage() {
 
     setBusy(true);
     try {
-      const res = await sourceLoaderService.importFromGitHub(urls);
+      const res = await formulaRepository.importFromGithubAndRefresh(
+        urls,
+        loadFormulas
+      );
       if (res.success) {
-        const defs = await db.formulas.toArray();
-        await loadFormulas(defs);
         setNeedsImport(false);
       } else {
         alert(`导入失败: ${res.error}`);
@@ -104,17 +102,47 @@ export function PlaygroundPage() {
     }
   }, [loadFormulas, promptForGitHubUrls]);
 
+  // Root layout rendered under Router to ensure hooks like useNavigate work in children
+  const RootLayout = useCallback(
+    function RootLayout() {
+      return (
+        <div className="h-screen flex flex-col relative">
+          <Toolbar />
+          <ImportBanner
+            visible={needsImport}
+            busy={busy}
+            onImport={handleImport}
+          />
+          <ErrorBanner error={error} />
+          <div className="flex-1 overflow-hidden relative">
+            {/* Render child routes here */}
+            <Outlet />
+          </div>
+        </div>
+      );
+    },
+    [busy, error, handleImport, needsImport]
+  );
+
+  // Create router once; wrap pages with RootLayout to place Toolbar inside Router
+  const router = useMemo(
+    () =>
+      createBrowserRouter([
+        {
+          element: <RootLayout />,
+          children: [
+            { path: "/", element: <UserLayout /> },
+            { path: "/dev", element: <DeveloperLayout /> },
+            { path: "*", loader: () => redirect("/") },
+          ],
+        },
+      ]),
+    [RootLayout]
+  );
+
   return (
-    <div className="h-screen flex flex-col relative">
-      <Toolbar />
-
-      <ImportBanner visible={needsImport} busy={busy} onImport={handleImport} />
-      <ErrorBanner error={error} />
-
-      <div className="flex-1 overflow-hidden relative">
-        {mode === "developer" ? <DeveloperLayout /> : <UserLayout />}
-      </div>
-    </div>
+    // Provide router for the whole page; RootLayout owns the shell/toolbar
+    <RouterProvider router={router} />
   );
 }
 

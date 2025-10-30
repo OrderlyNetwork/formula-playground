@@ -13,10 +13,12 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     return (
       <div ref={ref} className={cn("bg-white", className)} {...props}>
         {title && (
-          <div className="border-b border-gray-200 px-4 py-3">
+          <div className="border-b border-gray-200 px-3 py-1">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="font-semibold text-gray-900">{title}</h3>
-              {headerRight ? <div className="flex items-center gap-2">{headerRight}</div> : null}
+              <h3 className="font-semibold text-sm text-gray-900">{title}</h3>
+              {headerRight ? (
+                <div className="flex items-center gap-2">{headerRight}</div>
+              ) : null}
             </div>
           </div>
         )}

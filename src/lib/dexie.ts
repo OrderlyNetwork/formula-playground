@@ -1,6 +1,6 @@
 import Dexie, { type Table } from "dexie";
 import type { RunRecord } from "../types/history";
-import type { FormulaDefinition } from "../types/formula";
+import type { FormulaDefinition, CompiledFormula } from "../types/formula";
 
 /**
  * IndexedDB database for Formula Playground
@@ -8,16 +8,19 @@ import type { FormulaDefinition } from "../types/formula";
 export class FormulaPlaygroundDB extends Dexie {
   runRecords!: Table<RunRecord, string>;
   formulas!: Table<FormulaDefinition, string>;
+  compiledFormulas!: Table<CompiledFormula, string>;
 
   constructor() {
     super("FormulaPlaygroundDB");
 
     // v1: runRecords only
     // v2: add formulas table for storing parsed FormulaDefinition
-    this.version(2).stores({
+    // v3: add compiledFormulas table for storing jsDelivr executables
+    this.version(3).stores({
       runRecords:
         "id, timestamp, formulaId, engine, sdkVersion, formulaVersion",
-      formulas: "id, name, version", // primary key id; indexes on name, version
+      formulas: "id, name, version, githubUrl", // Metadata from GitHub
+      compiledFormulas: "id, formulaId, version, jsdelivrUrl, timestamp", // Executables from jsDelivr
     });
   }
 }
