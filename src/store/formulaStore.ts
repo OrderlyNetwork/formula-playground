@@ -23,12 +23,14 @@ interface FormulaStore {
   // Actions
   loadFormulas: (sourceFiles?: string[] | FormulaDefinition[]) => Promise<void>;
   /**
-   * Import formulas from a single TypeScript source string and merge into store.
+   * Parse formulas from a single TypeScript source string.
    * - Parses user input via FormulaParser
-   * - Appends created definitions and selects the first one
+   * - If parseOnly is true, only returns parsed definitions without adding to store
+   * - If parseOnly is false (default), appends created definitions to store and selects the first one
    */
   importFromCode: (
-    code: string
+    code: string,
+    parseOnly?: boolean
   ) => Promise<
     | { success: true; created: FormulaDefinition[] }
     | { success: false; error: string }
@@ -93,10 +95,11 @@ export const useFormulaStore = create<FormulaStore>((set, get) => ({
   },
 
   /**
-   * Parse and import formulas from a TypeScript code string.
-   * Appends new definitions to the existing list and selects the first created.
+   * Parse and optionally import formulas from a TypeScript code string.
+   * - If parseOnly is true, only returns parsed definitions without adding to store
+   * - If parseOnly is false (default), appends new definitions to the existing list and selects the first created
    */
-  importFromCode: async (code: string) => {
+  importFromCode: async (code: string, parseOnly = false) => {
     const trimmed = code?.trim();
     if (!trimmed) {
       return {
@@ -124,12 +127,24 @@ export const useFormulaStore = create<FormulaStore>((set, get) => ({
         } as const;
       }
 
-      const { formulaDefinitions } = get();
-      const next = [...formulaDefinitions, ...defs];
-      set({ formulaDefinitions: next });
-      get().selectFormula(defs[0].id);
+      // Mark formulas as parsed from developer mode
+      const markedDefs = defs.map((def) => ({
+        ...def,
+        creationType: "parsed" as const,
+      }));
 
-      return { success: true, created: defs } as const;
+      // If parseOnly mode, return without adding to store
+      if (parseOnly) {
+        return { success: true, created: markedDefs } as const;
+      }
+
+      // Otherwise, add to store and select the first formula
+      const { formulaDefinitions } = get();
+      const next = [...formulaDefinitions, ...markedDefs];
+      set({ formulaDefinitions: next });
+      get().selectFormula(markedDefs[0].id);
+
+      return { success: true, created: markedDefs } as const;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return { success: false, error: message } as const;

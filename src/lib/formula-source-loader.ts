@@ -56,6 +56,7 @@ const formulaIdToFunctionName: Record<string, string> = {
 
 /**
  * Enrich formula definitions with source code
+ * Also sets creationType to "builtin" for formulas loaded from SDK mock
  */
 export function enrichFormulasWithSource(
   formulas: FormulaDefinition[]
@@ -75,6 +76,8 @@ export function enrichFormulasWithSource(
       ...formula,
       sourceCode,
       formulaText,
+      // Set creationType to "builtin" if not already set
+      creationType: formula.creationType ?? "builtin",
     };
   });
 }

@@ -11,7 +11,7 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 export const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ className, title, headerRight, children, ...props }, ref) => {
     return (
-      <div ref={ref} className={cn("bg-white", className)} {...props}>
+      <div ref={ref} className={cn(className)} {...props}>
         {title && (
           <div className="border-b border-gray-200 px-3 py-1">
             <div className="flex items-center justify-between gap-2">

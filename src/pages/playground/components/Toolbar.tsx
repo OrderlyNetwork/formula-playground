@@ -1,10 +1,22 @@
 import { useFormulaStore } from "../../../store/formulaStore";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useLocation, useNavigate } from "react-router";
 
 export function Toolbar() {
-  const { selectedFormulaId, executeFormula, loading, switchEngine } =
-    useFormulaStore();
+  const {
+    selectedFormulaId,
+    executeFormula,
+    loading,
+    switchEngine,
+    activeEngine,
+  } = useFormulaStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -51,25 +63,28 @@ export function Toolbar() {
 
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-600">Engine:</span>
-          <Button size="sm" onClick={() => switchEngine("ts")}>
-            TS
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => switchEngine("rust")}
-            disabled
-            title="Rust engine coming in Phase 2"
+          <Select
+            value={activeEngine}
+            onValueChange={(value) => switchEngine(value as "ts" | "rust")}
           >
-            Rust
-          </Button>
+            <SelectTrigger className="w-[100px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ts">TypeScript</SelectItem>
+              <SelectItem value="rust" disabled>
+                Rust (Coming Soon)
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        <Button
+        {/* <Button
           onClick={executeFormula}
           disabled={loading || !selectedFormulaId}
         >
           {loading ? "Running..." : "Run"}
-        </Button>
+        </Button> */}
       </div>
     </div>
   );

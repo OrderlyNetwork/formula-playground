@@ -35,6 +35,7 @@ export function CodeInput() {
   const { importFromCode } = useFormulaStore();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [parseResult, setParseResult] = useState<string | null>(null);
 
   /**
    * Ref to the container DOM element for Monaco and a ref to the editor instance.
@@ -44,17 +45,44 @@ export function CodeInput() {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
 
   /**
-   * Parse user-provided TypeScript and import formulas into the domain store.
-   * On success, clear input; otherwise surface the error.
+   * Parse only - validate the code and show parsed formulas without creating them
    */
-  const handleSubmit = useCallback(async () => {
+  const handleParse = useCallback(async () => {
     setSubmitting(true);
     setError(null);
-    const res = await importFromCode(codeInput);
+    setParseResult(null);
+    const res = await importFromCode(codeInput, true); // parseOnly = true
     if (!res.success) {
       setError(res.error);
     } else {
-      setCodeInput("");
+      // Show parsed formula names and info
+      const formulaNames = res.created
+        .map((f) => `• ${f.name} (${f.id})`)
+        .join("\n");
+      setParseResult(
+        `✅ 成功解析 ${res.created.length} 个公式:\n${formulaNames}`
+      );
+    }
+    setSubmitting(false);
+  }, [importFromCode, codeInput]);
+
+  /**
+   * Parse and create - parse the code and add formulas to the store
+   */
+  const handleParseAndCreate = useCallback(async () => {
+    setSubmitting(true);
+    setError(null);
+    setParseResult(null);
+    const res = await importFromCode(codeInput, false); // parseOnly = false
+    if (!res.success) {
+      setError(res.error);
+    } else {
+      setParseResult(`✅ 成功创建 ${res.created.length} 个公式`);
+      // Clear the input after successful creation
+      setTimeout(() => {
+        setCodeInput("");
+        setParseResult(null);
+      }, 2000);
     }
     setSubmitting(false);
   }, [importFromCode, codeInput, setCodeInput]);
@@ -63,6 +91,7 @@ export function CodeInput() {
   const handleClear = useCallback(() => {
     setCodeInput("");
     setError(null);
+    setParseResult(null);
   }, [setCodeInput]);
 
   /**
@@ -151,10 +180,22 @@ export function CodeInput() {
           )}
         </div>
 
-        {error && <div className="mt-2 text-xs text-red-600">{error}</div>}
+        {error && (
+          <div className="mt-2 px-3 py-2 bg-red-50 border-l-4 border-red-400 text-xs text-red-700">
+            {error}
+          </div>
+        )}
+        {parseResult && (
+          <div className="mt-2 px-3 py-2 bg-green-50 border-l-4 border-green-400 text-xs text-green-700 whitespace-pre-line">
+            {parseResult}
+          </div>
+        )}
       </div>
       <div className="px-3 py-2 border-t bg-gray-50 flex items-center justify-end gap-2">
-        <Button onClick={handleSubmit} disabled={submitting}>
+        <Button onClick={handleParse} disabled={submitting} variant="outline">
+          {submitting ? "解析中..." : "解析"}
+        </Button>
+        <Button onClick={handleParseAndCreate} disabled={submitting}>
           {submitting ? "解析中..." : "解析并创建"}
         </Button>
       </div>

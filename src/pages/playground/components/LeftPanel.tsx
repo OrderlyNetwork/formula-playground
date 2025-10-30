@@ -3,7 +3,15 @@ import { Card } from "../../../components/common/Card";
 import { Button } from "../../../components/common/Button";
 import { useFormulaStore } from "../../../store/formulaStore";
 import { formatTimestamp } from "../../../lib/utils";
-import { FileDown } from "lucide-react";
+import {
+  Calculator,
+  Database,
+  History,
+  FileDown,
+  SquareFunction,
+  Code2,
+  Download,
+} from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -11,6 +19,32 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { SourceCodeDialog } from "./SourceCodeDialog";
+
+/**
+ * Category types for the left panel navigation
+ */
+type CategoryType = "formulas" | "datasource" | "history";
+
+/**
+ * Category configuration with icons and labels
+ */
+const categories = [
+  {
+    id: "formulas" as CategoryType,
+    label: "Formulas",
+    icon: Calculator,
+  },
+  {
+    id: "datasource" as CategoryType,
+    label: "DataSource",
+    icon: Database,
+  },
+  {
+    id: "history" as CategoryType,
+    label: "History",
+    icon: History,
+  },
+];
 
 export function LeftPanel() {
   const {
@@ -21,6 +55,10 @@ export function LeftPanel() {
     replayHistoryRecord,
     clearHistory,
   } = useFormulaStore();
+
+  // State for active category
+  const [activeCategory, setActiveCategory] =
+    useState<CategoryType>("formulas");
 
   // State for source code dialog
   const [sourceCodeDialogOpen, setSourceCodeDialogOpen] = useState(false);
@@ -34,18 +72,13 @@ export function LeftPanel() {
     setSourceCodeDialogOpen(true);
   };
 
-  return (
-    <>
-      {/* Source Code Dialog */}
-      <SourceCodeDialog
-        open={sourceCodeDialogOpen}
-        onOpenChange={setSourceCodeDialogOpen}
-      />
-
-      <div className=" bg-gray-50 overflow-y-auto">
-        {/* Reduce vertical spacing between cards for a denser left rail */}
-        <div className="space-y-3">
-          {/* Formula List */}
+  /**
+   * Render content based on active category
+   */
+  const renderCategoryContent = () => {
+    switch (activeCategory) {
+      case "formulas":
+        return (
           <Card
             title="Formulas"
             headerRight={
@@ -72,30 +105,79 @@ export function LeftPanel() {
               {formulaDefinitions.length === 0 ? (
                 <p className="text-xs text-gray-500">No formulas loaded</p>
               ) : (
-                formulaDefinitions.map((formula) => (
-                  <button
-                    key={formula.id}
-                    onClick={() => selectFormula(formula.id)}
-                    // Shrink list item paddings and font sizes to fit more formulas
-                    className={`w-full text-left px-2.5 py-1.5 text-xs transition-colors ${
-                      selectedFormulaId === formula.id
-                        ? "bg-blue-100 text-blue-900 "
-                        : "bg-white hover:bg-gray-100 text-gray-700"
-                    }`}
-                  >
-                    <div className=" truncate">{formula.name}</div>
-                    <div className="text-[11px] text-gray-500 mt-0.5 truncate">
-                      {formula.tags?.join(", ")}
-                    </div>
-                  </button>
-                ))
+                formulaDefinitions.map((formula) => {
+                  // Determine the creation type icon
+                  const CreationIcon =
+                    formula.creationType === "parsed"
+                      ? Code2
+                      : formula.creationType === "imported"
+                      ? Download
+                      : SquareFunction;
+
+                  const creationTooltip =
+                    formula.creationType === "parsed"
+                      ? "开发者模式解析"
+                      : formula.creationType === "imported"
+                      ? "从GitHub导入"
+                      : "内置公式";
+
+                  return (
+                    <button
+                      key={formula.id}
+                      onClick={() => selectFormula(formula.id)}
+                      className={`w-full text-left px-2.5 py-1.5 text-xs transition-colors ${
+                        selectedFormulaId === formula.id
+                          ? "bg-blue-100 text-blue-900 "
+                          : " hover:bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div
+                                className={`shrink-0 ${
+                                  formula.creationType === "parsed"
+                                    ? "text-purple-600"
+                                    : formula.creationType === "imported"
+                                    ? "text-blue-600"
+                                    : "text-gray-600"
+                                }`}
+                              >
+                                <CreationIcon strokeWidth={1.5} size={16} />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="right">
+                              {creationTooltip}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        <div className="truncate">{formula.name}</div>
+                      </div>
+
+                      <div className="text-[11px] text-gray-500 mt-0.5 truncate">
+                        {formula.tags?.join(", ")}
+                      </div>
+                    </button>
+                  );
+                })
               )}
             </div>
           </Card>
+        );
 
-          {/* History */}
+      case "datasource":
+        return (
+          <Card title="DataSource">
+            <div className="text-xs text-gray-500">
+              <p>Data sources will be displayed here</p>
+            </div>
+          </Card>
+        );
+
+      case "history":
+        return (
           <Card title="History">
-            {/* History list tightened spacing and font sizes */}
             <div className="space-y-1.5">
               {runHistory.length === 0 ? (
                 <p className="text-xs text-gray-500">No execution history</p>
@@ -131,7 +213,54 @@ export function LeftPanel() {
               )}
             </div>
           </Card>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <>
+      {/* Source Code Dialog */}
+      <SourceCodeDialog
+        open={sourceCodeDialogOpen}
+        onOpenChange={setSourceCodeDialogOpen}
+      />
+
+      {/* Two-column layout: Category icons on left, content on right */}
+      <div className="flex h-full bg-white">
+        {/* Left sidebar: Category icons */}
+        <div className="w-16 bg-white border-r border-gray-200 flex flex-col items-center py-4 space-y-2">
+          {categories.map((category) => {
+            const Icon = category.icon;
+            const isActive = activeCategory === category.id;
+
+            return (
+              <TooltipProvider key={category.id}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setActiveCategory(category.id)}
+                      className={`w-12 h-12 flex items-center justify-center rounded-lg transition-all ${
+                        isActive
+                          ? "bg-blue-100 text-blue-900"
+                          : "bg-white text-gray-400 hover:bg-gray-100 hover:text-gray-900"
+                      }`}
+                      aria-label={category.label}
+                    >
+                      <Icon size={24} strokeWidth={1.5} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">{category.label}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            );
+          })}
         </div>
+
+        {/* Right content area */}
+        <div className="flex-1 overflow-y-auto">{renderCategoryContent()}</div>
       </div>
     </>
   );

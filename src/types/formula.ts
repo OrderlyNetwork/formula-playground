@@ -35,6 +35,14 @@ export interface FactorType {
 }
 
 /**
+ * @description Formula creation type - tracks how the formula was created
+ */
+export type FormulaCreationType =
+  | "parsed" // Created by parsing TypeScript code in developer mode
+  | "imported" // Imported from GitHub or other external sources
+  | "builtin"; // Built-in formula definitions
+
+/**
  * @description Formula definition parsed from SDK source code (via JSDoc)
  */
 export interface FormulaDefinition {
@@ -43,6 +51,7 @@ export interface FormulaDefinition {
   version: string; // SDK version or formula version, extracted from JSDoc @version
   description?: string; // Natural language description, from JSDoc @description
   tags?: string[]; // Tags for categorization or search, from JSDoc @tags (JSON array format)
+  creationType?: FormulaCreationType; // How this formula was created
   engineHints?: {
     // Calculation hints for specific engines, from JSDoc @engineHint.xxx
     ts?: { rounding?: RoundingStrategy; scale?: number };
@@ -65,7 +74,7 @@ export interface FormulaDefinition {
   }>;
   formulaText?: string; // Original formula function body code as string
   sourceCode?: string; // Complete original formula function source code as string (for display)
-  
+
   // GitHub source info (for display and visualization)
   githubInfo?: {
     owner: string;
@@ -74,7 +83,7 @@ export interface FormulaDefinition {
     path: string;
     url: string; // full GitHub URL
   };
-  
+
   // jsDelivr execution info (separate from source)
   jsdelivrInfo?: {
     url: string; // e.g., "https://cdn.jsdelivr.net/gh/owner/repo@v1.0.0/dist/formulas.js"
@@ -82,7 +91,7 @@ export interface FormulaDefinition {
     version: string; // e.g., "v1.0.0"
     enabled: boolean; // whether to use jsdelivr or fallback to hardcoded
   };
-  
+
   examples?: Array<{
     inputs: Record<string, FormulaScalar>;
     outputs: Record<string, FormulaScalar>;

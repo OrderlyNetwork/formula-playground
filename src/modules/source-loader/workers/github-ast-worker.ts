@@ -158,11 +158,17 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       sources
     );
 
+    // Mark all imported formulas with creationType "imported"
+    const markedFormulas = formulas.map((formula) => ({
+      ...formula,
+      creationType: "imported" as const,
+    }));
+
     // Persist to IndexedDB
     await db.transaction("rw", db.formulas, async () => {
       await db.formulas.clear();
-      if (formulas.length > 0) {
-        await db.formulas.bulkPut(formulas);
+      if (markedFormulas.length > 0) {
+        await db.formulas.bulkPut(markedFormulas);
       }
     });
 
