@@ -1,38 +1,12 @@
 import { useFormulaStore } from "../../../store/formulaStore";
-import { sourceLoaderService } from "../../../modules/source-loader";
-import { db } from "../../../lib/dexie";
 import { Button } from "@/components/ui/button";
+import { useAppStore } from "../../../store/appStore";
 
 export function Toolbar() {
-  const {
-    selectedFormulaId,
-    executeFormula,
-    loading,
-    activeEngine,
-    switchEngine,
-  } = useFormulaStore();
+  const { selectedFormulaId, executeFormula, loading, switchEngine } =
+    useFormulaStore();
 
-  const handleImport = async () => {
-    const input = window.prompt(
-      "请输入 GitHub 地址列表（每行一个，支持 raw/blob/tree 链接）"
-    );
-    if (!input) return;
-    const urls = input
-      .split(/\r?\n/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (urls.length === 0) return;
-    const res = await sourceLoaderService.importFromGitHub(urls);
-    if (res.success) {
-      const defs = await db.formulas.toArray();
-      // Reload store with new formulas
-      const { loadFormulas } = useFormulaStore.getState();
-      await loadFormulas(defs);
-      alert(`已导入公式 ${res.count} 个`);
-    } else {
-      alert(`导入失败: ${res.error}`);
-    }
-  };
+  const { mode, toggleMode } = useAppStore();
 
   return (
     <div className="h-16 border-b border-gray-200 bg-white px-6 flex items-center justify-between shadow-sm">
@@ -41,9 +15,13 @@ export function Toolbar() {
       </div>
 
       <div className="flex items-center gap-3">
-        <Button variant="outline" size="sm" onClick={handleImport}>
-          从 GitHub 导入
-        </Button>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">模式:</span>
+          <Button variant="secondary" size="sm" onClick={toggleMode}>
+            {mode === "developer" ? "开发者模式" : "正常模式"}
+          </Button>
+        </div>
+
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">Engine:</span>
           <Button size="sm" onClick={() => switchEngine("ts")}>

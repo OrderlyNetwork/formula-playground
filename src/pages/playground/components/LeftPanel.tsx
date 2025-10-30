@@ -2,6 +2,15 @@ import { Card } from "../../../components/common/Card";
 import { Button } from "../../../components/common/Button";
 import { useFormulaStore } from "../../../store/formulaStore";
 import { formatTimestamp } from "../../../lib/utils";
+import { sourceLoaderService } from "../../../modules/source-loader";
+import { db } from "../../../lib/dexie";
+import { FileDown } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function LeftPanel() {
   const {
@@ -13,11 +22,54 @@ export function LeftPanel() {
     clearHistory,
   } = useFormulaStore();
 
+  // Handle importing formulas from GitHub URLs, mirroring previous toolbar behavior
+  const handleImport = async () => {
+    const input = window.prompt(
+      "请输入 GitHub 地址列表（每行一个，支持 raw/blob/tree 链接）"
+    );
+    if (!input) return;
+    const urls = input
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (urls.length === 0) return;
+    const res = await sourceLoaderService.importFromGitHub(urls);
+    if (res.success) {
+      const defs = await db.formulas.toArray();
+      const { loadFormulas } = useFormulaStore.getState();
+      await loadFormulas(defs);
+      alert(`已导入公式 ${res.count} 个`);
+    } else {
+      alert(`导入失败: ${res.error}`);
+    }
+  };
+
   return (
     <div className=" bg-gray-50 overflow-y-auto">
       <div className="space-y-4">
         {/* Formula List */}
-        <Card title="Formulas">
+        <Card
+          title="Formulas"
+          headerRight={
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="从github导入"
+                    title="从github导入"
+                    className="h-8 w-8 p-0"
+                    onClick={handleImport}
+                  >
+                    <FileDown strokeWidth={1.5} size={22} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>从github导入</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          }
+        >
           <div>
             {formulaDefinitions.length === 0 ? (
               <p className="text-sm text-gray-500">No formulas loaded</p>

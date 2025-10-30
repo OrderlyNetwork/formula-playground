@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Toolbar } from "./components/Toolbar";
 import { LeftPanel } from "./components/LeftPanel";
 import { CenterCanvas } from "./components/CenterCanvas";
@@ -10,107 +10,217 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { useFormulaStore } from "../../store/formulaStore";
+import { useAppStore } from "../../store/appStore";
+import { CodeInput } from "./components/CodeInput";
 import { db } from "../../lib/dexie";
 import { sourceLoaderService } from "../../modules/source-loader";
 
+/**
+ * PlaygroundPage
+ *
+ * High-level page that wires together formula initialization, import flow,
+ * error display, and two alternate layouts (developer vs user).
+ *
+ * Structure goals:
+ * - Keep async effects and handlers small, named, and guarded
+ * - Isolate view concerns into tiny in-file components for readability
+ */
 export function PlaygroundPage() {
   const { loadFormulas, error } = useFormulaStore();
+  const { mode } = useAppStore();
+
+  // Tracks whether we need the user to import from GitHub initially
   const [needsImport, setNeedsImport] = useState(false);
+  // Tracks the busy state of the import action to prevent duplicate triggers
   const [busy, setBusy] = useState(false);
 
+  /**
+   * Initialize formulas from IndexedDB on first mount.
+   * Uses an unmounted guard to prevent state updates after unmount.
+   */
   useEffect(() => {
-    (async () => {
+    let isMounted = true;
+    async function initializeFromDb() {
       const count = await db.formulas.count();
+      if (!isMounted) return;
+
       if (count > 0) {
         const defs = await db.formulas.toArray();
         await loadFormulas(defs);
+        if (!isMounted) return;
         setNeedsImport(false);
       } else {
         setNeedsImport(true);
       }
-    })();
+    }
+    void initializeFromDb();
+    return () => {
+      isMounted = false;
+    };
   }, [loadFormulas]);
 
-  const handleImport = async () => {
+  /**
+   * Prompts the user for GitHub URLs (newline-separated), sanitizes input,
+   * and returns a unique list. Returns null if user cancels or no URLs.
+   */
+  const promptForGitHubUrls = useCallback((): string[] | null => {
     const input = window.prompt(
       "请输入 GitHub 地址列表（每行一个，支持 raw/blob/tree 链接）"
     );
-    if (!input) return;
-    const urls = input
-      .split(/\r?\n/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (urls.length === 0) return;
+    if (!input) return null;
+    const unique = Array.from(
+      new Set(
+        input
+          .split(/\r?\n/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      )
+    );
+    return unique.length > 0 ? unique : null;
+  }, []);
+
+  /**
+   * Handles importing formulas from GitHub, then refreshes local cache.
+   * Uses try/finally to ensure the busy state is cleared.
+   */
+  const handleImport = useCallback(async () => {
+    const urls = promptForGitHubUrls();
+    if (!urls) return;
+
     setBusy(true);
-    const res = await sourceLoaderService.importFromGitHub(urls);
-    if (res.success) {
-      const defs = await db.formulas.toArray();
-      await loadFormulas(defs);
-      setNeedsImport(false);
-    } else {
-      alert(`导入失败: ${res.error}`);
+    try {
+      const res = await sourceLoaderService.importFromGitHub(urls);
+      if (res.success) {
+        const defs = await db.formulas.toArray();
+        await loadFormulas(defs);
+        setNeedsImport(false);
+      } else {
+        alert(`导入失败: ${res.error}`);
+      }
+    } catch (e) {
+      alert(`导入过程中出现异常: ${String(e)}`);
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
-  };
+  }, [loadFormulas, promptForGitHubUrls]);
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col relative">
       <Toolbar />
 
-      {needsImport && (
-        <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-3 flex items-center justify-between">
-          <p className="text-sm text-yellow-800">
-            检测到本地没有公式列表。请先从 GitHub 拉取源码并解析。
-          </p>
-          <button
-            className="px-3 py-1.5 rounded bg-yellow-600 text-white text-sm disabled:opacity-50"
-            onClick={handleImport}
-            disabled={busy}
-          >
-            {busy ? "处理中..." : "从 GitHub 拉取并解析"}
-          </button>
-        </div>
-      )}
+      <ImportBanner visible={needsImport} busy={busy} onImport={handleImport} />
+      <ErrorBanner error={error} />
 
-      {error && (
-        <div className="bg-red-50 border-b border-red-200 px-6 py-3">
-          <p className="text-sm text-red-800">
-            <span className="font-semibold">Error:</span> {error}
-          </p>
-        </div>
-      )}
+      <div className="flex-1 overflow-hidden relative">
+        {mode === "developer" ? <DeveloperLayout /> : <UserLayout />}
+      </div>
+    </div>
+  );
+}
 
-      <div className="flex-1 overflow-hidden">
-        <ResizablePanelGroup direction="horizontal" className="h-full">
-          <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+/**
+ * ImportBanner
+ *
+ * Displays a callout prompting the user to import formulas when none are found.
+ */
+function ImportBanner(props: {
+  visible: boolean;
+  busy: boolean;
+  onImport: () => void;
+}) {
+  const { visible, busy, onImport } = props;
+  if (!visible) return null;
+  return (
+    <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-3 flex items-center justify-between">
+      <p className="text-sm text-yellow-800">
+        检测到本地没有公式列表。请先从 GitHub 拉取源码并解析。
+      </p>
+      <button
+        className="px-3 py-1.5 rounded bg-yellow-600 text-white text-sm disabled:opacity-50"
+        onClick={onImport}
+        disabled={busy}
+      >
+        {busy ? "处理中..." : "从 GitHub 拉取并解析"}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * ErrorBanner
+ *
+ * Renders store-level error information when present.
+ */
+function ErrorBanner(props: { error: string | null | undefined }) {
+  const { error } = props;
+  if (!error) return null;
+  return (
+    <div className="bg-red-50 border-b border-red-200 px-6 py-3">
+      <p className="text-sm text-red-800">
+        <span className="font-semibold">Error:</span> {error}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * DeveloperLayout
+ *
+ * Two-panel horizontal split: flow canvas (left) and code input (right).
+ */
+function DeveloperLayout() {
+  return (
+    <ResizablePanelGroup direction="horizontal" className="h-full">
+      <ResizablePanel defaultSize={60} minSize={30}>
+        <div className="h-full">
+          <CenterCanvas />
+        </div>
+      </ResizablePanel>
+      <ResizableHandle />
+      <ResizablePanel defaultSize={40} minSize={30}>
+        <div className="h-full">
+          <CodeInput />
+        </div>
+      </ResizablePanel>
+    </ResizablePanelGroup>
+  );
+}
+
+/**
+ * UserLayout
+ *
+ * Three-area layout: left navigation, main canvas, and bottom docs/code split.
+ */
+function UserLayout() {
+  return (
+    <ResizablePanelGroup direction="horizontal" className="h-full">
+      <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+        <div className="h-full">
+          <LeftPanel />
+        </div>
+      </ResizablePanel>
+      <ResizableHandle />
+      <ResizablePanel defaultSize={78} minSize={40}>
+        <ResizablePanelGroup direction="vertical" className="h-full">
+          <ResizablePanel defaultSize={70} minSize={40}>
             <div className="h-full">
-              <LeftPanel />
+              <CenterCanvas />
             </div>
           </ResizablePanel>
           <ResizableHandle />
-          <ResizablePanel defaultSize={78} minSize={40}>
-            <ResizablePanelGroup direction="vertical" className="h-full">
-              <ResizablePanel defaultSize={70} minSize={40}>
-                <div className="h-full">
-                  <CenterCanvas />
-                </div>
+          <ResizablePanel defaultSize={30} minSize={20}>
+            <ResizablePanelGroup direction="horizontal" className="h-full">
+              <ResizablePanel defaultSize={50} minSize={20}>
+                <FormulaDocs />
               </ResizablePanel>
               <ResizableHandle />
-              <ResizablePanel defaultSize={30} minSize={20}>
-                <ResizablePanelGroup direction="horizontal" className="h-full">
-                  <ResizablePanel defaultSize={50} minSize={20}>
-                    <FormulaDocs />
-                  </ResizablePanel>
-                  <ResizableHandle />
-                  <ResizablePanel defaultSize={50} minSize={20}>
-                    <FormulaCode />
-                  </ResizablePanel>
-                </ResizablePanelGroup>
+              <ResizablePanel defaultSize={50} minSize={20}>
+                <FormulaCode />
               </ResizablePanel>
             </ResizablePanelGroup>
           </ResizablePanel>
         </ResizablePanelGroup>
-      </div>
-    </div>
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }

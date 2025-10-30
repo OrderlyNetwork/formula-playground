@@ -6,6 +6,7 @@ import { FormulaParser } from "../modules/formula-parser";
 import { FormulaExecutor } from "../modules/formula-executor";
 import { historyManager } from "../modules/history-manager";
 import { enrichFormulasWithSource } from "../lib/formula-source-loader";
+import { useUserCodeStore } from "./userCodeStore";
 
 interface FormulaStore {
   // State
@@ -21,6 +22,17 @@ interface FormulaStore {
 
   // Actions
   loadFormulas: (sourceFiles?: string[] | FormulaDefinition[]) => Promise<void>;
+  /**
+   * Import formulas from a single TypeScript source string and merge into store.
+   * - Parses user input via FormulaParser
+   * - Appends created definitions and selects the first one
+   */
+  importFromCode: (
+    code: string
+  ) => Promise<
+    | { success: true; created: FormulaDefinition[] }
+    | { success: false; error: string }
+  >;
   selectFormula: (formulaId: string) => void;
   updateInput: (key: string, value: any) => void;
   updateInputAt: (path: string, value: any) => void;
@@ -77,6 +89,50 @@ export const useFormulaStore = create<FormulaStore>((set, get) => ({
           error instanceof Error ? error.message : "Failed to load formulas",
         loading: false,
       });
+    }
+  },
+
+  /**
+   * Parse and import formulas from a TypeScript code string.
+   * Appends new definitions to the existing list and selects the first created.
+   */
+  importFromCode: async (code: string) => {
+    const trimmed = code?.trim();
+    if (!trimmed) {
+      return {
+        success: false,
+        error: "请输入包含导出函数和 JSDoc 的 TypeScript 代码",
+      } as const;
+    }
+
+    try {
+      // Persist raw code into user code store before parsing for traceability
+      useUserCodeStore.getState().addCode({
+        path: "user-input.ts",
+        content: trimmed,
+        origin: "paste",
+      });
+
+      const defs = await formulaParser.parseFormulasFromText([
+        { path: "user-input.ts", content: trimmed },
+      ]);
+
+      if (!defs || defs.length === 0) {
+        return {
+          success: false,
+          error: "未能识别任何公式函数，请检查代码和 JSDoc 注释",
+        } as const;
+      }
+
+      const { formulaDefinitions } = get();
+      const next = [...formulaDefinitions, ...defs];
+      set({ formulaDefinitions: next });
+      get().selectFormula(defs[0].id);
+
+      return { success: true, created: defs } as const;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { success: false, error: message } as const;
     }
   },
 
