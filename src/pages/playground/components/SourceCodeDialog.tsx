@@ -504,7 +504,7 @@ export function SourceCodeDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Compact dialog paddings to fit more content */}
-      <DialogContent className="max-w-4xl h-[560px] p-0">
+      <DialogContent className="max-w-4xl h-[560px] p-0 gap-0">
         <DialogHeader className="px-4 py-3 border-b">
           <DialogTitle className="text-base">源码与执行配置</DialogTitle>
         </DialogHeader>
@@ -512,7 +512,7 @@ export function SourceCodeDialog({
         {/* Left-Right Layout */}
         <div className="flex h-[calc(560px-53px)]">
           {/* Left: Category Navigation */}
-          <div className="w-44 border-r bg-gray-50 p-3">
+          <div className="w-44 border-r p-3">
             <nav className="space-y-1">
               {categories.map((category) => (
                 <button

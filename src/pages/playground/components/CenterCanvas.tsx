@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useMemo } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -15,7 +15,8 @@ import { OutputNode } from "../../../modules/formula-graph/nodes/OutputNode";
 import { ObjectNode } from "../../../modules/formula-graph/nodes/ObjectNode";
 import { ApiNode } from "../../../modules/formula-graph/nodes/ApiNode";
 import { WebSocketNode } from "../../../modules/formula-graph/nodes/WebSocketNode";
-import { useFormulaStore } from "../../../store/formulaStore";
+import { useModeData } from "../../../store/useModeData";
+import { useAppStore } from "../../../store/appStore";
 import { useGraphStore } from "../../../store/graphStore";
 import { generateFormulaGraph } from "../../../modules/formula-graph";
 
@@ -29,13 +30,18 @@ const nodeTypes = {
 };
 
 export function CenterCanvas() {
+  const { mode } = useAppStore();
+
+  // Get mode-specific data efficiently with custom hook
   const { formulaDefinitions, selectedFormulaId, currentInputs, tsResult } =
-    useFormulaStore();
+    useModeData();
+
   const {
     nodes: storeNodes,
     edges: storeEdges,
     setNodes,
     setEdges,
+    resetGraph,
   } = useGraphStore();
 
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
@@ -106,12 +112,26 @@ export function CenterCanvas() {
     [storeNodes, setNodes]
   );
 
+  // Handle mode switching: clear graph when switching modes
+  useEffect(() => {
+    // Reset graph store when mode changes to avoid showing stale graphs from previous mode
+    resetGraph();
+  }, [mode, resetGraph]);
+
+  // Memoize formula lookup to avoid re-calculating
+  const selectedFormula = useMemo(() => {
+    return formulaDefinitions.find((f) => f.id === selectedFormulaId);
+  }, [formulaDefinitions, selectedFormulaId]);
+
   // Generate graph when formula is selected
   useEffect(() => {
-    const formula = formulaDefinitions.find((f) => f.id === selectedFormulaId);
-    if (!formula) return;
+    if (!selectedFormula) {
+      // When no formula is selected, ensure graph is cleared
+      resetGraph();
+      return;
+    }
 
-    generateFormulaGraph(formula).then(({ nodes, edges }) => {
+    generateFormulaGraph(selectedFormula).then(({ nodes, edges }) => {
       setNodes(nodes);
       setEdges(edges);
       // fit view after layout updates
@@ -120,10 +140,10 @@ export function CenterCanvas() {
         reactFlowInstanceRef.current?.fitView?.({ padding: 0.2 });
       });
     });
-  }, [selectedFormulaId, formulaDefinitions, setNodes, setEdges]);
+  }, [selectedFormula, setNodes, setEdges, resetGraph]);
 
-  // helper to read by dot path
-  function getByPath(obj: unknown, path: string) {
+  // helper to read by dot path - memoized to prevent re-creation
+  const getByPath = useCallback((obj: unknown, path: string) => {
     if (obj == null || typeof obj !== "object") return undefined;
     return path.split(".").reduce<unknown>((acc, key) => {
       if (
@@ -135,7 +155,7 @@ export function CenterCanvas() {
       }
       return undefined;
     }, obj);
-  }
+  }, []);
 
   // Update node values when inputs or results change
   useEffect(() => {
@@ -181,7 +201,7 @@ export function CenterCanvas() {
     if (hasChange) {
       setNodes(next);
     }
-  }, [currentInputs, tsResult, setNodes]);
+  }, [currentInputs, tsResult, setNodes, getByPath]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -200,6 +220,16 @@ export function CenterCanvas() {
     },
     [setEdges]
   );
+
+  // In developer mode, if the user hasn't entered any formulas yet, show the "Select a formula" message
+  // instead of rendering an empty canvas area.
+  if (mode === "developer" && formulaDefinitions.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-gray-50 h-full">
+        <p className="text-gray-500">Input your formulas to visualize</p>
+      </div>
+    );
+  }
 
   if (!selectedFormulaId) {
     return (

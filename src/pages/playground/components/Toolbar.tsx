@@ -1,5 +1,5 @@
-import { useFormulaStore } from "../../../store/formulaStore";
-import { Button } from "@/components/ui/button";
+import { useModeData } from "../../../store/useModeData";
+import { useSyncModeWithRouter } from "../../../store/appStore";
 import {
   Select,
   SelectContent,
@@ -7,21 +7,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useLocation, useNavigate } from "react-router";
+import { useMatch, useNavigate } from "react-router";
 
 export function Toolbar() {
-  const {
-    selectedFormulaId,
-    executeFormula,
-    loading,
-    switchEngine,
-    activeEngine,
-  } = useFormulaStore();
-  const navigate = useNavigate();
-  const location = useLocation();
+  // Sync mode with router path
+  useSyncModeWithRouter(); // Just call to sync mode, don't need the return value
 
-  // Derive active tab from current URL path instead of global app store
-  const isDeveloper = location.pathname.startsWith("/dev");
+  // Get mode-specific data efficiently
+  const { switchEngine, activeEngine } = useModeData();
+
+  const navigate = useNavigate();
+  const devMatch = useMatch("/dev/*");
+
+  // Derive active tab from route match instead of global app store
+  const isDeveloper = !!devMatch;
   const isNormal = !isDeveloper; // root and any non-dev path treated as normal
 
   return (
@@ -67,7 +66,7 @@ export function Toolbar() {
             value={activeEngine}
             onValueChange={(value) => switchEngine(value as "ts" | "rust")}
           >
-            <SelectTrigger className="w-[100px] h-8 text-xs">
+            <SelectTrigger className="w-[120px] h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -78,7 +77,6 @@ export function Toolbar() {
             </SelectContent>
           </Select>
         </div>
-
         {/* <Button
           onClick={executeFormula}
           disabled={loading || !selectedFormulaId}

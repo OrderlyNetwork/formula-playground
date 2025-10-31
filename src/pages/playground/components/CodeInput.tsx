@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as monaco from "monaco-editor";
-import { useAppStore } from "../../../store/appStore";
-import { useFormulaStore } from "../../../store/formulaStore";
+import { useDeveloperStore } from "../../../store/developerStore";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -31,11 +30,15 @@ export function add(a: number, b: number): number {
  * hence no absolute positioning; it stretches to fill available height.
  */
 export function CodeInput() {
-  const { codeInput, setCodeInput } = useAppStore();
-  const { importFromCode } = useFormulaStore();
+  const {
+    codeInput,
+    setCodeInput,
+    parseAndCreate,
+    clearCode,
+    parseError,
+    parseSuccess,
+  } = useDeveloperStore();
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [parseResult, setParseResult] = useState<string | null>(null);
 
   /**
    * Ref to the container DOM element for Monaco and a ref to the editor instance.
@@ -45,54 +48,18 @@ export function CodeInput() {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
 
   /**
-   * Parse only - validate the code and show parsed formulas without creating them
-   */
-  const handleParse = useCallback(async () => {
-    setSubmitting(true);
-    setError(null);
-    setParseResult(null);
-    const res = await importFromCode(codeInput, true); // parseOnly = true
-    if (!res.success) {
-      setError(res.error);
-    } else {
-      // Show parsed formula names and info
-      const formulaNames = res.created
-        .map((f) => `• ${f.name} (${f.id})`)
-        .join("\n");
-      setParseResult(
-        `✅ 成功解析 ${res.created.length} 个公式:\n${formulaNames}`
-      );
-    }
-    setSubmitting(false);
-  }, [importFromCode, codeInput]);
-
-  /**
-   * Parse and create - parse the code and add formulas to the store
+   * Parse and create - parse the code and add formulas to the developer store
    */
   const handleParseAndCreate = useCallback(async () => {
     setSubmitting(true);
-    setError(null);
-    setParseResult(null);
-    const res = await importFromCode(codeInput, false); // parseOnly = false
-    if (!res.success) {
-      setError(res.error);
-    } else {
-      setParseResult(`✅ 成功创建 ${res.created.length} 个公式`);
-      // Clear the input after successful creation
-      setTimeout(() => {
-        setCodeInput("");
-        setParseResult(null);
-      }, 2000);
-    }
+    await parseAndCreate();
     setSubmitting(false);
-  }, [importFromCode, codeInput, setCodeInput]);
+  }, [parseAndCreate]);
 
   /** Clear the editor content and any visible error. */
   const handleClear = useCallback(() => {
-    setCodeInput("");
-    setError(null);
-    setParseResult(null);
-  }, [setCodeInput]);
+    clearCode();
+  }, [clearCode]);
 
   /**
    * Initialize Monaco editor once when the container mounts. Dispose on unmount.
@@ -180,23 +147,20 @@ export function CodeInput() {
           )}
         </div>
 
-        {error && (
+        {parseError && (
           <div className="mt-2 px-3 py-2 bg-red-50 border-l-4 border-red-400 text-xs text-red-700">
-            {error}
+            {parseError}
           </div>
         )}
-        {parseResult && (
+        {parseSuccess && (
           <div className="mt-2 px-3 py-2 bg-green-50 border-l-4 border-green-400 text-xs text-green-700 whitespace-pre-line">
-            {parseResult}
+            {parseSuccess}
           </div>
         )}
       </div>
-      <div className="px-3 py-2 border-t bg-gray-50 flex items-center justify-end gap-2">
-        <Button onClick={handleParse} disabled={submitting} variant="outline">
-          {submitting ? "解析中..." : "解析"}
-        </Button>
+      <div className="px-3 py-2 border-t bg-gray-50 flex items-center justify-end">
         <Button onClick={handleParseAndCreate} disabled={submitting}>
-          {submitting ? "解析中..." : "解析并创建"}
+          {submitting ? "解析中..." : "解析"}
         </Button>
       </div>
     </div>

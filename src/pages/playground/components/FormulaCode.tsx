@@ -42,7 +42,7 @@ export function FormulaCode() {
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
       theme: "vs", // light theme to match existing UI
-      fontSize: 11,
+      fontSize: 12,
     });
 
     return () => {
