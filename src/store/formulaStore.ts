@@ -2,10 +2,8 @@ import { create } from "zustand";
 import type { FormulaDefinition } from "../types/formula";
 import type { FormulaExecutionResult } from "../types/executor";
 import type { RunRecord } from "../types/history";
-import { FormulaParser } from "../modules/formula-parser";
-import { FormulaExecutor } from "../modules/formula-executor";
-import { historyManager } from "../modules/history-manager";
 import { enrichFormulasWithSource } from "../lib/formula-source-loader";
+import { BaseFormulaStore } from "./BaseFormulaStore";
 
 /**
  * Normal mode formula store
@@ -36,9 +34,8 @@ interface FormulaStore {
   replayHistoryRecord: (recordId: string) => Promise<void>;
 }
 
-// Create formula parser and executor instances
-const formulaParser = new FormulaParser();
-const formulaExecutor = new FormulaExecutor();
+// Create base formula store instance for shared functionality
+const baseStore = new BaseFormulaStore();
 
 export const useFormulaStore = create<FormulaStore>((set, get) => ({
   // Initial state
@@ -55,6 +52,7 @@ export const useFormulaStore = create<FormulaStore>((set, get) => ({
   // Load formulas from source files or use pre-defined formulas
   loadFormulas: async (sourceFiles?: string[] | FormulaDefinition[]) => {
     set({ loading: true, error: null });
+
     try {
       let formulas: FormulaDefinition[];
 
@@ -62,8 +60,12 @@ export const useFormulaStore = create<FormulaStore>((set, get) => ({
         // No source files provided, use empty array
         formulas = [];
       } else if (typeof sourceFiles[0] === "string") {
-        // Parse from source files
-        formulas = await formulaParser.parseFormulas(sourceFiles as string[]);
+        // Parse from source files using base store
+        const result = await baseStore.parseFormulasBase(sourceFiles as string[]);
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+        formulas = result.formulas || [];
       } else {
         // Use pre-defined formulas and enrich with source code
         formulas = enrichFormulasWithSource(sourceFiles as FormulaDefinition[]);
@@ -86,29 +88,12 @@ export const useFormulaStore = create<FormulaStore>((set, get) => ({
 
   // Select a formula
   selectFormula: (formulaId: string) => {
-    const formula = get().formulaDefinitions.find((f) => f.id === formulaId);
-    if (!formula) return;
-
-    // Initialize inputs with default values
-    const inputs: Record<string, any> = {};
-    formula.inputs.forEach((input) => {
-      if (input.type === "object") {
-        const props = input.factorType?.properties ?? [];
-        const obj: Record<string, any> = {};
-        for (const p of props) {
-          obj[p.key] =
-            p.default ??
-            (p.type === "number" ? 0 : p.type === "boolean" ? false : "");
-        }
-        inputs[input.key] = obj;
-      } else {
-        inputs[input.key] = input.default ?? "";
-      }
-    });
+    const result = baseStore.findAndInitializeFormula(formulaId, get().formulaDefinitions);
+    if (!result) return;
 
     set({
       selectedFormulaId: formulaId,
-      currentInputs: inputs,
+      currentInputs: result.inputs,
       tsResult: null,
       rustResult: null,
       error: null,
@@ -131,21 +116,9 @@ export const useFormulaStore = create<FormulaStore>((set, get) => ({
 
   // Update value by dot-path, e.g., "order.price"
   updateInputAt: (path: string, value: any) => {
-    const setByPath = (obj: any, p: string, v: any) => {
-      const parts = p.split(".");
-      const last = parts.pop()!;
-      let cur = obj;
-      for (const k of parts) {
-        if (typeof cur[k] !== "object" || cur[k] === null) cur[k] = {};
-        cur = cur[k];
-      }
-      cur[last] = v;
-    };
-    set((state) => {
-      const next = { ...state.currentInputs };
-      setByPath(next, path, value);
-      return { currentInputs: next };
-    });
+    set((state) => ({
+      currentInputs: baseStore.updateInputAt(state.currentInputs, path, value),
+    }));
   },
 
   // Set all inputs at once
@@ -170,37 +143,24 @@ export const useFormulaStore = create<FormulaStore>((set, get) => ({
 
     set({ loading: true, error: null });
 
-    try {
-      const result = await formulaExecutor.execute(
-        formula,
-        currentInputs,
-        activeEngine
-      );
+    const result = await baseStore.executeFormulaBase(
+      formula,
+      currentInputs,
+      activeEngine
+    );
 
+    if (result.success && result.result) {
       if (activeEngine === "ts") {
-        set({ tsResult: result, loading: false });
+        set({ tsResult: result.result, loading: false });
       } else {
-        set({ rustResult: result, loading: false });
+        set({ rustResult: result.result, loading: false });
       }
 
-      // Save to history if successful
-      if (result.success && result.outputs) {
-        await historyManager.addRecord({
-          formulaId: formula.id,
-          formulaVersion: formula.version,
-          engine: activeEngine,
-          sdkVersion: "1.0.0",
-          inputs: currentInputs,
-          outputs: result.outputs,
-          durationMs: result.durationMs,
-        });
-
-        // Reload history
-        await get().loadHistory(formula.id);
-      }
-    } catch (error) {
+      // Reload history after successful execution
+      await get().loadHistory(formula.id);
+    } else {
       set({
-        error: error instanceof Error ? error.message : "Execution failed",
+        error: result.error || "Execution failed",
         loading: false,
       });
     }
@@ -213,39 +173,31 @@ export const useFormulaStore = create<FormulaStore>((set, get) => ({
 
   // Load execution history
   loadHistory: async (formulaId?: string) => {
-    try {
-      const records = formulaId
-        ? await historyManager.getRecordsByFormulaId(formulaId)
-        : await historyManager.getAllRecords();
-      set({ runHistory: records });
-    } catch (error) {
-      console.error("Failed to load history:", error);
-    }
+    const records = await baseStore.loadHistoryBase(formulaId);
+    set({ runHistory: records });
   },
 
   // Clear all history
   clearHistory: async () => {
-    try {
-      await historyManager.clearAllRecords();
+    const result = await baseStore.clearHistoryBase();
+    if (result.success) {
       set({ runHistory: [] });
-    } catch (error) {
-      console.error("Failed to clear history:", error);
+    } else {
+      console.error("Failed to clear history:", result.error);
     }
   },
 
   // Replay a history record
   replayHistoryRecord: async (recordId: string) => {
-    try {
-      const record = await historyManager.getRecordById(recordId);
-      if (!record) return;
-
+    const result = await baseStore.replayHistoryRecordBase(recordId);
+    if (result.success && result.inputs) {
       // Set the inputs from the record
-      set({ currentInputs: record.inputs });
+      set({ currentInputs: result.inputs });
 
       // Execute the formula
       await get().executeFormula();
-    } catch (error) {
-      console.error("Failed to replay history record:", error);
+    } else {
+      console.error("Failed to replay history record:", result.error);
     }
   },
 }));

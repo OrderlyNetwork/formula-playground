@@ -46,7 +46,7 @@ function generateId(): string {
   ).toUpperCase();
 }
 
-export const useUserCodeStore = create<UserCodeStore>((set, get) => ({
+export const useUserCodeStore = create<UserCodeStore>((set) => ({
   files: [],
 
   addCode: ({ path, content, origin }) => {

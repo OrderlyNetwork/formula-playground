@@ -1,9 +1,7 @@
-import { useState } from "react";
 import { Card } from "../../../../components/common/Card";
 import { Button } from "../../../../components/common/Button";
 import { useFormulaStore } from "../../../../store/formulaStore";
 import {
-  Calculator,
   Code2,
   Download,
   SquareFunction,
