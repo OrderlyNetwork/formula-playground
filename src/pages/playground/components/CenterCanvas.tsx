@@ -13,6 +13,8 @@ import { InputNode } from "../../../modules/formula-graph/nodes/InputNode";
 import { FormulaNode } from "../../../modules/formula-graph/nodes/FormulaNode";
 import { OutputNode } from "../../../modules/formula-graph/nodes/OutputNode";
 import { ObjectNode } from "../../../modules/formula-graph/nodes/ObjectNode";
+import { ApiNode } from "../../../modules/formula-graph/nodes/ApiNode";
+import { WebSocketNode } from "../../../modules/formula-graph/nodes/WebSocketNode";
 import { useFormulaStore } from "../../../store/formulaStore";
 import { useGraphStore } from "../../../store/graphStore";
 import { generateFormulaGraph } from "../../../modules/formula-graph";
@@ -22,6 +24,8 @@ const nodeTypes = {
   formula: FormulaNode,
   output: OutputNode,
   object: ObjectNode,
+  api: ApiNode,
+  websocket: WebSocketNode,
 };
 
 export function CenterCanvas() {
@@ -35,6 +39,72 @@ export function CenterCanvas() {
   } = useGraphStore();
 
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
+
+  /**
+   * Handle drag over event to allow dropping
+   */
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }, []);
+
+  /**
+   * Handle drop event to create new node from data source
+   */
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+
+      const data = event.dataTransfer.getData("application/reactflow");
+      if (!data) return;
+
+      try {
+        const dropData = JSON.parse(data);
+        const { type, sourceId, label, description, method, url, topic } =
+          dropData;
+
+        const reactFlowBounds = event.currentTarget.getBoundingClientRect();
+        const position = reactFlowInstanceRef.current?.project({
+          x: event.clientX - reactFlowBounds.left,
+          y: event.clientY - reactFlowBounds.top,
+        });
+
+        if (!position) return;
+
+        // Create new node based on data source type with pre-configured settings
+        const nodeId = `${type}-${sourceId}-${Date.now()}`;
+        const newNode = {
+          id: nodeId,
+          type,
+          position,
+          data: {
+            id: nodeId,
+            type,
+            label,
+            description,
+            ...(type === "api" && {
+              apiConfig: {
+                method: method || "GET",
+                url: url || "",
+              },
+            }),
+            ...(type === "websocket" && {
+              wsConfig: {
+                url: url || "",
+                status: "disconnected" as const,
+                topic,
+              },
+            }),
+          },
+        };
+
+        setNodes([...storeNodes, newNode]);
+      } catch (error) {
+        console.error("Failed to parse drop data:", error);
+      }
+    },
+    [storeNodes, setNodes]
+  );
 
   // Generate graph when formula is selected
   useEffect(() => {
@@ -140,7 +210,7 @@ export function CenterCanvas() {
   }
 
   return (
-    <div className="h-full bg-gray-50">
+    <div className="h-full bg-gray-50" onDragOver={onDragOver} onDrop={onDrop}>
       <ReactFlow
         nodes={storeNodes}
         edges={storeEdges}

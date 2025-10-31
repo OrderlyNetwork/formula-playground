@@ -117,7 +117,7 @@ export interface CompiledFormula {
  */
 export interface FormulaNodeData {
   id: string; // Corresponding formula ID or parameter/output KEY
-  type: "formula" | "input" | "output" | "operator" | "object"; // Node type
+  type: "formula" | "input" | "output" | "operator" | "object" | "api" | "websocket"; // Node type
   label: string; // Node display text
   value?: FormulaScalar; // Runtime parameter or result value
   unit?: string; // Unit
@@ -131,6 +131,20 @@ export interface FormulaNodeData {
   inputType?: FormulaInputType;
   // Factor type for rendering hints
   factorType?: FactorType;
+  // For API nodes: API request configuration
+  apiConfig?: {
+    method?: string;
+    url?: string;
+    headers?: Record<string, string>;
+    body?: unknown;
+  };
+  // For WebSocket nodes: WebSocket connection configuration
+  wsConfig?: {
+    url?: string;
+    status?: "disconnected" | "connecting" | "connected" | "error";
+    protocols?: string[];
+    topic?: string; // WebSocket subscription topic
+  };
 }
 
 /**
