@@ -83,7 +83,7 @@ export function DataSourcePanel() {
                 <Globe size={14} strokeWidth={1.5} />
                 <span>RESTful API</span>
               </div>
-              <div className="space-y-1 px-2">
+              <div className="px-2">
                 {filteredApiDataSources.map((source) => (
                   <div
                     key={source.id}
@@ -102,7 +102,7 @@ export function DataSourcePanel() {
                       );
                       e.dataTransfer.effectAllowed = "move";
                     }}
-                    className="flex items-start gap-2 px-2.5 py-1.5 rounded-md bg-white border border-orange-200 hover:bg-orange-50 cursor-move transition-colors"
+                    className="flex items-start gap-2 px-2.5 py-1.5 rounded-md bg-white  hover:bg-orange-50 cursor-move transition-colors"
                   >
                     <Globe
                       size={16}
@@ -133,7 +133,7 @@ export function DataSourcePanel() {
                 <Radio size={14} strokeWidth={1.5} />
                 <span>WebSocket</span>
               </div>
-              <div className="space-y-1 px-2">
+              <div className="px-2">
                 {filteredWsDataSources.map((source) => (
                   <div
                     key={source.id}
@@ -152,7 +152,7 @@ export function DataSourcePanel() {
                       );
                       e.dataTransfer.effectAllowed = "move";
                     }}
-                    className="flex items-start gap-2 px-2.5 py-1.5 rounded-md bg-white border border-teal-200 hover:bg-teal-50 cursor-move transition-colors"
+                    className="flex items-start gap-2 px-2.5 py-1.5 rounded-md bg-white hover:bg-teal-50 cursor-move transition-colors"
                   >
                     <Radio
                       size={16}

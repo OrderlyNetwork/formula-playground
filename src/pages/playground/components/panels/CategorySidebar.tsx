@@ -4,9 +4,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Calculator, Database, History } from "lucide-react";
+import { Calculator, Database, History, Settings } from "lucide-react";
 
-type CategoryType = "formulas" | "datasource" | "history";
+type CategoryType = "formulas" | "datasource" | "history" | "settings";
 
 interface Category {
   id: CategoryType;
@@ -14,6 +14,10 @@ interface Category {
   icon: any;
 }
 
+/**
+ * All categories displayed in order
+ * Settings is placed at the end
+ */
 const categories: Category[] = [
   {
     id: "formulas",
@@ -29,6 +33,11 @@ const categories: Category[] = [
     id: "history",
     label: "History",
     icon: History,
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    icon: Settings,
   },
 ];
 

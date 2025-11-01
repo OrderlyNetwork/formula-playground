@@ -171,6 +171,8 @@ export interface FormulaNodeData {
     url?: string;
     headers?: Record<string, string>;
     body?: unknown;
+    responseFields?: string[]; // Parsed response field paths (e.g., ["data", "data.user", "data.user.name"])
+    requestParams?: unknown; // Request parameters for APIs that need input
   };
   // For WebSocket nodes: WebSocket connection configuration
   wsConfig?: {

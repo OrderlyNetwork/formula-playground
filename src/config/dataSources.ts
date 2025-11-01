@@ -11,7 +11,7 @@ export const apiDataSources = [
     label: "Tokens",
     description: "Get all available trading tokens",
     method: "GET",
-    url: "/v1/public/tokens",
+    url: "/v1/public/token",
   },
   {
     id: "symbols",
@@ -21,11 +21,11 @@ export const apiDataSources = [
     url: "/v1/public/symbols",
   },
   {
-    id: "orderbook",
-    label: "Orderbook",
-    description: "Get orderbook depth data",
+    id: "symbol_info",
+    label: "Symbol Info",
+    description: "Get Order Rules per Symbol",
     method: "GET",
-    url: "/v1/orderbook/:symbol",
+    url: "/v1/public/info/{symbol}",
   },
   {
     id: "kline",
@@ -39,7 +39,7 @@ export const apiDataSources = [
     label: "Recent Trades",
     description: "Get recent trades history",
     method: "GET",
-    url: "/v1/public/trades/:symbol",
+    url: "/v1/public/trades/{symbol}",
   },
 ] as const;
 
@@ -86,4 +86,3 @@ export const wsDataSources = [
 
 export type ApiDataSource = (typeof apiDataSources)[number];
 export type WsDataSource = (typeof wsDataSources)[number];
-

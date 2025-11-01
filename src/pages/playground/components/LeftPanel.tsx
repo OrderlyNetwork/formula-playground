@@ -3,13 +3,14 @@ import {
   FormulasPanel,
   DataSourcePanel,
   HistoryPanel,
+  SettingsPanel,
   CategorySidebar,
 } from "./panels";
 
 /**
  * Category types for the left panel navigation
  */
-type CategoryType = "formulas" | "datasource" | "history";
+type CategoryType = "formulas" | "datasource" | "history" | "settings";
 
 export function LeftPanel() {
   // State for active category
@@ -37,6 +38,9 @@ export function LeftPanel() {
 
       case "history":
         return <HistoryPanel />;
+
+      case "settings":
+        return <SettingsPanel />;
 
       default:
         return null;

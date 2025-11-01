@@ -6,7 +6,12 @@ import ReactFlow, {
   applyNodeChanges,
   applyEdgeChanges,
 } from "reactflow";
-import type { NodeChange, EdgeChange, ReactFlowInstance } from "reactflow";
+import type {
+  NodeChange,
+  EdgeChange,
+  ReactFlowInstance,
+  Connection,
+} from "reactflow";
 import "reactflow/dist/style.css";
 
 import { InputNode } from "@/modules/formula-graph/nodes/InputNode";
@@ -18,6 +23,7 @@ import { WebSocketNode } from "@/modules/formula-graph/nodes/WebSocketNode";
 import { useModeData } from "@/store/useModeData";
 import { useAppStore } from "@/store/appStore";
 import { useGraphStore } from "@/store/graphStore";
+import { useFormulaStore } from "@/store/formulaStore";
 import { generateFormulaGraph } from "@/modules/formula-graph";
 
 const nodeTypes = {
@@ -159,22 +165,69 @@ export function CenterCanvas() {
 
   // Update node values when inputs or results change
   useEffect(() => {
-    const prev = useGraphStore.getState().nodes;
+    const currentNodes = useGraphStore.getState().nodes;
+    const currentEdges = useGraphStore.getState().edges;
     let hasChange = false;
-    const next = prev.map((node) => {
+    const next = currentNodes.map((node) => {
       // Update input nodes with current input values
+      // But skip if the node has an incoming connection from API/WebSocket
       if (node.type === "input" && node.id.startsWith("input-")) {
-        const inputKey = node.id.replace("input-", "");
-        const newValue = getByPath(currentInputs, inputKey);
-        if (node.data?.value !== newValue) {
-          hasChange = true;
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              value: newValue,
-            },
-          };
+        const hasIncomingConnection = currentEdges.some(
+          (edge) =>
+            edge.target === node.id &&
+            (edge.source.startsWith("api-") ||
+              edge.source.startsWith("websocket-"))
+        );
+
+        // Only update from currentInputs if there's no external connection
+        if (!hasIncomingConnection) {
+          const inputKey = node.id.replace("input-", "");
+          const newValue = getByPath(currentInputs, inputKey);
+          if (node.data?.value !== newValue) {
+            hasChange = true;
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                value: newValue,
+              },
+            };
+          }
+        } else {
+          // If connected, update from source node value
+          const sourceEdge = currentEdges.find(
+            (edge) => edge.target === node.id
+          );
+          if (sourceEdge) {
+            const sourceNode = currentNodes.find(
+              (n) => n.id === sourceEdge.source
+            );
+            if (sourceNode?.data?.value !== undefined) {
+              // Extract value based on sourceHandle (field path) if present
+              let newValue = sourceNode.data.value;
+              if (sourceEdge.sourceHandle && sourceNode.type === "api") {
+                // For API nodes, extract field value using path
+                const extractedValue = getByPath(
+                  sourceNode.data.value,
+                  sourceEdge.sourceHandle
+                );
+                if (extractedValue !== undefined) {
+                  newValue = extractedValue;
+                }
+              }
+
+              if (node.data?.value !== newValue) {
+                hasChange = true;
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    value: newValue,
+                  },
+                };
+              }
+            }
+          }
         }
         return node;
       }
@@ -201,7 +254,7 @@ export function CenterCanvas() {
     if (hasChange) {
       setNodes(next);
     }
-  }, [currentInputs, tsResult, setNodes, getByPath]);
+  }, [currentInputs, tsResult, setNodes, getByPath, storeNodes, storeEdges]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -219,6 +272,74 @@ export function CenterCanvas() {
       setEdges(next);
     },
     [setEdges]
+  );
+
+  /**
+   * Handle connection creation - validates and creates edges between nodes
+   * Only allows API/WebSocket nodes to connect to InputNode
+   * Enforces single connection rule for InputNode: removes existing connections before creating new ones
+   * Supports field path extraction from sourceHandle for API nodes
+   */
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      const { source, target, sourceHandle } = connection;
+      if (!source || !target) return;
+
+      const sourceNode = storeNodes.find((n) => n.id === source);
+      const targetNode = storeNodes.find((n) => n.id === target);
+
+      // Validate connection: only allow API/WebSocket nodes to connect to InputNode
+      if (
+        sourceNode &&
+        targetNode &&
+        (sourceNode.type === "api" || sourceNode.type === "websocket") &&
+        targetNode.type === "input"
+      ) {
+        // Check if target InputNode already has existing connections
+        const existingConnections = storeEdges.filter((edge) => edge.target === target);
+
+        let updatedEdges = [...storeEdges];
+
+        // Remove existing connections to this InputNode (enforce single connection rule)
+        if (existingConnections.length > 0) {
+          updatedEdges = storeEdges.filter((edge) => edge.target !== target);
+          console.log(`Removed ${existingConnections.length} existing connection(s) from InputNode ${target}`);
+        }
+
+        // Create new edge with sourceHandle if present
+        const newEdge = {
+          id: `e-${source}-${target}${sourceHandle ? `-${sourceHandle}` : ""}`,
+          source,
+          target,
+          sourceHandle: sourceHandle || undefined,
+          animated: true,
+        };
+
+        // Add the new edge to the updated edges list
+        updatedEdges = [...updatedEdges, newEdge];
+        setEdges(updatedEdges);
+
+        // Update InputNode value if source node has a value
+        if (sourceNode.data?.value !== undefined) {
+          const inputKey = targetNode.id.replace("input-", "");
+          const { updateInput, updateInputAt } = useFormulaStore.getState();
+          const fn = targetNode.id.includes(".") ? updateInputAt : updateInput;
+
+          // Extract value based on sourceHandle (field path) if present
+          let valueToSet = sourceNode.data.value;
+          if (sourceHandle && sourceNode.type === "api") {
+            // For API nodes, extract field value using path
+            const extractedValue = getByPath(sourceNode.data.value, sourceHandle);
+            if (extractedValue !== undefined) {
+              valueToSet = extractedValue;
+            }
+          }
+
+          fn(inputKey, valueToSet);
+        }
+      }
+    },
+    [storeNodes, storeEdges, setEdges, getByPath]
   );
 
   // In developer mode, if the user hasn't entered any formulas yet, show the "Select a formula" message
@@ -250,9 +371,10 @@ export function CenterCanvas() {
         onInit={(instance) => {
           reactFlowInstanceRef.current = instance as ReactFlowInstance;
         }}
-        nodesConnectable={false}
-        connectOnClick={false}
-        edgesUpdatable={false}
+        nodesConnectable={true}
+        connectOnClick={true}
+        onConnect={onConnect}
+        edgesUpdatable={true}
         maxZoom={1.5}
         minZoom={0.5}
         fitView
