@@ -6,6 +6,18 @@ export type GitHubImportResult =
   | { success: true; count: number }
   | { success: false; error: string };
 
+export type LocalImportResult =
+  | { success: true; count: number }
+  | { success: false; error: string };
+
+interface LocalFileData {
+  id: string;
+  name: string;
+  content: string;
+  size: number;
+  lastModified: Date;
+}
+
 export class SourceLoaderService {
   private worker: Worker | null = null;
 
@@ -32,7 +44,27 @@ export class SourceLoaderService {
         resolve(event.data);
       };
       worker.addEventListener("message", handleMessage);
-      worker.postMessage({ urls });
+      worker.postMessage({ type: "github", urls });
+    });
+  }
+
+  async importFromLocalFiles(
+    sources: Array<{ path: string; content: string }>,
+    fileData: LocalFileData[]
+  ): Promise<LocalImportResult> {
+    const worker = this.worker;
+    if (!worker) return { success: false, error: "Worker not initialized" };
+    return new Promise((resolve) => {
+      const handleMessage = (event: MessageEvent<LocalImportResult>) => {
+        worker.removeEventListener("message", handleMessage);
+        resolve(event.data);
+      };
+      worker.addEventListener("message", handleMessage);
+      worker.postMessage({
+        type: "local",
+        sources,
+        fileData
+      });
     });
   }
 

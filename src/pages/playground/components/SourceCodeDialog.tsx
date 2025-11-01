@@ -1,32 +1,34 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/common/Button";
-import { Input } from "@/components/common/Input";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/dexie";
 import { useFormulaStore } from "@/store/formulaStore";
 import type { FormulaDefinition } from "@/types/formula";
-import { Trash2, RefreshCw, Plus, Edit2, Save, X } from "lucide-react";
 import { formulaRepository } from "@/modules/formulaRepository";
 import { parseUrlList } from "@/lib/urls";
+import {
+  SourceManagementComponent,
+  JsDelivrConfigComponent,
+  DatabaseManagementComponent,
+} from "./SourceCodeComponents";
 
 /**
  * Source code management category type
  */
-type SourceCategory = "github" | "jsdelivr" | "database";
+type SourceCategory = "source" | "jsdelivr" | "database";
 
 /**
  * Source code management categories
  */
 const categories: { id: SourceCategory; label: string }[] = [
-  { id: "github", label: "GitHub 源码" },
-  { id: "jsdelivr", label: "jsDelivr 执行" },
-  { id: "database", label: "数据库管理" },
+  { id: "source", label: "Source Code" },
+  { id: "jsdelivr", label: "jsDelivr" },
+  { id: "database", label: "Database" },
 ];
 
 interface SourceCodeDialogProps {
@@ -34,26 +36,30 @@ interface SourceCodeDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface LocalFile {
+  id: string;
+  name: string;
+  content: string;
+  size: number;
+  lastModified: Date;
+}
+
 /**
  * Source Code Dialog Component with left-right layout
- * Manages GitHub sources, jsDelivr execution, and IndexedDB storage
+ * Manages GitHub sources, local file uploads, jsDelivr execution, and IndexedDB storage
  */
 export function SourceCodeDialog({
   open,
   onOpenChange,
 }: SourceCodeDialogProps) {
   const [activeCategory, setActiveCategory] =
-    useState<SourceCategory>("github");
+    useState<SourceCategory>("source");
   const [githubUrls, setGithubUrls] = useState("");
   const [isImporting, setIsImporting] = useState(false);
+  const [localFiles, setLocalFiles] = useState<LocalFile[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [formulas, setFormulas] = useState<FormulaDefinition[]>([]);
-  const [editingFormulaId, setEditingFormulaId] = useState<string | null>(null);
-  const [editingJsdelivr, setEditingJsdelivr] = useState({
-    url: "",
-    functionName: "",
-    version: "",
-    enabled: true,
-  });
+  // jsDelivr global config is derived for initial display; edits happen in child and saved via callback
 
   const { loadFormulas } = useFormulaStore();
 
@@ -80,7 +86,7 @@ export function SourceCodeDialog({
   const handleGitHubImport = async () => {
     const urls = parseUrlList(githubUrls);
     if (urls.length === 0) {
-      alert("请输入至少一个 GitHub URL");
+      alert("Please enter at least one GitHub URL");
       return;
     }
 
@@ -92,10 +98,10 @@ export function SourceCodeDialog({
       );
       if (res.success) {
         await loadFormulasFromDB();
-        alert(`已从 GitHub 导入公式 ${res.count} 个`);
+        alert(`Imported ${res.count} formulas from GitHub`);
         setGithubUrls("");
       } else {
-        alert(`导入失败: ${res.error}`);
+        alert(`Import failed: ${res.error}`);
       }
     } finally {
       setIsImporting(false);
@@ -103,82 +109,94 @@ export function SourceCodeDialog({
   };
 
   /**
-   * Delete a formula from IndexedDB
+   * Handle local file upload
    */
-  const handleDeleteFormula = async (formulaId: string) => {
-    if (!confirm("确定要删除这个公式吗？")) return;
+  const handleLocalUpload = async () => {
+    if (localFiles.length === 0) {
+      setUploadError("Please select at least one file");
+      return;
+    }
+
+    setIsImporting(true);
+    setUploadError(null);
 
     try {
-      await formulaRepository.deleteAndRefresh(formulaId, loadFormulas);
-      await loadFormulasFromDB();
-      alert("已删除公式");
-    } catch (error) {
-      alert(`删除失败: ${error}`);
+      const res = await formulaRepository.importFromLocalFilesAndRefresh(
+        localFiles,
+        loadFormulas
+      );
+      if (res.success) {
+        await loadFormulasFromDB();
+        alert(`Imported ${res.count} formulas from local files`);
+        setLocalFiles([]);
+      } else {
+        setUploadError(res.error || "Upload failed");
+      }
+    } finally {
+      setIsImporting(false);
     }
   };
 
-  /**
-   * Start editing jsDelivr config for a formula
-   */
-  const handleEditJsdelivr = (formula: FormulaDefinition) => {
-    setEditingFormulaId(formula.id);
-    setEditingJsdelivr({
-      url: formula.jsdelivrInfo?.url || "",
-      functionName: formula.jsdelivrInfo?.functionName || formula.id,
-      version: formula.jsdelivrInfo?.version || "latest",
-      enabled: formula.jsdelivrInfo?.enabled ?? true,
-    });
+  // Parse package/version from an npm jsDelivr URL
+  const parseFromUrl = (url?: string): { pkg?: string; ver?: string } => {
+    if (!url) return {};
+    const match = url.match(/\/npm\/([^@]+)@([^/]+)/);
+    if (match) return { pkg: decodeURIComponent(match[1]), ver: match[2] };
+    return {};
   };
 
-  /**
-   * Save jsDelivr config for a formula
-   */
-  const handleSaveJsdelivr = async () => {
-    if (!editingFormulaId) return;
+  // Initial global config derived from existing formulas (fallbacks provided in child if undefined)
+  const initialGlobalJsdelivr = useMemo(() => {
+    const firstEnabled = formulas.find((f) => f.jsdelivrInfo?.enabled);
+    const { pkg, ver } = parseFromUrl(firstEnabled?.jsdelivrInfo?.url);
+    return {
+      packageName: pkg || "@orderly.network/perp",
+      version: ver || firstEnabled?.jsdelivrInfo?.version || "latest",
+      enabled: firstEnabled?.jsdelivrInfo?.enabled ?? true,
+    };
+  }, [formulas]);
 
+  // Save global jsDelivr config for all formulas
+  const handleSaveJsdelivrGlobal = async (config: {
+    url: string;
+    version: string;
+  }) => {
     try {
-      const formula = formulas.find((f) => f.id === editingFormulaId);
-      if (!formula) return;
-
-      const updatedFormula: FormulaDefinition = {
-        ...formula,
+      const updated = formulas.map((f) => ({
+        ...f,
         jsdelivrInfo: {
-          url: editingJsdelivr.url,
-          functionName: editingJsdelivr.functionName,
-          version: editingJsdelivr.version,
-          enabled: editingJsdelivr.enabled,
+          url: config.url,
+          functionName: f.id, // use formula id as exported function name
+          version: config.version,
+          enabled: true, // Default to enabled when saving globally
         },
-      };
-
-      await db.formulas.put(updatedFormula);
+      }));
+      await db.formulas.bulkPut(updated);
       await formulaRepository.refreshStore(loadFormulas);
       await loadFormulasFromDB();
-      setEditingFormulaId(null);
-      alert("已保存 jsDelivr 配置");
+      alert("Saved jsDelivr global configuration");
     } catch (error) {
-      alert(`保存失败: ${error}`);
+      alert(`Save failed: ${error}`);
     }
-  };
-
-  /**
-   * Cancel editing jsDelivr config
-   */
-  const handleCancelEdit = () => {
-    setEditingFormulaId(null);
   };
 
   /**
    * Clear all formulas from IndexedDB
    */
   const handleClearDatabase = async () => {
-    if (!confirm("确定要清空所有公式数据吗？此操作不可恢复！")) return;
+    if (
+      !confirm(
+        "Are you sure you want to clear all formula data? This action cannot be undone!"
+      )
+    )
+      return;
 
     try {
       await formulaRepository.clearAllAndRefresh(loadFormulas);
       await loadFormulasFromDB();
-      alert("已清空所有公式数据");
+      alert("All formula data cleared");
     } catch (error) {
-      alert(`清空失败: ${error}`);
+      alert(`Clear failed: ${error}`);
     }
   };
 
@@ -186,13 +204,14 @@ export function SourceCodeDialog({
    * Clear compiled formulas cache from IndexedDB
    */
   const handleClearCache = async () => {
-    if (!confirm("确定要清空编译缓存吗？")) return;
+    if (!confirm("Are you sure you want to clear the compilation cache?"))
+      return;
 
     try {
       await db.compiledFormulas.clear();
-      alert("已清空编译缓存");
+      alert("Compilation cache cleared");
     } catch (error) {
-      alert(`清空失败: ${error}`);
+      alert(`Clear failed: ${error}`);
     }
   };
 
@@ -203,7 +222,7 @@ export function SourceCodeDialog({
     const formulasWithGithub = formulas.filter((f) => f.githubInfo?.url);
 
     if (formulasWithGithub.length === 0) {
-      alert("没有可刷新的 GitHub 源码");
+      alert("No GitHub source code available to refresh");
       return;
     }
 
@@ -217,9 +236,9 @@ export function SourceCodeDialog({
       );
       if (res.success) {
         await loadFormulasFromDB();
-        alert(`已从 GitHub 更新公式 ${res.count} 个`);
+        alert(`Updated ${res.count} formulas from GitHub`);
       } else {
-        alert(`更新失败: ${res.error}`);
+        alert(`Update failed: ${res.error}`);
       }
     } finally {
       setIsImporting(false);
@@ -231,269 +250,38 @@ export function SourceCodeDialog({
    */
   const renderCategoryContent = () => {
     switch (activeCategory) {
-      case "github":
+      case "source":
         return (
-          <div className="space-y-3">
-            <div>
-              <h3 className="text-sm font-semibold mb-1.5">从 GitHub 导入</h3>
-              <p className="text-xs text-gray-600 mb-3">
-                从 GitHub 导入公式源码，支持 raw/blob/tree 链接，每行一个
-              </p>
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-2.5 mb-3">
-                <p className="text-xs text-blue-800">
-                  <strong>注意：</strong>GitHub 源码仅用于显示和元数据提取
-                  <br />
-                  如需配置执行代码，请在 jsDelivr 标签页设置
-                </p>
-              </div>
-              <textarea
-                className="w-full h-28 p-2.5 border border-gray-300 rounded-md resize-none font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="https://github.com/user/repo/blob/main/file.ts&#10;https://raw.githubusercontent.com/user/repo/main/file.ts"
-                value={githubUrls}
-                onChange={(e) => setGithubUrls(e.target.value)}
-              />
-              <div className="flex justify-between mt-3">
-                <Button
-                  variant="outline"
-                  onClick={handleRefreshFromGithub}
-                  disabled={isImporting}
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  更新现有源码
-                </Button>
-                <Button
-                  onClick={handleGitHubImport}
-                  disabled={isImporting || !githubUrls.trim()}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  {isImporting ? "导入中..." : "导入"}
-                </Button>
-              </div>
-            </div>
-
-            {/* Formula List */}
-            <div className="mt-4">
-              <h3 className="text-sm font-semibold mb-1.5">已导入的公式</h3>
-              <div className="space-y-1.5 max-h-64 overflow-y-auto">
-                {formulas.length === 0 ? (
-                  <p className="text-xs text-gray-500">暂无公式</p>
-                ) : (
-                  formulas.map((formula) => (
-                    <div
-                      key={formula.id}
-                      className="flex items-center justify-between p-2.5 bg-white border border-gray-200 rounded-md"
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium text-xs">
-                          {formula.name}
-                        </div>
-                        <div className="text-[11px] text-gray-500 mt-0.5">
-                          {formula.githubInfo?.url || "无 GitHub 源码"}
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteFormula(formula.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
+          <SourceManagementComponent
+            githubUrls={githubUrls}
+            setGithubUrls={setGithubUrls}
+            localFiles={localFiles}
+            setLocalFiles={setLocalFiles}
+            isImporting={isImporting}
+            uploadError={uploadError}
+            onGitHubImport={handleGitHubImport}
+            onRefreshFromGithub={handleRefreshFromGithub}
+            onLocalUpload={handleLocalUpload}
+          />
         );
 
       case "jsdelivr":
         return (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-base font-semibold mb-2">
-                jsDelivr 执行配置
-              </h3>
-              <p className="text-sm text-gray-600 mb-4">
-                为每个公式配置 jsDelivr CDN 执行代码
-              </p>
-            </div>
-
-            {/* Formula List with jsDelivr Config */}
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {formulas.length === 0 ? (
-                <p className="text-sm text-gray-500">暂无公式</p>
-              ) : (
-                formulas.map((formula) => (
-                  <div
-                    key={formula.id}
-                    className="p-3 bg-white border border-gray-200 rounded-md"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="font-medium text-sm">{formula.name}</div>
-                      {editingFormulaId === formula.id ? (
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleSaveJsdelivr}
-                            className="text-green-600 hover:text-green-700"
-                          >
-                            <Save className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleCancelEdit}
-                            className="text-gray-600 hover:text-gray-700"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditJsdelivr(formula)}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-
-                    {editingFormulaId === formula.id ? (
-                      <div className="space-y-2">
-                        <Input
-                          placeholder="jsDelivr URL"
-                          value={editingJsdelivr.url}
-                          onChange={(e) =>
-                            setEditingJsdelivr({
-                              ...editingJsdelivr,
-                              url: e.target.value,
-                            })
-                          }
-                          className="text-xs"
-                        />
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="函数名"
-                            value={editingJsdelivr.functionName}
-                            onChange={(e) =>
-                              setEditingJsdelivr({
-                                ...editingJsdelivr,
-                                functionName: e.target.value,
-                              })
-                            }
-                            className="text-xs flex-1"
-                          />
-                          <Input
-                            placeholder="版本"
-                            value={editingJsdelivr.version}
-                            onChange={(e) =>
-                              setEditingJsdelivr({
-                                ...editingJsdelivr,
-                                version: e.target.value,
-                              })
-                            }
-                            className="text-xs w-24"
-                          />
-                        </div>
-                        <label className="flex items-center text-xs">
-                          <input
-                            type="checkbox"
-                            checked={editingJsdelivr.enabled}
-                            onChange={(e) =>
-                              setEditingJsdelivr({
-                                ...editingJsdelivr,
-                                enabled: e.target.checked,
-                              })
-                            }
-                            className="mr-2"
-                          />
-                          启用 jsDelivr 执行
-                        </label>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-gray-600">
-                        {formula.jsdelivrInfo?.enabled ? (
-                          <>
-                            <div className="truncate">
-                              URL: {formula.jsdelivrInfo.url || "未配置"}
-                            </div>
-                            <div>
-                              函数:{" "}
-                              {formula.jsdelivrInfo.functionName || "未配置"} |
-                              版本: {formula.jsdelivrInfo.version || "未配置"}
-                            </div>
-                          </>
-                        ) : (
-                          <div className="text-orange-600">jsDelivr 已禁用</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          <JsDelivrConfigComponent
+            formulas={formulas}
+            initialPackageName={initialGlobalJsdelivr.packageName}
+            initialVersion={initialGlobalJsdelivr.version}
+            onSaveGlobal={handleSaveJsdelivrGlobal}
+          />
         );
 
       case "database":
         return (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-base font-semibold mb-2">数据库管理</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                管理 IndexedDB 中的公式数据和缓存
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <div className="p-4 bg-white border border-gray-200 rounded-md">
-                <h4 className="font-medium text-sm mb-2">清空编译缓存</h4>
-                <p className="text-xs text-gray-600 mb-3">
-                  清空 jsDelivr 编译缓存，下次执行时会重新加载
-                </p>
-                <Button variant="outline" onClick={handleClearCache}>
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  清空缓存
-                </Button>
-              </div>
-
-              <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-                <h4 className="font-medium text-sm mb-2 text-red-900">
-                  清空所有数据
-                </h4>
-                <p className="text-xs text-red-700 mb-3">
-                  <strong>危险操作：</strong>
-                  将删除所有公式定义、配置和缓存，不可恢复
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={handleClearDatabase}
-                  className="border-red-300 text-red-700 hover:bg-red-100"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  清空所有数据
-                </Button>
-              </div>
-
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
-                <h4 className="font-medium text-sm mb-2">数据统计</h4>
-                <div className="text-xs text-gray-600 space-y-1">
-                  <div>公式数量: {formulas.length}</div>
-                  <div>
-                    已配置 jsDelivr:{" "}
-                    {formulas.filter((f) => f.jsdelivrInfo?.url).length}
-                  </div>
-                  <div>
-                    已启用执行:{" "}
-                    {formulas.filter((f) => f.jsdelivrInfo?.enabled).length}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <DatabaseManagementComponent
+            formulas={formulas}
+            onClearCache={handleClearCache}
+            onClearDatabase={handleClearDatabase}
+          />
         );
 
       default:
@@ -506,7 +294,9 @@ export function SourceCodeDialog({
       {/* Compact dialog paddings to fit more content */}
       <DialogContent className="max-w-4xl h-[560px] p-0 gap-0">
         <DialogHeader className="px-4 py-3 border-b">
-          <DialogTitle className="text-base">源码与执行配置</DialogTitle>
+          <DialogTitle className="text-base">
+            Source Code & Execution Configuration
+          </DialogTitle>
         </DialogHeader>
 
         {/* Left-Right Layout */}
@@ -519,7 +309,7 @@ export function SourceCodeDialog({
                   key={category.id}
                   onClick={() => setActiveCategory(category.id)}
                   className={cn(
-                    "w-full text-left px-2.5 py-1.5 rounded-md text-xs transition-colors",
+                    "w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors",
                     activeCategory === category.id
                       ? "bg-blue-100 text-blue-900 font-medium"
                       : "text-gray-700 hover:bg-gray-100"

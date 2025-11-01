@@ -48,7 +48,10 @@ export const ObjectNode = memo(function ObjectNode({ data }: ObjectNodeProps) {
             className="w-3 h-3 bg-sky-500"
             style={{
               top:
-                HEADER_HEIGHT + HEADER_TO_FIRST_HANDLE_GAP + index * HANDLE_GAP,
+                HEADER_HEIGHT +
+                6 +
+                HEADER_TO_FIRST_HANDLE_GAP +
+                index * HANDLE_GAP,
             }}
           />
           <span

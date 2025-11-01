@@ -10,10 +10,12 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ className, title, headerRight, children, ...props }, ref) => {
+    // Check if className contains flex to determine if children container should be flex
+    const isFlexContainer = className?.includes("flex");
     return (
       <div ref={ref} className={cn(className)} {...props}>
         {title && (
-          <div className="border-b border-gray-200 px-3 py-1">
+          <div className="border-b border-gray-200 px-3 py-1 shrink-0">
             <div className="flex items-center justify-between gap-2">
               <h3 className="font-semibold text-sm text-gray-900">{title}</h3>
               {headerRight ? (
@@ -22,7 +24,9 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
             </div>
           </div>
         )}
-        <div>{children}</div>
+        <div className={isFlexContainer ? "flex flex-col flex-1 min-h-0" : ""}>
+          {children}
+        </div>
       </div>
     );
   }

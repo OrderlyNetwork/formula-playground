@@ -1,5 +1,5 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useFormulaStore } from "../../../store/formulaStore";
+import { useFormulaStore } from "@/store/formulaStore";
 
 export function FormulaDocs() {
   const { formulaDefinitions, selectedFormulaId } = useFormulaStore();

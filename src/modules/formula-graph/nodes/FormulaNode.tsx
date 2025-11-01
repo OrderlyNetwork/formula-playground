@@ -1,8 +1,8 @@
 import { Handle, Position, useStore } from "reactflow";
 import type { Connection } from "reactflow";
 import { useCallback, useMemo, Fragment, memo } from "react";
-import type { FormulaNodeData } from "../../../types/formula";
-import { cn } from "../../../lib/utils";
+import type { FormulaNodeData } from "@/types/formula";
+import { cn } from "@/lib/utils";
 import { Calculator } from "lucide-react";
 
 interface FormulaNodeProps {

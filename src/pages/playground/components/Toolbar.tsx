@@ -61,7 +61,7 @@ export function Toolbar() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-600">Engine:</span>
+          <span className="text-xs text-gray-600">Engine</span>
           <Select
             value={activeEngine}
             onValueChange={(value) => switchEngine(value as "ts" | "rust")}

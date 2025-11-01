@@ -1,9 +1,9 @@
-import { Card } from "../../../../components/common/Card";
-import { Button } from "../../../../components/common/Button";
-import { useFormulaStore } from "../../../../store/formulaStore";
-import { useDeveloperStore } from "../../../../store/developerStore";
-import { useAppStore } from "../../../../store/appStore";
-import { formatTimestamp } from "../../../../lib/utils";
+import { Card } from "@/components/common/Card";
+import { Button } from "@/components/common/Button";
+import { useFormulaStore } from "@/store/formulaStore";
+import { useDeveloperStore } from "@/store/developerStore";
+import { useAppStore } from "@/store/appStore";
+import { formatTimestamp } from "@/lib/utils";
 
 export function HistoryPanel() {
   const { mode } = useAppStore();

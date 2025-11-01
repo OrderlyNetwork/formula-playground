@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as monaco from "monaco-editor";
-import { useDeveloperStore } from "../../../store/developerStore";
+import { useDeveloperStore } from "@/store/developerStore";
 import { Button } from "@/components/ui/button";
 
 /**

@@ -1,11 +1,13 @@
-import { Card } from "../../../../components/common/Card";
-import { Button } from "../../../../components/common/Button";
-import { useFormulaStore } from "../../../../store/formulaStore";
+import { useState, useMemo } from "react";
+import { Card } from "@/components/common/Card";
+import { Button } from "@/components/common/Button";
+import { useFormulaStore } from "@/store/formulaStore";
 import {
   Code2,
   Download,
   SquareFunction,
-  FilePlus,
+  Settings2,
+  Search,
 } from "lucide-react";
 import {
   Tooltip,
@@ -13,6 +15,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
 import { SourceCodeDialog } from "../SourceCodeDialog";
 
 interface FormulasPanelProps {
@@ -26,6 +29,7 @@ export function FormulasPanel({
 }: FormulasPanelProps) {
   const { formulaDefinitions, selectedFormulaId, selectFormula } =
     useFormulaStore();
+  const [searchQuery, setSearchQuery] = useState("");
 
   /**
    * Open source code dialog for managing GitHub imports and jsDelivr execution
@@ -36,10 +40,29 @@ export function FormulasPanel({
     setSourceCodeDialogOpen(true);
   };
 
+  /**
+   * Filter formulas based on search query
+   * Searches in formula name and tags
+   */
+  const filteredFormulas = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return formulaDefinitions;
+    }
+    const query = searchQuery.toLowerCase().trim();
+    return formulaDefinitions.filter((formula) => {
+      const nameMatch = formula.name.toLowerCase().includes(query);
+      const tagsMatch = formula.tags?.some((tag) =>
+        tag.toLowerCase().includes(query)
+      );
+      return nameMatch || tagsMatch;
+    });
+  }, [formulaDefinitions, searchQuery]);
+
   return (
     <>
       <Card
         title="Formulas"
+        className="flex flex-col h-full"
         headerRight={
           <TooltipProvider>
             <Tooltip>
@@ -47,24 +70,49 @@ export function FormulasPanel({
                 <Button
                   variant="ghost"
                   size="sm"
-                  aria-label="从github导入"
-                  title="从github导入"
-                  className="h-8 w-8 p-0"
+                  aria-label="配置"
+                  title="配置"
+                  className="p-0 h-4 w-4"
                   onClick={handleImport}
                 >
-                  <FilePlus strokeWidth={1.5} size={18} />
+                  <Settings2 strokeWidth={1.5} size={14} />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>从github导入</TooltipContent>
+              <TooltipContent>配置</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         }
       >
-        <div>
+        {/* Search box */}
+        <div className="px-2.5 py-2 border-b border-gray-200 shrink-0">
+          <div className="relative">
+            <Search
+              className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400"
+              strokeWidth={1.5}
+              size={14}
+            />
+            <Input
+              type="text"
+              placeholder="搜索公式..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-7 h-8 text-xs"
+            />
+          </div>
+        </div>
+
+        {/* Formula list with scrollable area */}
+        <div className="flex-1 overflow-y-auto min-h-0">
           {formulaDefinitions.length === 0 ? (
-            <p className="text-xs text-gray-500">No formulas loaded</p>
+            <p className="text-xs text-gray-500 px-2.5 py-4">
+              No formulas loaded
+            </p>
+          ) : filteredFormulas.length === 0 ? (
+            <p className="text-xs text-gray-500 px-2.5 py-4">
+              未找到匹配的公式
+            </p>
           ) : (
-            formulaDefinitions.map((formula) => {
+            filteredFormulas.map((formula) => {
               // Determine the creation type icon
               const CreationIcon =
                 formula.creationType === "parsed"
@@ -120,6 +168,18 @@ export function FormulasPanel({
                 </button>
               );
             })
+          )}
+        </div>
+
+        {/* Fixed footer with statistics */}
+        <div className="px-2.5 py-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-600 shrink-0">
+          {searchQuery.trim() ? (
+            <>
+              显示 {filteredFormulas.length} / {formulaDefinitions.length}{" "}
+              个公式
+            </>
+          ) : (
+            <>共 {formulaDefinitions.length} 个公式</>
           )}
         </div>
       </Card>

@@ -74,7 +74,7 @@ export class FormulaParser {
 
     for (const func of functions) {
       // Check if this is a formula function
-      if (this.isFormulaFunction(func)) {
+      if (this.isFormulaFunction()) {
         const formula = this.parseFormula(func);
         if (formula) {
           formulas.push(formula);
@@ -88,7 +88,7 @@ export class FormulaParser {
   /**
    * Check if a function is a formula function
    */
-  private isFormulaFunction(_func: FunctionDeclaration): boolean {
+  private isFormulaFunction(): boolean {
     // Accept all top-level functions as formulas (naming not enforced)
     return true;
   }

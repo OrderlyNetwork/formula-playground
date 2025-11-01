@@ -52,7 +52,9 @@ export function LeftPanel() {
       />
 
       {/* Right content area */}
-      <div className="flex-1 overflow-y-auto">{renderCategoryContent()}</div>
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {renderCategoryContent()}
+      </div>
     </div>
   );
 }

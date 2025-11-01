@@ -1,7 +1,7 @@
-import { Card } from "../../../components/common/Card";
-import { ResultDisplay } from "../../../components/formula-ui/ResultDisplay";
-import { ComparisonPanel } from "../../../components/formula-ui/ComparisonPanel";
-import { useFormulaStore } from "../../../store/formulaStore";
+import { Card } from "@/components/common/Card";
+import { ResultDisplay } from "@/components/formula-ui/ResultDisplay";
+import { ComparisonPanel } from "@/components/formula-ui/ComparisonPanel";
+import { useFormulaStore } from "@/store/formulaStore";
 
 export function RightPanel() {
   const { formulaDefinitions, selectedFormulaId, tsResult, rustResult } =

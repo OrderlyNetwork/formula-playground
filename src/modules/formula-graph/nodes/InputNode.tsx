@@ -1,11 +1,12 @@
 import { Handle, Position } from "reactflow";
 import { memo } from "react";
-import type { FormulaNodeData } from "../../../types/formula";
-import { cn } from "../../../lib/utils";
+import type { FormulaNodeData } from "@/types/formula";
+import { cn } from "@/lib/utils";
 // import { Input } from "../../../components/common/Input";
-import { Select } from "../../../components/common/Select";
-import { useFormulaStore } from "../../../store/formulaStore";
+import { Select } from "@/components/common/Select";
+import { useFormulaStore } from "@/store/formulaStore";
 import { Input } from "@/components/ui/input";
+import { Info } from "lucide-react";
 
 interface InputNodeProps {
   data: FormulaNodeData;
@@ -42,7 +43,10 @@ export const InputNode = memo(function InputNode({ data }: InputNodeProps) {
       )}
     >
       <div className="flex flex-col gap-1 items-start">
-        <div className="font-medium text-gray-900">{data.label}</div>
+        <div className="font-medium text-gray-900 flex items-center gap-1">
+          <span>{data.label}</span>
+          <Info size={14} />
+        </div>
         <div className="mt-1">
           {data.inputType === "boolean" ? (
             <Select

@@ -9,16 +9,16 @@ import ReactFlow, {
 import type { NodeChange, EdgeChange, ReactFlowInstance } from "reactflow";
 import "reactflow/dist/style.css";
 
-import { InputNode } from "../../../modules/formula-graph/nodes/InputNode";
-import { FormulaNode } from "../../../modules/formula-graph/nodes/FormulaNode";
-import { OutputNode } from "../../../modules/formula-graph/nodes/OutputNode";
-import { ObjectNode } from "../../../modules/formula-graph/nodes/ObjectNode";
-import { ApiNode } from "../../../modules/formula-graph/nodes/ApiNode";
-import { WebSocketNode } from "../../../modules/formula-graph/nodes/WebSocketNode";
-import { useModeData } from "../../../store/useModeData";
-import { useAppStore } from "../../../store/appStore";
-import { useGraphStore } from "../../../store/graphStore";
-import { generateFormulaGraph } from "../../../modules/formula-graph";
+import { InputNode } from "@/modules/formula-graph/nodes/InputNode";
+import { FormulaNode } from "@/modules/formula-graph/nodes/FormulaNode";
+import { OutputNode } from "@/modules/formula-graph/nodes/OutputNode";
+import { ObjectNode } from "@/modules/formula-graph/nodes/ObjectNode";
+import { ApiNode } from "@/modules/formula-graph/nodes/ApiNode";
+import { WebSocketNode } from "@/modules/formula-graph/nodes/WebSocketNode";
+import { useModeData } from "@/store/useModeData";
+import { useAppStore } from "@/store/appStore";
+import { useGraphStore } from "@/store/graphStore";
+import { generateFormulaGraph } from "@/modules/formula-graph";
 
 const nodeTypes = {
   input: InputNode,
@@ -253,6 +253,8 @@ export function CenterCanvas() {
         nodesConnectable={false}
         connectOnClick={false}
         edgesUpdatable={false}
+        maxZoom={1.5}
+        minZoom={0.5}
         fitView
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />

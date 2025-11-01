@@ -4,7 +4,7 @@
  */
 
 import { db } from "../../lib/dexie";
-import type { CompiledFormula } from "../../types/formula";
+import type { CompiledFormula, SharedCodeEntry, FormulaReference } from "../../types/formula";
 
 /**
  * @description Manages IndexedDB cache for compiled formulas with version tracking
@@ -90,6 +90,81 @@ export class CacheManager {
   ): Promise<CompiledFormula | null> {
     const versions = await this.getAllVersions(formulaId);
     return versions.length > 0 ? versions[versions.length - 1] : null;
+  }
+
+  /**
+   * @description Save shared code entry (used for new shared storage strategy)
+   */
+  async saveSharedCode(sharedCode: SharedCodeEntry): Promise<void> {
+    await db.sharedCode.put(sharedCode);
+  }
+
+  /**
+   * @description Save formula reference to shared code
+   */
+  async saveFormulaReference(reference: FormulaReference): Promise<void> {
+    await db.formulaReferences.put(reference);
+  }
+
+  /**
+   * @description Get shared code by ID
+   */
+  async getSharedCode(sharedCodeId: string): Promise<SharedCodeEntry | null> {
+    return (await db.sharedCode.get(sharedCodeId)) || null;
+  }
+
+  /**
+   * @description Get formula reference by formula ID and version
+   */
+  async getFormulaReference(
+    formulaId: string,
+    version: string
+  ): Promise<FormulaReference | null> {
+    const id = `${formulaId}:${version}`;
+    return (await db.formulaReferences.get(id)) || null;
+  }
+
+  /**
+   * @description Get complete compiled formula (shared code + formula reference)
+   */
+  async getCompiledFormula(
+    formulaId: string,
+    version: string
+  ): Promise<CompiledFormula | null> {
+    // Try to get from legacy storage first
+    const legacy = await this.getCompiled(formulaId, version);
+    if (legacy) return legacy;
+
+    // Try new shared storage strategy
+    const reference = await this.getFormulaReference(formulaId, version);
+    if (!reference) return null;
+
+    const sharedCode = await this.getSharedCode(reference.sharedCodeId);
+    if (!sharedCode) return null;
+
+    // Combine into CompiledFormat for compatibility
+    return {
+      id: reference.id,
+      formulaId: reference.formulaId,
+      version: reference.version,
+      jsdelivrUrl: reference.jsdelivrUrl,
+      compiledCode: sharedCode.code,
+      functionName: reference.functionName,
+      timestamp: reference.timestamp,
+      hash: sharedCode.hash,
+    };
+  }
+
+  /**
+   * @description Get all formulas using a specific shared code
+   */
+  async getFormulasUsingSharedCode(
+    sharedCodeId: string
+  ): Promise<FormulaReference[]> {
+    return await db.formulaReferences
+      .where("sharedCodeId")
+      .equals(sharedCodeId)
+      .toArray();
   }
 }
 

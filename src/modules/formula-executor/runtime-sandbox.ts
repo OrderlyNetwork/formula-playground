@@ -1,24 +1,12 @@
-/**
- * Runtime Sandbox for Dynamic Formula Execution
- * Loads pre-built JavaScript from jsDelivr, compiles with restricted globals, and caches
- */
-
 import { CacheManager } from "./cache-manager";
 import type { CompiledFormula } from "../../types/formula";
 
 /**
- * @description Safe TypeScript/JavaScript runtime sandbox for dynamic formula execution
+ * @description Safe runtime sandbox for dynamic formula execution
  * Loads from jsDelivr, restricts global access, and caches compiled functions
  */
 export class TypeScriptRuntimeSandbox {
-  /**
-   * @description In-memory cache for compiled functions (performance optimization)
-   */
-  private memoryCache: Map<string, Function> = new Map();
-
-  /**
-   * @description Cache manager for IndexedDB persistence
-   */
+  private memoryCache: Map<string, (...args: unknown[]) => unknown> = new Map();
   private cacheManager: CacheManager;
 
   constructor(cacheManager: CacheManager) {
@@ -31,25 +19,45 @@ export class TypeScriptRuntimeSandbox {
    * @param functionName - Function name to extract from loaded code
    * @param formulaId - Formula ID for cache key
    * @param version - Version for cache key
+   * @param allowedImports - Optional map of whitelisted modules to inject (for external deps)
    * @returns Compiled function ready for execution
+   *
+   * @example
+   * import * as orderlyUtils from "@orderly.network/utils";
+   * import * as orderlyTypes from "@orderly.network/types";
+   *
+   * const allowed = {
+   *   "@orderly.network/utils": orderlyUtils,
+   *   "@orderly.network/types": orderlyTypes,
+   * };
+   *
+   * const fn = await sandbox.loadFromJsDelivr(
+   *   jsDelivrUrl,
+   *   "someExportedFunction",
+   *   formulaId,
+   *   version,
+   *   allowed
+   * );
    */
   async loadFromJsDelivr(
     jsdelivrUrl: string,
     functionName: string,
     formulaId: string,
-    version: string
-  ): Promise<Function> {
-    // Check memory cache first (fastest)
-    const memoryCacheKey = `${formulaId}:${version}`;
+    version: string,
+    allowedImports?: Record<string, unknown>
+  ): Promise<(...args: unknown[]) => unknown> {
+    // Include a fingerprint of allowed imports in the in-memory cache key to avoid collisions
+    const memoryCacheKey = `${formulaId}:${version}:${this.allowedImportsFingerprint(
+      allowedImports
+    )}`;
     if (this.memoryCache.has(memoryCacheKey)) {
       return this.memoryCache.get(memoryCacheKey)!;
     }
 
-    // Check IndexedDB cache (fast)
     const cached = await this.cacheManager.getCompiled(formulaId, version);
     if (cached) {
       try {
-        const func = this.compileFromCached(cached);
+        const func = this.compileFromCached(cached, allowedImports);
         this.memoryCache.set(memoryCacheKey, func);
         return func;
       } catch (error) {
@@ -61,7 +69,6 @@ export class TypeScriptRuntimeSandbox {
       }
     }
 
-    // Fetch from jsDelivr (slow, network request)
     const response = await fetch(jsdelivrUrl);
     if (!response.ok) {
       throw new Error(
@@ -70,10 +77,8 @@ export class TypeScriptRuntimeSandbox {
     }
     const code = await response.text();
 
-    // Compile in sandbox
-    const func = this.compileFromSource(code, functionName);
+    const func = this.compileFromSource(code, functionName, allowedImports);
 
-    // Save to caches
     const compiled: CompiledFormula = {
       id: `${formulaId}:${version}`,
       formulaId,
@@ -93,34 +98,98 @@ export class TypeScriptRuntimeSandbox {
     }
 
     this.memoryCache.set(memoryCacheKey, func);
-
     return func;
+  }
+
+  /**
+   * @description Convenience loader for npm packages hosted on jsDelivr
+   * Builds URL like: https://cdn.jsdelivr.net/npm/<package>@<version>/dist/index.js
+   * @param packageName - e.g. "@orderly.network/perp"
+   * @param version - e.g. "4.8.1" or "latest"
+   * @param functionName - Exported function name to execute
+   * @param formulaId - Formula ID for cache keying
+   * @param allowedImports - Optional whitelist of injected modules
+   */
+  async loadFromNpmPackage(
+    packageName: string,
+    version: string,
+    functionName: string,
+    formulaId: string,
+    allowedImports?: Record<string, unknown>
+  ): Promise<(...args: unknown[]) => unknown> {
+    const pkg =
+      packageName && packageName.trim().length > 0
+        ? packageName.trim()
+        : "@orderly.network/perp";
+    const ver =
+      version && version.trim().length > 0 ? version.trim() : "latest";
+    const url = this.buildNpmJsDelivrUrl(pkg, ver);
+    return this.loadFromJsDelivr(
+      url,
+      functionName,
+      formulaId,
+      ver,
+      allowedImports
+    );
+  }
+
+  /**
+   * @description Build jsDelivr npm URL for a given package and version
+   */
+  private buildNpmJsDelivrUrl(packageName: string, version: string): string {
+    return `https://cdn.jsdelivr.net/npm/${packageName}@${version}/dist/index.js`;
   }
 
   /**
    * @description Compile function from cached compiled formula
    */
-  private compileFromCached(cached: CompiledFormula): Function {
-    // Verify integrity
+  /**
+   * @description Compile function from cached compiled formula
+   * @param cached - Cached compiled formula record
+   * @param allowedImports - Optional map of whitelisted modules to inject (for external deps)
+   */
+  private compileFromCached(
+    cached: CompiledFormula,
+    allowedImports?: Record<string, unknown>
+  ): (...args: unknown[]) => unknown {
     const currentHash = this.hashCode(cached.compiledCode);
     if (currentHash !== cached.hash) {
       throw new Error("Cache integrity check failed");
     }
 
-    return this.compileFromSource(cached.compiledCode, cached.functionName);
+    return this.compileFromSource(
+      cached.compiledCode,
+      cached.functionName,
+      allowedImports
+    );
   }
 
   /**
    * @description Compile function from source code with sandbox isolation
    */
-  private compileFromSource(code: string, functionName: string): Function {
-    // Create isolated execution context
-    const isolatedCode = this.createIsolatedContext(code, functionName);
+  /**
+   * @description Compile function from source code with sandbox isolation
+   * @param code - Source bundle string fetched from CDN or cache
+   * @param functionName - Exported function name to return from the sandbox
+   * @param allowedImports - Optional map of whitelisted modules to inject (for external deps)
+   */
+  private compileFromSource(
+    code: string,
+    functionName: string,
+    allowedImports?: Record<string, unknown>
+  ): (...args: unknown[]) => unknown {
+    const isolatedCode = this.createIsolatedContext(
+      code,
+      functionName,
+      this.filterValidIdentifiers(Object.keys(allowedImports ?? {}))
+    );
 
     try {
       // Use Function constructor (safer than eval)
-      const factory = new Function("return " + isolatedCode);
-      const func = factory();
+      // Provide a single "allowed" parameter to inject whitelisted dependencies
+      const factory = new Function("allowed", "return " + isolatedCode);
+      const frozenAllowed = this.freezeAllowedImports(allowedImports);
+      const func = factory(frozenAllowed);
 
       if (typeof func !== "function") {
         throw new Error(`Expected function but got ${typeof func}`);
@@ -129,18 +198,26 @@ export class TypeScriptRuntimeSandbox {
       return func;
     } catch (error) {
       throw new Error(
-        `Failed to compile function ${functionName}: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to compile function ${functionName}: ${
+          error instanceof Error ? error.message : String(error)
+        }`
       );
     }
   }
 
   /**
    * @description Create isolated execution context with restricted globals
-   * Wraps code in IIFE with whitelisted globals and blocked dangerous operations
    */
-  private createIsolatedContext(code: string, functionName: string): string {
+  private createIsolatedContext(
+    code: string,
+    functionName: string,
+    allowedKeys: string[]
+  ): string {
+    const destructuring = allowedKeys.length
+      ? `const { ${allowedKeys.join(", ")} } = allowed;`
+      : "";
     return `
-      (function() {
+      (function(allowed) {
         // Whitelist: Allow access to safe globals
         const Math = globalThis.Math;
         const Number = globalThis.Number;
@@ -171,22 +248,29 @@ export class TypeScriptRuntimeSandbox {
         const setImmediate = undefined;
         const requestAnimationFrame = undefined;
         const importScripts = undefined;
+
+        // Controlled require: only resolve whitelisted modules
+        const require = (name) => {
+          if (!Object.prototype.hasOwnProperty.call(allowed, name)) {
+            throw new Error('Module "' + String(name) + '" is not allowed');
+          }
+          return allowed[name];
+        };
+
+        ${destructuring}
         
-        // Execute loaded code
         ${code}
         
-        // Extract and return target function
         if (typeof ${functionName} !== 'function') {
           throw new Error('Function ${functionName} not found in loaded code');
         }
         return ${functionName};
-      })()
+      })(allowed)
     `;
   }
 
   /**
    * @description Simple string hash for integrity verification
-   * Uses basic hash algorithm for reasonable performance
    */
   private hashCode(str: string): string {
     let hash = 0;
@@ -196,6 +280,39 @@ export class TypeScriptRuntimeSandbox {
       hash = hash & hash; // Convert to 32-bit integer
     }
     return Math.abs(hash).toString(36);
+  }
+
+  /**
+   * @description Freeze the container of allowed imports to prevent reassignment within sandbox
+   */
+  private freezeAllowedImports(
+    allowedImports?: Record<string, unknown>
+  ): Record<string, unknown> {
+    if (!allowedImports) return Object.freeze({});
+    // Freeze only the container; avoid deep-freezing third-party modules to prevent side effects
+    return Object.freeze({ ...allowedImports });
+  }
+
+  /**
+   * @description Create a stable fingerprint for allowed imports for memory cache keying
+   */
+  private allowedImportsFingerprint(
+    allowedImports?: Record<string, unknown>
+  ): string {
+    if (!allowedImports) return "none";
+    try {
+      return Object.keys(allowedImports).sort().join("|");
+    } catch {
+      return "unknown";
+    }
+  }
+
+  /**
+   * @description Filter keys to valid JS identifier names; others must use require('name')
+   */
+  private filterValidIdentifiers(keys: string[]): string[] {
+    const IDENTIFIER_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+    return keys.filter((k) => IDENTIFIER_RE.test(k));
   }
 
   /**
@@ -215,4 +332,3 @@ export class TypeScriptRuntimeSandbox {
     };
   }
 }
-

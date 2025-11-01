@@ -40,6 +40,7 @@ export interface FactorType {
 export type FormulaCreationType =
   | "parsed" // Created by parsing TypeScript code in developer mode
   | "imported" // Imported from GitHub or other external sources
+  | "uploaded" // Uploaded from local files
   | "builtin"; // Built-in formula definitions
 
 /**
@@ -84,6 +85,14 @@ export interface FormulaDefinition {
     url: string; // full GitHub URL
   };
 
+  // Local file upload info
+  localInfo?: {
+    fileName: string; // Original file name
+    fileSize: number; // File size in bytes
+    lastModified: Date; // File last modified timestamp
+    uploadTimestamp: Date; // When the file was uploaded
+  };
+
   // jsDelivr execution info (separate from source)
   jsdelivrInfo?: {
     url: string; // e.g., "https://cdn.jsdelivr.net/gh/owner/repo@v1.0.0/dist/formulas.js"
@@ -110,6 +119,31 @@ export interface CompiledFormula {
   functionName: string;
   timestamp: number;
   hash: string; // Integrity hash
+}
+
+/**
+ * @description Shared code entry for storing jsDelivr code once and referenced by multiple formulas
+ */
+export interface SharedCodeEntry {
+  id: string; // unique: `shared:${base64url}:${version}`
+  url: string; // jsDelivr URL
+  version: string;
+  code: string; // Complete source code
+  timestamp: number;
+  hash: string; // Integrity hash
+}
+
+/**
+ * @description Formula reference to shared code (lightweight storage)
+ */
+export interface FormulaReference {
+  id: string; // unique: `${formulaId}:${version}`
+  formulaId: string;
+  version: string;
+  jsdelivrUrl: string;
+  functionName: string;
+  sharedCodeId: string; // Reference to SharedCodeEntry
+  timestamp: number;
 }
 
 /**

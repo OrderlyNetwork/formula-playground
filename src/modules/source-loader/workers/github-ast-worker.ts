@@ -6,9 +6,24 @@ import { FormulaParser } from "../../formula-parser";
 import type { FormulaDefinition } from "../../../types/formula";
 import { db } from "../../../lib/dexie";
 
-type WorkerRequest = {
-  urls: string[];
-};
+interface LocalFileData {
+  id: string;
+  name: string;
+  content: string;
+  size: number;
+  lastModified: Date;
+}
+
+type WorkerRequest =
+  | {
+      type: "github";
+      urls: string[];
+    }
+  | {
+      type: "local";
+      sources: Array<{ path: string; content: string }>;
+      fileData: LocalFileData[];
+    };
 
 type WorkerResponse =
   | {
@@ -143,37 +158,88 @@ async function collectSourcesFromUrls(
 
 self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   try {
-    const { urls } = event.data;
-    if (!urls || urls.length === 0) {
-      const resp: WorkerResponse = {
-        success: false,
-        error: "No URLs provided",
-      };
-      self.postMessage(resp);
-      return;
-    }
+    const requestData = event.data;
 
-    const sources = await collectSourcesFromUrls(urls);
-    const formulas: FormulaDefinition[] = await parser.parseFormulasFromText(
-      sources
-    );
-
-    // Mark all imported formulas with creationType "imported"
-    const markedFormulas = formulas.map((formula) => ({
-      ...formula,
-      creationType: "imported" as const,
-    }));
-
-    // Persist to IndexedDB
-    await db.transaction("rw", db.formulas, async () => {
-      await db.formulas.clear();
-      if (markedFormulas.length > 0) {
-        await db.formulas.bulkPut(markedFormulas);
+    if (requestData.type === "github") {
+      const { urls } = requestData;
+      if (!urls || urls.length === 0) {
+        const resp: WorkerResponse = {
+          success: false,
+          error: "No URLs provided",
+        };
+        self.postMessage(resp);
+        return;
       }
-    });
 
-    const resp: WorkerResponse = { success: true, count: formulas.length };
-    self.postMessage(resp);
+      const sources = await collectSourcesFromUrls(urls);
+      const formulas: FormulaDefinition[] = await parser.parseFormulasFromText(
+        sources
+      );
+
+      // Mark all imported formulas with creationType "imported"
+      const markedFormulas = formulas.map((formula) => ({
+        ...formula,
+        creationType: "imported" as const,
+      }));
+
+      // Persist to IndexedDB
+      await db.transaction("rw", db.formulas, async () => {
+        await db.formulas.clear();
+        if (markedFormulas.length > 0) {
+          await db.formulas.bulkPut(markedFormulas);
+        }
+      });
+
+      const resp: WorkerResponse = { success: true, count: formulas.length };
+      self.postMessage(resp);
+    } else if (requestData.type === "local") {
+      const { sources, fileData } = requestData;
+      if (!sources || sources.length === 0) {
+        const resp: WorkerResponse = {
+          success: false,
+          error: "No files provided",
+        };
+        self.postMessage(resp);
+        return;
+      }
+
+      const formulas: FormulaDefinition[] = await parser.parseFormulasFromText(sources);
+
+      // Create a map of file name to file data for quick lookup
+      const fileDataMap = new Map(fileData.map(file => [file.name, file]));
+
+      // Mark all uploaded formulas with creationType "uploaded" and add local info
+      const markedFormulas = formulas.map((formula) => {
+        // Find the source file that contains this formula
+        const sourceFile = sources.find(source =>
+          source.content.includes(formula.id) ||
+          (formula.sourceCode && source.content.includes(formula.sourceCode.substring(0, 50)))
+        );
+
+        const fileInfo = sourceFile ? fileDataMap.get(sourceFile.path) : null;
+
+        return {
+          ...formula,
+          creationType: "uploaded" as const,
+          localInfo: fileInfo ? {
+            fileName: fileInfo.name,
+            fileSize: fileInfo.size,
+            lastModified: fileInfo.lastModified,
+            uploadTimestamp: new Date(),
+          } : undefined,
+        };
+      });
+
+      // Persist to IndexedDB (append instead of replace for local uploads)
+      await db.transaction("rw", db.formulas, async () => {
+        if (markedFormulas.length > 0) {
+          await db.formulas.bulkPut(markedFormulas);
+        }
+      });
+
+      const resp: WorkerResponse = { success: true, count: formulas.length };
+      self.postMessage(resp);
+    }
   } catch (e) {
     const resp: WorkerResponse = {
       success: false,
