@@ -13,6 +13,7 @@ import { cn } from "../../../lib/utils";
 import { RefreshCw, Play, Loader2 } from "lucide-react";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useGraphStore } from "@/store/graphStore";
+import { runnerManager } from "../services/runnerManager";
 
 interface ApiNodeProps {
   id: string;
@@ -374,6 +375,9 @@ export const ApiNode = memo(function ApiNode({ id, data }: ApiNodeProps) {
         },
       });
 
+      // 通知下游节点数据已更新（如果下游节点开启自动运行，会自动触发执行）
+      runnerManager.notifyNodeDataChange(id, responseData);
+
       setError(null);
     } catch (err) {
       const errorMessage =
@@ -502,7 +506,7 @@ export const ApiNode = memo(function ApiNode({ id, data }: ApiNodeProps) {
 
       {/* Description */}
       {data.description && (
-        <div className="text-xs text-gray-600 mb-3">{data.description}</div>
+        <div className="text-xs text-gray-600">{data.description}</div>
       )}
 
       {/* API Configuration */}
@@ -606,7 +610,8 @@ export const ApiNode = memo(function ApiNode({ id, data }: ApiNodeProps) {
           position={Position.Right}
           className="w-3 h-3 bg-orange-500"
           style={{
-            top: HEADER_HEIGHT + configSectionHeight + HEADER_TO_FIRST_HANDLE_GAP,
+            top:
+              HEADER_HEIGHT + configSectionHeight + HEADER_TO_FIRST_HANDLE_GAP,
           }}
         />
       )}

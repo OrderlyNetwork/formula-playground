@@ -24,6 +24,7 @@ interface FormulaStore {
   // Actions
   loadFormulas: (sourceFiles?: string[] | FormulaDefinition[]) => Promise<void>;
   selectFormula: (formulaId: string) => void;
+  getFormulaDefinition: (formulaId: string) => FormulaDefinition | undefined;
   updateInput: (key: string, value: any) => void;
   updateInputAt: (path: string, value: any) => void;
   setInputs: (inputs: Record<string, any>) => void;
@@ -101,6 +102,11 @@ export const useFormulaStore = create<FormulaStore>((set, get) => ({
 
     // Load history for this formula
     get().loadHistory(formulaId);
+  },
+
+  // Get formula definition by ID
+  getFormulaDefinition: (formulaId: string) => {
+    return get().formulaDefinitions.find((f) => f.id === formulaId);
   },
 
   // Update a single input value

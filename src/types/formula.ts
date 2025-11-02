@@ -1,5 +1,6 @@
 // Type definitions for Formula Playground
 import type { Node, Edge } from "reactflow";
+import type { NodeExecutionStatus } from "./runner";
 
 export type FormulaInputType = "number" | "string" | "boolean" | "object";
 export type RoundingStrategy = "floor" | "ceil" | "round" | "trunc";
@@ -8,7 +9,9 @@ export type FormulaScalar =
   | string
   | boolean
   | Record<string, unknown>
-  | unknown[];
+  | unknown[]
+  | null
+  | {};
 
 /**
  * @description Calculation factor type definition
@@ -180,6 +183,14 @@ export interface FormulaNodeData {
     status?: "disconnected" | "connecting" | "connected" | "error";
     protocols?: string[];
     topic?: string; // WebSocket subscription topic
+  };
+  // For formula nodes: execution state and runner control
+  executionState?: {
+    status: NodeExecutionStatus;
+    isAutoRunning: boolean;
+    lastExecutionTime?: number;
+    lastResult?: any;
+    errorMessage?: string;
   };
 }
 

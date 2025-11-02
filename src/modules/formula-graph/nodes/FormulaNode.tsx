@@ -3,7 +3,16 @@ import type { Connection } from "reactflow";
 import { useCallback, useMemo, Fragment, memo } from "react";
 import type { FormulaNodeData } from "@/types/formula";
 import { cn } from "@/lib/utils";
-import { Calculator } from "lucide-react";
+import { Calculator, AlertCircle } from "lucide-react";
+import { ControlButton } from "../components/ControlButton";
+import { useFormulaRunner } from "../hooks/useFormulaRunner";
+import {
+  Tooltip,
+  TooltipArrow,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface FormulaNodeProps {
   id: string;
@@ -24,6 +33,26 @@ export const FormulaNode = memo(function FormulaNode({
 }: FormulaNodeProps) {
   const inputs = data.inputs ?? [];
   const handleCount = inputs.length;
+
+  // 使用 FormulaRunner hook
+  const {
+    isAutoRunning,
+    status: executionStatus,
+    errorMessage,
+    startAutoRun,
+    stopAutoRun,
+    execute: handleManualExecute,
+  } = useFormulaRunner(id);
+
+  console.log(`[FormulaNode] Render for ${id}:`, {
+    isAutoRunning,
+    executionStatus,
+    errorMessage,
+    hasStartAutoRun: !!startAutoRun,
+    hasStopAutoRun: !!stopAutoRun,
+  });
+
+  // Note: runnerManager initialization is handled in useFormulaRunner hook
 
   const containerMinHeight =
     HEADER_HEIGHT +
@@ -54,28 +83,69 @@ export const FormulaNode = memo(function FormulaNode({
   );
 
   const isDefaultOccupied = occupiedTargetHandles.has(DEFAULT_HANDLE_ID);
+
   return (
     <div
       className={cn(
-        "p-4 rounded-lg border-2 bg-white shadow-md min-w-[280px] relative",
+        "p-4 rounded-lg border-2 bg-white shadow-md w-[300px] relative",
         "border-purple-500",
-        data.isError && "border-red-500"
+        executionStatus === "error" && "border-red-500"
       )}
       style={{ minHeight: containerMinHeight }}
     >
       {/* Header */}
       <div
-        className="flex flex-col gap-1 pr-2"
+        className="flex flex-col gap-1 pr-8"
         style={{ paddingBottom: 8, minHeight: HEADER_HEIGHT }}
       >
-        <div className="font-semibold text-gray-900 text-lg truncate max-w-[240px] flex items-center gap-1">
+        <div className="font-semibold text-gray-900 text-lg truncate max-w-[296px] flex items-center gap-1">
           <Calculator size={22} strokeWidth={1.5} /> <span>{data.label}</span>
         </div>
         {data.description && (
-          <div className="text-xs text-gray-600 max-w-[240px] line-clamp-2">
+          <div className="text-xs text-gray-600 max-w-[296px] line-clamp-2">
             {data.description}
           </div>
         )}
+
+        {/* 错误信息显示 - 标题下方 */}
+        {executionStatus === "error" && errorMessage && (
+          <div>
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-start gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1.5 cursor-help">
+                    <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+                    <span className="line-clamp-2 flex-1">{errorMessage}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  align="start"
+                  className="bg-red-600 text-white border-red-700 max-w-[320px]"
+                >
+                  <p className="text-xs font-medium mb-1">执行错误</p>
+                  <p className="text-xs whitespace-pre-wrap break-words">
+                    {errorMessage}
+                  </p>
+                  <TooltipArrow className="fill-red-600" />
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        )}
+
+        {/* 控制按钮 - 右上角 */}
+        <div className="absolute top-2 right-2">
+          <ControlButton
+            status={executionStatus}
+            isAutoRunning={isAutoRunning}
+            onStartAutoRun={startAutoRun}
+            onStopAutoRun={stopAutoRun}
+            onManualExecute={handleManualExecute}
+            size="sm"
+            className="shadow-sm"
+          />
+        </div>
       </div>
 
       {/* Handles below header with labels on the right */}

@@ -3,7 +3,7 @@ import { Card } from "@/components/common/Card";
 import { Button } from "@/components/common/Button";
 import { Input } from "@/components/ui/input";
 import { useSettingsStore } from "@/store/settingsStore";
-import { Globe, Radio, RotateCcw, Save } from "lucide-react";
+import { RotateCcw, Save } from "lucide-react";
 
 /**
  * SettingsPanel component for managing application-wide settings

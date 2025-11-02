@@ -25,6 +25,7 @@ import { useAppStore } from "@/store/appStore";
 import { useGraphStore } from "@/store/graphStore";
 import { useFormulaStore } from "@/store/formulaStore";
 import { generateFormulaGraph } from "@/modules/formula-graph";
+import { runnerManager } from "@/modules/formula-graph/services/runnerManager";
 
 const nodeTypes = {
   input: InputNode,
@@ -222,7 +223,7 @@ export function CenterCanvas() {
                   ...node,
                   data: {
                     ...node.data,
-                    value: newValue,
+                    value: newValue ?? null,
                   },
                 };
               }
@@ -270,6 +271,25 @@ export function CenterCanvas() {
       const current = useGraphStore.getState().edges;
       const next = applyEdgeChanges(changes, current);
       setEdges(next);
+
+      // 当边变化时，更新受影响节点的依赖关系
+      const affectedNodes = new Set<string>();
+      changes.forEach((change) => {
+        if ("id" in change && "source" in change && "target" in change) {
+          // 边的添加或删除会影响 source 和 target 节点的依赖关系
+          const edge = current.find((e) => e.id === change.id) || 
+                      next.find((e) => e.id === change.id);
+          if (edge) {
+            affectedNodes.add(edge.source);
+            affectedNodes.add(edge.target);
+          }
+        }
+      });
+
+      // 更新受影响节点的依赖关系
+      affectedNodes.forEach((nodeId) => {
+        runnerManager.updateNodeDependencies(nodeId);
+      });
     },
     [setEdges]
   );
@@ -332,10 +352,18 @@ export function CenterCanvas() {
             const extractedValue = getByPath(sourceNode.data.value, sourceHandle);
             if (extractedValue !== undefined) {
               valueToSet = extractedValue;
+            } else {
+              valueToSet = null;
             }
           }
 
           fn(inputKey, valueToSet);
+
+          // 如果连接到 ObjectNode，通知 ObjectNode 数据变化
+          const targetNode = storeNodes.find((n) => n.id === target);
+          if (targetNode?.type === "object") {
+            runnerManager.notifyNodeDataChange(target, valueToSet);
+          }
         }
       }
     },
