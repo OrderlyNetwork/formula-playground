@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from "react";
 import { useGraphStore } from "@/store/graphStore";
+import { useFormulaStore } from "@/store/formulaStore";
 import type { FormulaExecutionResult } from "@/types/executor";
 import { runnerManager } from "@/modules/formula-graph/services/runnerManager";
 
@@ -40,6 +41,7 @@ export function useNodeValueUpdates(
     const currentEdges = useGraphStore.getState().edges;
     let hasChange = false;
     const inputNodesToNotify: Array<{ nodeId: string; value: unknown }> = [];
+    const { updateInput } = useFormulaStore.getState();
 
     const next = currentNodes.map((node) => {
       // Update input nodes with current input values
@@ -104,6 +106,106 @@ export function useNodeValueUpdates(
                 };
               }
             }
+          }
+        }
+        return node;
+      }
+
+      // Update ArrayNode values
+      // If ArrayNode has incoming connections, merge all source values into array
+      // Otherwise, update from currentInputs (manual edits)
+      if (node.type === "array" && node.id.startsWith("array-")) {
+        const incomingEdges = currentEdges.filter(
+          (edge) => edge.target === node.id
+        );
+
+        if (incomingEdges.length > 0) {
+          // Merge values from all connected sources
+          const mergedArray: unknown[] = [];
+          
+          for (const edge of incomingEdges) {
+            const sourceNode = currentNodes.find(
+              (n) => n.id === edge.source
+            );
+            
+            if (sourceNode?.data?.value !== undefined) {
+              let sourceValue = sourceNode.data.value;
+              
+              // Extract value based on sourceHandle (field path) if present
+              if (edge.sourceHandle && sourceNode.type === "api") {
+                const extractedValue = getByPathMemoized(
+                  sourceNode.data.value,
+                  edge.sourceHandle
+                );
+                if (extractedValue !== undefined) {
+                  sourceValue = extractedValue;
+                }
+              }
+
+              // Merge source value into array
+              if (Array.isArray(sourceValue)) {
+                mergedArray.push(...sourceValue);
+              } else if (sourceValue !== undefined && sourceValue !== null) {
+                mergedArray.push(sourceValue);
+              }
+            }
+          }
+
+          // Only update if the merged array is different
+          const currentArray = Array.isArray(node.data?.value)
+            ? node.data.value
+            : [];
+          
+          // Simple comparison: check if arrays have different lengths or values
+          const arraysEqual = 
+            currentArray.length === mergedArray.length &&
+            currentArray.every((val, idx) => val === mergedArray[idx]);
+
+          if (!arraysEqual) {
+            hasChange = true;
+            // Also update the store to keep it in sync
+            const arrayKey = node.id.replace("array-", "");
+            updateInput(arrayKey, mergedArray);
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                value: mergedArray,
+              },
+            };
+          }
+        } else {
+          // No incoming connections, clear the array or update from currentInputs (manual edits)
+          const arrayKey = node.id.replace("array-", "");
+          const newValue = getByPathMemoized(currentInputs, arrayKey);
+          
+          // Ensure newValue is an array
+          const newArrayValue = Array.isArray(newValue)
+            ? newValue
+            : newValue !== undefined && newValue !== null
+            ? [newValue]
+            : [];
+
+          // If there are no connections and currentInputs is empty/undefined, clear the array
+          const shouldClear = 
+            (newValue === undefined || newValue === null || 
+             (Array.isArray(newValue) && newValue.length === 0)) &&
+            Array.isArray(node.data?.value) && 
+            node.data.value.length > 0;
+
+          if (shouldClear || JSON.stringify(node.data?.value) !== JSON.stringify(newArrayValue)) {
+            hasChange = true;
+            // Update store if clearing
+            if (shouldClear) {
+              updateInput(arrayKey, []);
+            }
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                value: shouldClear ? [] : newArrayValue,
+              },
+            };
           }
         }
         return node;

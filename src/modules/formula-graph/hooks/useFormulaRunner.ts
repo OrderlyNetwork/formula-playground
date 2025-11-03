@@ -40,6 +40,8 @@ export const useFormulaRunner = (
     // 检查是否有 formula ID
     if (!formulaId) {
       console.log(`[useFormulaRunner] No formula ID found for node ${nodeId}`);
+      // 如果没有 formulaId，清理旧状态
+      runnerManager.disposeNode(nodeId);
       return;
     }
 
@@ -49,9 +51,12 @@ export const useFormulaRunner = (
     console.log(`[useFormulaRunner] Formula definition:`, formulaDefinition);
     
     if (formulaDefinition) {
+      // createNodeContext 内部会处理公式切换时的状态清理
       runnerManager.createNodeContext(nodeId, formulaDefinition);
     } else {
       console.log(`[useFormulaRunner] No formula definition found for formula ID: ${formulaId}`);
+      // 如果找不到公式定义，清理旧状态
+      runnerManager.disposeNode(nodeId);
     }
   }, [nodeId, formulaId, getFormulaDefinition]);
 
@@ -75,7 +80,7 @@ export const useFormulaRunner = (
     await runnerManager.executeNode(nodeId);
   }, [nodeId]);
 
-  // 初始化
+  // 初始化：当 nodeId 或 autoInitialize 变化时
   useEffect(() => {
     console.log(`[useFormulaRunner] useEffect running for ${nodeId}`);
 
@@ -98,7 +103,17 @@ export const useFormulaRunner = (
       console.log(`[useFormulaRunner] Cleanup for ${nodeId}`);
       runnerManager.disposeNode(nodeId);
     };
-  }, [nodeId, autoInitialize, initializeRunner]); // 添加依赖数组，避免每次渲染都重新初始化
+  }, [nodeId, autoInitialize]); // 只在 nodeId 或 autoInitialize 变化时重新初始化
+
+  // 监听 formulaId 变化：当公式切换时重新初始化
+  useEffect(() => {
+    console.log(`[useFormulaRunner] Formula ID changed for ${nodeId}: ${formulaId}`);
+    
+    if (autoInitialize && formulaId) {
+      // 公式切换时，initializeRunner 会处理状态清理
+      initializeRunner();
+    }
+  }, [formulaId, nodeId, autoInitialize, initializeRunner]);
 
   // 监听状态变化
   useEffect(() => {

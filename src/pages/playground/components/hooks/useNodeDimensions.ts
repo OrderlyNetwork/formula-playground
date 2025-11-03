@@ -1,30 +1,26 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactFlowInstance } from "reactflow";
-import { applyELKLayout, type NodeDimensionsMap } from "@/modules/formula-graph";
-import { useGraphStore } from "@/store/graphStore";
+import type { NodeDimensionsMap } from "@/modules/formula-graph";
 
 /**
- * Hook to handle node dimensions changes and layout recalculation
- * @param reactFlowInstanceRef - Reference to ReactFlow instance for fitting view
+ * Hook to collect node dimensions without recalculating layout
+ * Layout is only calculated once when switching formulas in useGraphGeneration hook.
+ * This hook only collects dimensions for potential future use (e.g., improving initial layout).
+ * 
+ * @param reactFlowInstanceRef - Reference to ReactFlow instance (unused but kept for API consistency)
  * @returns Node dimensions map state and setter
  */
 export function useNodeDimensions(
   reactFlowInstanceRef: React.RefObject<ReactFlowInstance | null>
 ) {
-  const { setNodes } = useGraphStore();
   const [nodeDimensionsMap, setNodeDimensionsMap] = useState<NodeDimensionsMap>(
     new Map()
   );
-  const nodeDimensionsMapRef = useRef<NodeDimensionsMap>(new Map());
-  const layoutRecalculationTimeoutRef = useRef<number | null>(null);
-
-  // Keep ref in sync with state
-  useEffect(() => {
-    nodeDimensionsMapRef.current = nodeDimensionsMap;
-  }, [nodeDimensionsMap]);
 
   /**
-   * Recalculate layout when node dimensions change
+   * Collect node dimensions when they change, but don't recalculate layout
+   * Layout recalculation is disabled to prevent fitView issues and unexpected view jumps.
+   * Layout is only calculated once when switching formulas.
    */
   useEffect(() => {
     const handleNodeDimensionsChanged = (
@@ -36,43 +32,13 @@ export function useNodeDimensions(
     ) => {
       const { nodeId, width, height } = event.detail;
 
-      // Update dimensions map
+      // Only update dimensions map for potential future use
+      // Do NOT recalculate layout here to avoid fitView issues
       setNodeDimensionsMap((prev) => {
         const updated = new Map(prev);
         updated.set(nodeId, { width, height });
         return updated;
       });
-
-      // Debounce layout recalculation to avoid excessive recalculations
-      if (layoutRecalculationTimeoutRef.current) {
-        clearTimeout(layoutRecalculationTimeoutRef.current);
-      }
-
-      layoutRecalculationTimeoutRef.current = window.setTimeout(async () => {
-        const currentNodes = useGraphStore.getState().nodes;
-        const currentEdges = useGraphStore.getState().edges;
-
-        // Only recalculate if we have measured dimensions for at least some nodes
-        if (currentNodes.length > 0) {
-          // Use current dimensions map from ref (includes latest updates)
-          const currentDimensions = new Map(nodeDimensionsMapRef.current);
-          currentDimensions.set(nodeId, { width, height });
-
-          // Recalculate layout with measured dimensions
-          const { nodes: layoutedNodes } = await applyELKLayout(
-            currentNodes,
-            currentEdges,
-            currentDimensions
-          );
-
-          setNodes(layoutedNodes);
-
-          // Fit view after layout update
-          requestAnimationFrame(() => {
-            reactFlowInstanceRef.current?.fitView?.({ padding: 0.2 });
-          });
-        }
-      }, 300); // 300ms debounce
     };
 
     window.addEventListener(
@@ -85,11 +51,8 @@ export function useNodeDimensions(
         "node-dimensions-changed",
         handleNodeDimensionsChanged as EventListener
       );
-      if (layoutRecalculationTimeoutRef.current) {
-        clearTimeout(layoutRecalculationTimeoutRef.current);
-      }
     };
-  }, [setNodes, reactFlowInstanceRef]);
+  }, []);
 
   return { nodeDimensionsMap, setNodeDimensionsMap };
 }

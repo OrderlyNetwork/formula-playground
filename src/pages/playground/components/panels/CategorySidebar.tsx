@@ -1,5 +1,6 @@
 import {
   Tooltip,
+  TooltipArrow,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
@@ -72,7 +73,11 @@ export function CategorySidebar({
                   <Icon size={24} strokeWidth={1.5} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right">{category.label}</TooltipContent>
+              <TooltipContent side="right">
+                {category.label}
+
+                <TooltipArrow />
+              </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         );

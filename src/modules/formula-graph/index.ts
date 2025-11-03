@@ -16,7 +16,41 @@ export async function generateFormulaGraph(
 
   // Create input nodes
   formula.inputs.forEach((input) => {
-    if (input.type !== "object") {
+    // Check if this is an array type input
+    if (input.factorType?.array === true) {
+      // Array input: create an ArrayNode
+      const defaultArrayValue = Array.isArray(input.default) 
+        ? input.default 
+        : input.default !== undefined && input.default !== null
+        ? [input.default]
+        : [];
+      
+      nodes.push({
+        id: `array-${input.key}`,
+        type: "array",
+        position: { x: 0, y: 0 }, // Will be set by layout
+        data: {
+          id: input.key,
+          type: "array",
+          label: input.key,
+          value: defaultArrayValue,
+          inputType: input.type,
+          unit: input.unit,
+          description: input.description,
+          factorType: input.factorType,
+        },
+      });
+
+      // Create edge from array to formula
+      // Animation will be enabled when auto calculation is turned on
+      edges.push({
+        id: `e-array-${input.key}-formula`,
+        source: `array-${input.key}`,
+        target: "formula",
+        targetHandle: input.key,
+        animated: false,
+      });
+    } else if (input.type !== "object") {
       nodes.push({
         id: `input-${input.key}`,
         type: "input",
@@ -196,6 +230,13 @@ export async function applyELKLayout(
     if (isBoxWithHandles) {
       width = 220;
       height = Math.max(baseHeight, handleHeight);
+    } else if (node.type === "array") {
+      // ArrayNode has table UI, needs more space
+      // Base width: 400-600px (min-w-[400px] max-w-[600px])
+      // Height depends on array length: header (~60px) + table rows (~35px each) + add button (~30px)
+      const arrayLength = Array.isArray(node.data?.value) ? node.data.value.length : 0;
+      width = 500; // Default width for ArrayNode
+      height = 60 + Math.max(1, arrayLength) * 35 + 30; // Header + rows + button
     } else if (node.type === "input") {
       // InputNode actual width is 220px (w-[220px] in component)
       // Height needs to account for: padding (py-3 = 24px), label (~20px),

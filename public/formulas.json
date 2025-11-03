@@ -104,6 +104,117 @@
       "functionName": "calculateLiquidationPrice",
       "enabled": false
     }
+  },
+  {
+    "id": "total_portfolio_value",
+    "name": "Total Portfolio Value Calculation",
+    "version": "1.0.0",
+    "description": "## Overview\n\nCalculates the **total portfolio value** by summing up the value of all positions in a portfolio.\n\n## Purpose\n\nThis formula helps users understand their total portfolio value across multiple positions. Each position has a quantity and a mark price, and the total value is the sum of all position values.\n\n## Calculation\n\nThe total portfolio value is calculated using the following formula:\n\n```\nresult = Σ(position_qty × mark_price) for all positions\n```\n\n## Parameters\n\n- **positions**: An array of position objects, each containing:\n  - **position_qty**: The quantity of the position\n  - **mark_price**: The current mark price of the asset\n  - **symbol**: The trading symbol (e.g., \"BTCUSDT\")\n\n## Example\n\nFor positions:\n- Position 1: 0.5 BTC at $50,000 = $25,000\n- Position 2: 10 ETH at $3,000 = $30,000\n\n```\nTotal Portfolio Value = $25,000 + $30,000 = $55,000\n```\n\n## Notes\n\n- This formula sums up all positions regardless of direction (long/short)\n- Mark price is used for current valuation\n- Empty array returns 0",
+    "tags": ["portfolio", "valuation", "array"],
+    "creationType": "builtin",
+    "formula": "result = sum(positions.map(p => p.position_qty * p.mark_price))",
+    "engineHints": {
+      "ts": { "rounding": "round", "scale": 2 },
+      "local": { "rounding": "round", "scale": 2 }
+    },
+    "inputs": [
+      {
+        "key": "positions",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "array": true,
+          "properties": [
+            {
+              "key": "position_qty",
+              "type": "number",
+              "factorType": { "baseType": "number" },
+              "default": 0,
+              "description": "The quantity of the position"
+            },
+            {
+              "key": "mark_price",
+              "type": "number",
+              "factorType": { "baseType": "number" },
+              "default": 0,
+              "description": "The current mark price of the asset"
+            },
+            {
+              "key": "symbol",
+              "type": "string",
+              "factorType": { "baseType": "string" },
+              "default": "BTCUSDT",
+              "description": "The trading symbol (e.g., BTCUSDT)"
+            }
+          ]
+        },
+        "default": [
+          {
+            "position_qty": 0.5,
+            "mark_price": 50000,
+            "symbol": "BTCUSDT"
+          },
+          {
+            "position_qty": 10,
+            "mark_price": 3000,
+            "symbol": "ETHUSDT"
+          }
+        ],
+        "description": "Array of position objects, each containing position_qty, mark_price, and symbol."
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": { "baseType": "number" },
+        "unit": "USD",
+        "description": "The total portfolio value calculated from all positions."
+      }
+    ],
+    "localNpmInfo": {
+      "packageName": "@orderly.network/portfolio",
+      "functionName": "calculateTotalPortfolioValue",
+      "enabled": false
+    }
+  },
+  {
+    "id": "array_sum",
+    "name": "Array Sum Calculation",
+    "version": "1.0.0",
+    "description": "## Overview\n\nCalculates the **sum** of all numbers in an array.\n\n## Purpose\n\nThis is a simple formula to demonstrate array type inputs with primitive values (numbers). It sums up all values in a number array.\n\n## Calculation\n\nThe sum is calculated using the following formula:\n\n```\nresult = Σ(values) for all values in array\n```\n\n## Parameters\n\n- **values**: An array of numbers to sum\n\n## Example\n\nFor values: [10, 20, 30, 40]\n\n```\nSum = 10 + 20 + 30 + 40 = 100\n```\n\n## Notes\n\n- Empty array returns 0\n- Non-numeric values are ignored\n- This demonstrates primitive array input type",
+    "tags": ["array", "math", "sum"],
+    "creationType": "builtin",
+    "formula": "result = sum(values)",
+    "engineHints": {
+      "ts": { "rounding": "round", "scale": 2 },
+      "local": { "rounding": "round", "scale": 2 }
+    },
+    "inputs": [
+      {
+        "key": "values",
+        "type": "number",
+        "factorType": {
+          "baseType": "number",
+          "array": true
+        },
+        "default": [10, 20, 30, 40],
+        "description": "An array of numbers to sum."
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": { "baseType": "number" },
+        "description": "The sum of all values in the array."
+      }
+    ],
+    "localNpmInfo": {
+      "packageName": "@orderly.network/utils",
+      "functionName": "calculateArraySum",
+      "enabled": false
+    }
   }
 ]
 

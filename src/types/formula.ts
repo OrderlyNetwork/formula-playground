@@ -170,6 +170,7 @@ export interface FormulaNodeData {
     | "output"
     | "operator"
     | "object"
+    | "array"
     | "api"
     | "websocket"; // Node type
   label: string; // Node display text

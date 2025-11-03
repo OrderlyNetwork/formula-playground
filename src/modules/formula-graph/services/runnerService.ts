@@ -31,6 +31,7 @@ export class RunnerService {
 
   /**
    * 为 FormulaNode 创建并初始化 runner context
+   * 如果 context 已存在，会先清理旧状态（停止自动运行、清除结果和错误）
    */
   createContext(
     nodeId: string,
@@ -40,22 +41,49 @@ export class RunnerService {
   ): RunnerContext {
     console.log(`[RunnerService] createContext called for ${nodeId}`);
 
+    // 如果 context 已存在，先清理旧状态
+    const existingContext = this.contexts.get(nodeId);
+    if (existingContext) {
+      console.log(
+        `[RunnerService] Existing context found for ${nodeId}, cleaning up old state`
+      );
+
+      // 如果正在自动运行，先停止
+      if (
+        existingContext.config.autoRun ||
+        existingContext.state.isAutoRunning
+      ) {
+        this.stopAutoRun(nodeId);
+      }
+
+      // 清除防抖定时器
+      const timer = this.debounceTimers.get(nodeId);
+      if (timer) {
+        clearTimeout(timer);
+        this.debounceTimers.delete(nodeId);
+      }
+    }
+
     const fullConfig: RunnerConfig = {
       nodeId,
       formulaId: formulaDefinition.id,
-      autoRun: false,
+      autoRun: false, // 默认关闭自动运行
       debounceMs: 300,
       maxRetries: 3,
       timeout: 10000,
       ...config,
     };
 
+    // 重置为初始状态，清除所有旧的结果和错误
     const initialState: NodeExecutionState = {
       nodeId,
       status: NodeExecutionStatus.IDLE,
       isAutoRunning: false,
       inputValues: {},
       pendingExecution: false,
+      lastResult: undefined,
+      errorMessage: undefined,
+      lastExecutionTime: undefined,
     };
 
     const context: RunnerContext = {
@@ -64,10 +92,11 @@ export class RunnerService {
       dependencies,
       state: initialState,
       worker: null,
-      updateCallback: undefined,
+      updateCallback: existingContext?.updateCallback, // 保留原有的回调函数
     };
 
     this.contexts.set(nodeId, context);
+
     console.log(
       `[RunnerService] createContext completed for ${nodeId}, total contexts: ${this.contexts.size}`
     );

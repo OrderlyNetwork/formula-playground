@@ -12,6 +12,7 @@ import { InputNode } from "@/modules/formula-graph/nodes/InputNode";
 import { FormulaNode } from "@/modules/formula-graph/nodes/FormulaNode";
 import { OutputNode } from "@/modules/formula-graph/nodes/OutputNode";
 import { ObjectNode } from "@/modules/formula-graph/nodes/ObjectNode";
+import { ArrayNode } from "@/modules/formula-graph/nodes/ArrayNode";
 import { ApiNode } from "@/modules/formula-graph/nodes/ApiNode";
 import { WebSocketNode } from "@/modules/formula-graph/nodes/WebSocketNode";
 import { useModeData } from "@/store/useModeData";
@@ -28,6 +29,7 @@ const nodeTypes = {
   formula: FormulaNode,
   output: OutputNode,
   object: ObjectNode,
+  array: ArrayNode,
   api: ApiNode,
   websocket: WebSocketNode,
 };
@@ -53,6 +55,7 @@ export function CenterCanvas() {
   const { setNodeDimensionsMap } = useNodeDimensions(reactFlowInstanceRef);
   useGraphGeneration(
     selectedFormula,
+    selectedFormulaId,
     reactFlowInstanceRef,
     setNodeDimensionsMap
   );

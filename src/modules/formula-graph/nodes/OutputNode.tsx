@@ -64,7 +64,7 @@ export const OutputNode = memo(function OutputNode({
   return (
     <div
       className={cn(
-        "px-4 py-3 rounded-lg border-2 bg-white shadow-sm min-w-[180px]",
+        "px-4 py-3 rounded-lg border-2 bg-white shadow-sm w-[220px]",
         "border-green-400",
         data.isError && "border-red-500",
         data.diff !== undefined &&
@@ -98,7 +98,9 @@ export const OutputNode = memo(function OutputNode({
           </div>
         )}
         {data.description && (
-          <div className="text-xs text-gray-500 mt-1">{data.description}</div>
+          <div className="text-xs text-gray-500 mt-1 text-left">
+            {data.description}
+          </div>
         )}
       </div>
     </div>

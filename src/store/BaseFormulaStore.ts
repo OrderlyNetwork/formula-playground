@@ -39,7 +39,19 @@ export class BaseFormulaStore {
     const inputs: Record<string, any> = {};
 
     formula.inputs.forEach((input) => {
-      if (input.type === "object") {
+      // Check if this is an array type input
+      if (input.factorType?.array === true) {
+        // Array input: initialize as array
+        if (Array.isArray(input.default)) {
+          inputs[input.key] = input.default;
+        } else if (input.default !== undefined && input.default !== null) {
+          // If default is a single value, wrap it in an array
+          inputs[input.key] = [input.default];
+        } else {
+          // Empty array as default
+          inputs[input.key] = [];
+        }
+      } else if (input.type === "object") {
         const props = input.factorType?.properties ?? [];
         const obj: Record<string, any> = {};
 

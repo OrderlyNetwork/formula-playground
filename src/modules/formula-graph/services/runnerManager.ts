@@ -31,6 +31,7 @@ class RunnerManager {
 
   /**
    * 为 FormulaNode 创建执行上下文
+   * 如果公式已切换，会先清理旧状态（停止自动运行、清除结果和错误）
    */
   createNodeContext(
     nodeId: string,
@@ -40,17 +41,49 @@ class RunnerManager {
       formulaDefinition: formulaDefinition.name,
     });
 
+    // 检查是否是公式切换（context 已存在但 formulaId 不同）
+    const existingContext = this.runnerService.getContext(nodeId);
+    const isFormulaSwitching = existingContext && 
+      existingContext.config.formulaId !== formulaDefinition.id;
+    
+    if (isFormulaSwitching) {
+      console.log(`[RunnerManager] Formula switching detected for ${nodeId}: ${existingContext.config.formulaId} -> ${formulaDefinition.id}`);
+      
+      // 先清理旧状态：停止自动运行、清除状态
+      if (existingContext.config.autoRun || existingContext.state.isAutoRunning) {
+        this.stopNodeAutoRun(nodeId);
+      }
+      
+      // 清除 graph store 中的执行状态
+      const store = useGraphStore.getState();
+      store.updateNodeExecutionState(nodeId, {
+        status: 'idle',
+        isAutoRunning: false,
+        lastResult: undefined,
+        errorMessage: undefined,
+        lastExecutionTime: undefined,
+        inputValues: {},
+        pendingExecution: false,
+      });
+    }
+
     // 获取节点的依赖关系
     const dependencies = this.getNodeDependencies(nodeId);
     this.nodeDependencies.set(nodeId, dependencies);
 
-    // 创建 runner context
+    // 创建 runner context（内部会处理清理逻辑）
     this.runnerService.createContext(nodeId, formulaDefinition, dependencies);
 
     // 设置状态更新回调
     this.runnerService.setUpdateCallback(nodeId, (state) => {
       this.handleNodeStateUpdate(nodeId, state);
     });
+
+    // 通知状态更新，清除 UI 中的旧状态（在 callback 设置之后）
+    const context = this.runnerService.getContext(nodeId);
+    if (context?.updateCallback) {
+      context.updateCallback({ ...context.state });
+    }
 
     console.log(`[RunnerManager] createNodeContext completed for ${nodeId}`);
   }

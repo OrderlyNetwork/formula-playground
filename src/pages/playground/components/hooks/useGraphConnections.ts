@@ -30,8 +30,30 @@ export function useGraphConnections() {
   const { nodes: storeNodes, edges: storeEdges, setEdges } = useGraphStore();
 
   /**
+   * Helper function to merge source value into array
+   * Handles arrays, single values, and objects
+   */
+  function mergeValueIntoArray(
+    currentArray: unknown[],
+    sourceValue: unknown
+  ): unknown[] {
+    const newArray = [...currentArray];
+    
+    if (Array.isArray(sourceValue)) {
+      // If source is array, concatenate
+      return [...newArray, ...sourceValue];
+    } else if (sourceValue !== undefined && sourceValue !== null) {
+      // Otherwise, append the value
+      return [...newArray, sourceValue];
+    }
+    
+    return newArray;
+  }
+
+  /**
    * Handle connection creation - validates and creates edges between nodes
-   * Only allows API/WebSocket nodes to connect to InputNode
+   * - Allows API/WebSocket nodes to connect to InputNode (single connection)
+   * - Allows InputNode/ObjectNode/ArrayNode to connect to ArrayNode (multiple connections)
    * Enforces single connection rule for InputNode: removes existing connections before creating new ones
    * Supports field path extraction from sourceHandle for API nodes
    */
@@ -43,10 +65,77 @@ export function useGraphConnections() {
       const sourceNode = storeNodes.find((n) => n.id === source);
       const targetNode = storeNodes.find((n) => n.id === target);
 
+      if (!sourceNode || !targetNode) return;
+
+      // Handle connections to ArrayNode (supports multiple connections)
+      if (
+        targetNode.type === "array" &&
+        (sourceNode.type === "input" ||
+          sourceNode.type === "object" ||
+          sourceNode.type === "array" ||
+          sourceNode.type === "api" ||
+          sourceNode.type === "websocket")
+      ) {
+        // Find the formula node that this ArrayNode connects to
+        // Check if that formula node has auto calculation enabled
+        const arrayNodeOutgoingEdges = storeEdges.filter(
+          (edge) => edge.source === target
+        );
+        let isAutoRunning = false;
+
+        for (const edge of arrayNodeOutgoingEdges) {
+          const downstreamNode = storeNodes.find((n) => n.id === edge.target);
+          if (downstreamNode?.type === "formula") {
+            isAutoRunning =
+              downstreamNode.data?.executionState?.isAutoRunning ?? false;
+            break;
+          }
+        }
+
+        // Create new edge (multiple connections allowed, don't remove existing ones)
+        const newEdge = {
+          id: `e-${source}-${target}${sourceHandle ? `-${sourceHandle}` : ""}`,
+          source,
+          target,
+          sourceHandle: sourceHandle || undefined,
+          animated: isAutoRunning,
+        };
+
+        const updatedEdges = [...storeEdges, newEdge];
+        setEdges(updatedEdges);
+
+        // Merge source value into ArrayNode's array
+        if (sourceNode.data?.value !== undefined) {
+          const arrayKey = targetNode.id.replace("array-", "");
+          const { updateInput } = useFormulaStore.getState();
+
+          // Extract value based on sourceHandle (field path) if present
+          let sourceValue = sourceNode.data.value;
+          if (sourceHandle && sourceNode.type === "api") {
+            const extractedValue = getByPath(
+              sourceNode.data.value,
+              sourceHandle
+            );
+            if (extractedValue !== undefined) {
+              sourceValue = extractedValue;
+            }
+          }
+
+          // Get current array value from ArrayNode
+          const currentArrayValue = Array.isArray(targetNode.data?.value)
+            ? targetNode.data.value
+            : [];
+
+          // Merge the new value into the array
+          const mergedArray = mergeValueIntoArray(currentArrayValue, sourceValue);
+          updateInput(arrayKey, mergedArray);
+        }
+
+        return;
+      }
+
       // Validate connection: only allow API/WebSocket nodes to connect to InputNode
       if (
-        sourceNode &&
-        targetNode &&
         (sourceNode.type === "api" || sourceNode.type === "websocket") &&
         targetNode.type === "input"
       ) {
@@ -131,8 +220,34 @@ export function useGraphConnections() {
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
       const current = useGraphStore.getState().edges;
+      const currentNodes = useGraphStore.getState().nodes;
       const next = applyEdgeChanges(changes, current);
       setEdges(next);
+
+      // 检测删除连接到 ArrayNode 的边，并清除 ArrayNode 的数据
+      changes.forEach((change) => {
+        if (change.type === "remove") {
+          const removedEdge = current.find((e) => e.id === change.id);
+          if (removedEdge) {
+            const targetNode = currentNodes.find((n) => n.id === removedEdge.target);
+            
+            // 如果删除的是连接到 ArrayNode 的边
+            if (targetNode?.type === "array") {
+              // 检查是否还有其他连接到这个 ArrayNode 的边
+              const remainingEdges = next.filter(
+                (edge) => edge.target === removedEdge.target
+              );
+              
+              // 如果没有其他连接了，清除 ArrayNode 的数据
+              if (remainingEdges.length === 0) {
+                const arrayKey = targetNode.id.replace("array-", "");
+                const { updateInput } = useFormulaStore.getState();
+                updateInput(arrayKey, []);
+              }
+            }
+          }
+        }
+      });
 
       // 当边变化时，更新受影响节点的依赖关系
       const affectedNodes = new Set<string>();
