@@ -73,7 +73,7 @@ export class BaseFormulaStore {
   public async executeFormulaBase(
     formula: FormulaDefinition,
     inputs: Record<string, any>,
-    engine: "ts" | "rust"
+    engine: "ts" | "rust" | "local"
   ): Promise<{
     success: boolean;
     result?: FormulaExecutionResult;

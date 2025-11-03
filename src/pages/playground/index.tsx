@@ -32,7 +32,7 @@ import { parseUrlList } from "@/lib/urls";
  * - Isolate view concerns into tiny in-file components for readability
  */
 export function PlaygroundPage() {
-  const { loadFormulas, error } = useFormulaStore();
+  const { loadFormulasFromAllSources, error } = useFormulaStore();
 
   // Tracks whether we need the user to import from GitHub initially
   const [needsImport, setNeedsImport] = useState(false);
@@ -40,29 +40,45 @@ export function PlaygroundPage() {
   const [busy, setBusy] = useState(false);
 
   /**
-   * Initialize formulas from IndexedDB on first mount.
+   * Initialize formulas from all sources (IndexedDB + config file) on first mount.
    * Uses an unmounted guard to prevent state updates after unmount.
    */
   useEffect(() => {
     let isMounted = true;
-    async function initializeFromDb() {
-      const count = await db.formulas.count();
+    async function initializeFromAllSources() {
+      await loadFormulasFromAllSources();
       if (!isMounted) return;
 
-      if (count > 0) {
-        const defs = await db.formulas.toArray();
-        await loadFormulas(defs);
-        if (!isMounted) return;
-        setNeedsImport(false);
+      // Check if we have any formulas loaded
+      const count = await db.formulas.count();
+      // Also check if config file has formulas (we already loaded them, but check count)
+      // If no formulas from any source, show import prompt
+      if (count === 0) {
+        // Try to fetch config file to see if it has formulas
+        try {
+          const response = await fetch("/formulas.json");
+          if (response.ok) {
+            const configFormulas = await response.json();
+            if (configFormulas.length === 0) {
+              setNeedsImport(true);
+            } else {
+              setNeedsImport(false);
+            }
+          } else {
+            setNeedsImport(true);
+          }
+        } catch {
+          setNeedsImport(true);
+        }
       } else {
-        setNeedsImport(true);
+        setNeedsImport(false);
       }
     }
-    void initializeFromDb();
+    void initializeFromAllSources();
     return () => {
       isMounted = false;
     };
-  }, [loadFormulas]);
+  }, [loadFormulasFromAllSources]);
 
   /**
    * Prompts the user for GitHub URLs (newline-separated), sanitizes input,
@@ -88,7 +104,7 @@ export function PlaygroundPage() {
     try {
       const res = await formulaRepository.importFromGithubAndRefresh(
         urls,
-        loadFormulas
+        loadFormulasFromAllSources
       );
       if (res.success) {
         setNeedsImport(false);
@@ -100,7 +116,7 @@ export function PlaygroundPage() {
     } finally {
       setBusy(false);
     }
-  }, [loadFormulas, promptForGitHubUrls]);
+  }, [loadFormulasFromAllSources, promptForGitHubUrls]);
 
   // Root layout rendered under Router to ensure hooks like useNavigate work in children
   const RootLayout = useCallback(

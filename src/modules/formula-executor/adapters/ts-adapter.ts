@@ -132,10 +132,16 @@ export class TSAdapter implements SDKAdapter {
 
       // No implementation found
       if (!func) {
-        throw new Error(
-          `Formula ${formula.id} not found. ` +
-            `Please configure jsDelivr URL or ensure hardcoded implementation exists.`
-        );
+        // Check if formula has localNpmInfo configured (suggest using local engine)
+        const hasLocalNpm =
+          formula.localNpmInfo?.enabled && formula.localNpmInfo.packageName;
+        const errorMessage = hasLocalNpm
+          ? `Formula ${formula.id} not found in TS engine. ` +
+            `This formula has localNpmInfo configured - it should use the "local" engine instead. ` +
+            `Please switch to the local engine or configure jsDelivr URL for TS engine.`
+          : `Formula ${formula.id} not found. ` +
+            `Please configure jsDelivr URL, localNpmInfo, or ensure hardcoded implementation exists.`;
+        throw new Error(errorMessage);
       }
 
       // Convert inputs object to function arguments in the correct order

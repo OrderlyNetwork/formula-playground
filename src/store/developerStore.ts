@@ -20,7 +20,7 @@ interface DeveloperStore {
   currentInputs: Record<string, any>;
   tsResult: FormulaExecutionResult | null;
   rustResult: FormulaExecutionResult | null;
-  activeEngine: "ts" | "rust";
+  activeEngine: "ts" | "rust" | "local";
   loading: boolean;
   error: string | null;
   parseError: string | null;
@@ -79,7 +79,7 @@ interface DeveloperStore {
   /**
    * Switch execution engine
    */
-  switchEngine: (engine: "ts" | "rust") => void;
+  switchEngine: (engine: "ts" | "rust" | "local") => void;
 
   /**
    * Load execution history
@@ -350,7 +350,7 @@ export const useDeveloperStore = create<DeveloperStore>((set, get) => ({
   },
 
   // Switch execution engine
-  switchEngine: (engine: "ts" | "rust") => {
+  switchEngine: (engine: "ts" | "rust" | "local") => {
     set({ activeEngine: engine });
   },
 

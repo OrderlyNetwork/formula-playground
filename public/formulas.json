@@ -1,0 +1,109 @@
+[
+  {
+    "id": "funding_fee",
+    "name": "Funding Fee Calculation",
+    "version": "1.2.0",
+    "description": "## Overview\n\nCalculates the **funding fee** for a perpetual contract position based on its size and the current funding rate.\n\n## Purpose\n\nThe funding fee is a periodic payment exchanged between long and short positions in perpetual contracts. This fee helps keep the contract price aligned with the underlying asset's spot price.\n\n## Calculation\n\nThe funding fee is calculated using the following formula:\n\n```\nresult = positionSize × fundingRate\n```\n\n## Parameters\n\n- **positionSize**: The size of the position (in USD)\n- **fundingRate**: The current funding rate (e.g., `0.0001` represents 0.01%)\n\n## Example\n\nFor a position size of **$1,000** with a funding rate of **0.0001** (0.01%):\n\n```\nFunding Fee = $1,000 × 0.0001 = $0.10\n```\n\n## Notes\n\n- Funding fees are typically charged every 8 hours\n- Positive funding rates mean longs pay shorts\n- Negative funding rates mean shorts pay longs",
+    "tags": ["perpetual", "fee", "financial"],
+    "creationType": "builtin",
+    "formula": "result = positionSize * fundingRate",
+    "engineHints": {
+      "ts": { "rounding": "round", "scale": 8 },
+      "rust": { "rounding": "trunc", "scale": 7 },
+      "local": { "rounding": "round", "scale": 8 }
+    },
+    "inputs": [
+      {
+        "key": "positionSize",
+        "type": "number",
+        "factorType": { "baseType": "number" },
+        "unit": "USD",
+        "default": 1000,
+        "description": "The size of the position (e.g., in USD)."
+      },
+      {
+        "key": "fundingRate",
+        "type": "number",
+        "factorType": { "baseType": "number" },
+        "unit": "%",
+        "default": 0.0001,
+        "description": "The current funding rate (e.g., 0.0001 for 0.01%)."
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": { "baseType": "number" },
+        "unit": "USD",
+        "description": "The calculated funding fee."
+      }
+    ],
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "calculateFundingFee",
+      "enabled": false
+    }
+  },
+  {
+    "id": "liquidation_price",
+    "name": "Liquidation Price Calculation",
+    "version": "1.0.0",
+    "description": "Calculates the liquidation price for a leveraged position.",
+    "tags": ["perpetual", "risk", "liquidation"],
+    "creationType": "builtin",
+    "formula": "result = entryPrice * leverage * (1 - maintenanceMarginRate)",
+    "engineHints": {
+      "ts": { "rounding": "round", "scale": 6 },
+      "local": { "rounding": "round", "scale": 6 }
+    },
+    "inputs": [
+      {
+        "key": "entryPrice",
+        "type": "number",
+        "factorType": { "baseType": "number" },
+        "unit": "USD",
+        "default": 50000,
+        "description": "The entry price of the position."
+      },
+      {
+        "key": "leverage",
+        "type": "number",
+        "factorType": { "baseType": "number" },
+        "unit": "x",
+        "default": 10,
+        "description": "The leverage multiplier."
+      },
+      {
+        "key": "isLong",
+        "type": "boolean",
+        "factorType": { "baseType": "boolean" },
+        "default": true,
+        "description": "Whether this is a long position."
+      },
+      {
+        "key": "maintenanceMarginRate",
+        "type": "number",
+        "factorType": { "baseType": "number" },
+        "unit": "%",
+        "default": 0.005,
+        "description": "The maintenance margin rate."
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": { "baseType": "number" },
+        "unit": "USD",
+        "description": "The calculated liquidation price."
+      }
+    ],
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "calculateLiquidationPrice",
+      "enabled": false
+    }
+  }
+]
+

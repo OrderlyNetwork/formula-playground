@@ -54,12 +54,14 @@ export interface FormulaDefinition {
   name: string; // Display name, e.g., "Funding Fee Calculation"
   version: string; // SDK version or formula version, extracted from JSDoc @version
   description?: string; // Natural language description, from JSDoc @description
+  formula?: string; // Original formula text, e.g., "Total Value = total_holding + total_unsettlement_PNL", extracted from JSDoc @formula
   tags?: string[]; // Tags for categorization or search, from JSDoc @tags (JSON array format)
   creationType?: FormulaCreationType; // How this formula was created
   engineHints?: {
     // Calculation hints for specific engines, from JSDoc @engineHint.xxx
     ts?: { rounding?: RoundingStrategy; scale?: number };
     rust?: { rounding?: RoundingStrategy; scale?: number };
+    local?: { rounding?: RoundingStrategy; scale?: number };
   };
   inputs: Array<{
     key: string; // Parameter name
@@ -102,6 +104,14 @@ export interface FormulaDefinition {
     functionName: string; // e.g., "calculateFundingFee"
     version: string; // e.g., "v1.0.0"
     enabled: boolean; // whether to use jsdelivr or fallback to hardcoded
+  };
+
+  // Local npm package execution info
+  localNpmInfo?: {
+    packageName: string; // e.g., "@orderly.network/utils"
+    functionName: string; // Exported function name
+    importPath?: string; // Optional subpath, e.g., "/dist/utils" (without .js)
+    enabled: boolean; // Whether to use local npm or fallback
   };
 
   examples?: Array<{
@@ -154,7 +164,14 @@ export interface FormulaReference {
  */
 export interface FormulaNodeData {
   id: string; // Corresponding formula ID or parameter/output KEY
-  type: "formula" | "input" | "output" | "operator" | "object" | "api" | "websocket"; // Node type
+  type:
+    | "formula"
+    | "input"
+    | "output"
+    | "operator"
+    | "object"
+    | "api"
+    | "websocket"; // Node type
   label: string; // Node display text
   value?: FormulaScalar; // Runtime parameter or result value
   unit?: string; // Unit

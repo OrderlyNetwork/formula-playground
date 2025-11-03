@@ -2,13 +2,13 @@ import { create } from "zustand";
 
 interface HistoryStore {
   // State
-  filterEngine: "all" | "ts" | "rust";
+  filterEngine: "all" | "ts" | "rust" | "local";
   sortBy: "timestamp" | "formula" | "duration";
   sortOrder: "asc" | "desc";
   searchQuery: string;
 
   // Actions
-  setFilterEngine: (engine: "all" | "ts" | "rust") => void;
+  setFilterEngine: (engine: "all" | "ts" | "rust" | "local") => void;
   setSortBy: (sortBy: "timestamp" | "formula" | "duration") => void;
   setSortOrder: (order: "asc" | "desc") => void;
   setSearchQuery: (query: string) => void;
@@ -23,7 +23,7 @@ export const useHistoryStore = create<HistoryStore>((set) => ({
   searchQuery: "",
 
   // Set filter by engine
-  setFilterEngine: (engine: "all" | "ts" | "rust") => {
+  setFilterEngine: (engine: "all" | "ts" | "rust" | "local") => {
     set({ filterEngine: engine });
   },
 

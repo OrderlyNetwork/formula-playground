@@ -23,13 +23,28 @@ export const formulaRepository = {
   /**
    * Refresh Zustand store by reading all formulas once.
    * Returns the freshly loaded list for convenience.
+   * Supports both loadFormulas(defs) and loadFormulasFromAllSources() signatures.
    */
   async refreshStore(
-    loadFormulas: (defs: FormulaDefinition[]) => Promise<void>
+    loadFormulas: 
+      | ((defs: FormulaDefinition[]) => Promise<void>)
+      | (() => Promise<void>)
   ): Promise<FormulaDefinition[]> {
-    const defs = await db.formulas.toArray();
-    await loadFormulas(defs);
-    return defs;
+    // Try to call with empty array first (for loadFormulas signature)
+    // If it fails or is a no-param function, call without params (for loadFormulasFromAllSources)
+    try {
+      // Check function length to determine signature
+      if (loadFormulas.length === 0) {
+        await (loadFormulas as () => Promise<void>)();
+      } else {
+        const defs = await db.formulas.toArray();
+        await (loadFormulas as (defs: FormulaDefinition[]) => Promise<void>)(defs);
+      }
+    } catch {
+      // Fallback: try calling without params
+      await (loadFormulas as () => Promise<void>)();
+    }
+    return await db.formulas.toArray();
   },
 
   /**
@@ -37,7 +52,9 @@ export const formulaRepository = {
    */
   async importFromGithubAndRefresh(
     urls: string[],
-    loadFormulas: (defs: FormulaDefinition[]) => Promise<void>
+    loadFormulas: 
+      | ((defs: FormulaDefinition[]) => Promise<void>)
+      | (() => Promise<void>)
   ): Promise<{ success: boolean; count?: number; error?: string }> {
     const res = await sourceLoaderService.importFromGitHub(urls);
     if (!res.success) return res;
@@ -50,7 +67,9 @@ export const formulaRepository = {
    */
   async importFromLocalFilesAndRefresh(
     files: LocalFileData[],
-    loadFormulas: (defs: FormulaDefinition[]) => Promise<void>
+    loadFormulas: 
+      | ((defs: FormulaDefinition[]) => Promise<void>)
+      | (() => Promise<void>)
   ): Promise<{ success: boolean; count?: number; error?: string }> {
     try {
       // Convert local files to source format expected by sourceLoaderService
@@ -76,7 +95,9 @@ export const formulaRepository = {
   /** Delete a formula and refresh the store. */
   async deleteAndRefresh(
     formulaId: string,
-    loadFormulas: (defs: FormulaDefinition[]) => Promise<void>
+    loadFormulas: 
+      | ((defs: FormulaDefinition[]) => Promise<void>)
+      | (() => Promise<void>)
   ): Promise<FormulaDefinition[]> {
     await db.formulas.delete(formulaId);
     return this.refreshStore(loadFormulas);
@@ -84,10 +105,18 @@ export const formulaRepository = {
 
   /** Clear all formula data and compiled cache, then empty the store. */
   async clearAllAndRefresh(
-    loadFormulas: (defs: FormulaDefinition[]) => Promise<void>
+    loadFormulas: 
+      | ((defs: FormulaDefinition[]) => Promise<void>)
+      | (() => Promise<void>)
   ): Promise<void> {
     await db.formulas.clear();
     await db.compiledFormulas.clear();
-    await loadFormulas([]);
+    // Call loadFormulas - if it's loadFormulasFromAllSources, it will handle merging
+    // If it's loadFormulas, pass empty array
+    if (loadFormulas.length === 0) {
+      await (loadFormulas as () => Promise<void>)();
+    } else {
+      await (loadFormulas as (defs: FormulaDefinition[]) => Promise<void>)([]);
+    }
   },
 };

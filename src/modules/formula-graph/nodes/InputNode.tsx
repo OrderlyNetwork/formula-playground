@@ -33,7 +33,9 @@ export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
   // Get source node info for better feedback
   const sourceNodeId = incomingConnection?.source;
   const sourceNode = useMemo(() => {
-    return sourceNodeId ? storeNodes.find((n: Node) => n.id === sourceNodeId) : null;
+    return sourceNodeId
+      ? storeNodes.find((n: Node) => n.id === sourceNodeId)
+      : null;
   }, [sourceNodeId, storeNodes]);
 
   const handleTextOrNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,7 +57,7 @@ export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
   return (
     <div
       className={cn(
-        "px-4 py-3 rounded-lg border-2 bg-white shadow-sm min-w-[180px] relative",
+        "px-4 py-3 rounded-lg border-2 bg-white shadow-sm w-[180px] relative",
         "border-blue-400",
         data.isError && "border-red-500",
         hasIncomingConnection && "border-blue-600 border-dashed"
@@ -67,9 +69,10 @@ export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
         position={Position.Left}
         className="w-3 h-3 bg-blue-500"
         style={{ top: "50%", transform: "translateY(-50%)" }}
-        title={hasIncomingConnection
-          ? "Click to disconnect or connect another source (will replace current connection)"
-          : "Connect a data source (API/WebSocket) - only one connection allowed"
+        title={
+          hasIncomingConnection
+            ? "Click to disconnect or connect another source (will replace current connection)"
+            : "Connect a data source (API/WebSocket) - only one connection allowed"
         }
       />
 

@@ -16,14 +16,14 @@ export interface FormulaExecutionResult {
   outputs?: Record<string, any>;
   error?: string;
   durationMs: number;
-  engine: "ts" | "rust";
+  engine: "ts" | "rust" | "local";
 }
 
 /**
  * @description SDK Adapter interface for different execution engines
  */
 export interface SDKAdapter {
-  id: "ts" | "rust";
+  id: "ts" | "rust" | "local";
   name: string;
   version: string;
   execute(

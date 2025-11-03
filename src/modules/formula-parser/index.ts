@@ -107,6 +107,7 @@ export class FormulaParser {
     const id = this.extractFormulaId(jsDoc) || toSnakeCase(name);
     const formulaName = this.extractName(jsDoc) || name;
     const description = this.extractDescription(jsDoc);
+    const formula = this.extractFormula(jsDoc);
     const version = this.extractVersion(jsDoc) || "1.0.0";
     const tags = this.extractTags(jsDoc);
 
@@ -127,6 +128,7 @@ export class FormulaParser {
       name: formulaName,
       version,
       description,
+      formula,
       tags,
       engineHints,
       inputs,
@@ -231,6 +233,17 @@ export class FormulaParser {
       .getTags()
       .find((tag) => tag.getTagName() === "description");
     return descTag?.getComment()?.toString() || jsDoc.getDescription();
+  }
+
+  /**
+   * Extract formula text from JSDoc @formula tag
+   * Example: @formula Total Value = total_holding + total_unsettlement_PNL
+   */
+  private extractFormula(jsDoc: JSDoc): string | undefined {
+    const formulaTag = jsDoc
+      .getTags()
+      .find((tag) => tag.getTagName() === "formula");
+    return formulaTag?.getComment()?.toString() || undefined;
   }
 
   private extractVersion(jsDoc: JSDoc): string | null {
@@ -355,11 +368,15 @@ export class FormulaParser {
 
     const comment = jsdelivrTag.getComment()?.toString() || "";
     // Match URL#functionName format
-    const match = comment.match(/^(https:\/\/cdn\.jsdelivr\.net\/[^\s#]+)#(\w+)$/);
+    const match = comment.match(
+      /^(https:\/\/cdn\.jsdelivr\.net\/[^\s#]+)#(\w+)$/
+    );
 
     if (!match) {
       // Try URL without #functionName (use default function name)
-      const simpleMatch = comment.match(/^(https:\/\/cdn\.jsdelivr\.net\/[^\s#]+)$/);
+      const simpleMatch = comment.match(
+        /^(https:\/\/cdn\.jsdelivr\.net\/[^\s#]+)$/
+      );
       if (simpleMatch) {
         const url = simpleMatch[1];
         const versionMatch = url.match(/@([^/]+)\//);

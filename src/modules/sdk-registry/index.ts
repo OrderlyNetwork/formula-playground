@@ -20,7 +20,7 @@ export class SDKAdapterRegistry {
   /**
    * Get an SDK adapter by ID
    */
-  getAdapter(id: "ts" | "rust"): SDKAdapter | undefined {
+  getAdapter(id: "ts" | "rust" | "local"): SDKAdapter | undefined {
     return this.adapters.get(id);
   }
 
