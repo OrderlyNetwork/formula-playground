@@ -17,6 +17,7 @@ interface TypeAwareInputProps {
   disabled?: boolean;
   label?: string;
   className?: string;
+  onMouseDown?: (e: React.MouseEvent) => void;
 }
 
 /**
@@ -30,6 +31,7 @@ export const TypeAwareInput = memo(function TypeAwareInput({
   disabled = false,
   label,
   className,
+  onMouseDown,
 }: TypeAwareInputProps) {
   const displayType = getInputDisplayType(factorType);
   const enumOptions = getEnumOptions(factorType);
@@ -79,7 +81,7 @@ export const TypeAwareInput = memo(function TypeAwareInput({
         onValueChange={handleChange}
         disabled={disabled}
       >
-        <SelectTrigger className={className}>
+        <SelectTrigger className={className} onMouseDown={onMouseDown}>
           <SelectValue placeholder={`Select ${label || "value"}`} />
         </SelectTrigger>
         <SelectContent>
@@ -102,6 +104,7 @@ export const TypeAwareInput = memo(function TypeAwareInput({
       disabled={disabled}
       className={className}
       placeholder={`Enter ${label || factorType.baseType}`}
+      onMouseDown={onMouseDown}
     />
   );
 });

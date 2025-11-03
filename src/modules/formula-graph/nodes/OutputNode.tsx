@@ -78,9 +78,6 @@ export const OutputNode = memo(function OutputNode({
         className="w-3 h-3 bg-green-500"
       />
       <div className="flex flex-col gap-1">
-        <div className="text-xs font-semibold text-green-600 uppercase">
-          Output
-        </div>
         <div className="font-medium text-gray-900">{data.label}</div>
         {data.value !== undefined && (
           <div className="text-sm text-gray-700 font-mono">

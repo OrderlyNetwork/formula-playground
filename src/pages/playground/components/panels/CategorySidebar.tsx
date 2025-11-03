@@ -5,7 +5,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Calculator, Database, History, Settings } from "lucide-react";
+import {
+  Calculator,
+  Database,
+  History,
+  Settings,
+  SquareFunction,
+} from "lucide-react";
 
 type CategoryType = "formulas" | "datasource" | "history" | "settings";
 
@@ -23,7 +29,8 @@ const categories: Category[] = [
   {
     id: "formulas",
     label: "Formulas",
-    icon: Calculator,
+    icon: SquareFunction,
+    // <SquareFunction />
   },
   {
     id: "datasource",

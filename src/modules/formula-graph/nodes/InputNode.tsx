@@ -62,6 +62,11 @@ export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
     fn(data.id, newValue);
   };
 
+  // Prevent node dragging when interacting with input
+  const handleInputMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   
   return (
     <div
@@ -101,7 +106,8 @@ export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
             onChange={handleValueChange}
             disabled={hasIncomingConnection}
             label={data.label}
-            className="px-2 select-text w-full"
+            className="px-2 select-text w-full nodrag"
+            onMouseDown={handleInputMouseDown}
           />
         </div>
         {data.description && (
