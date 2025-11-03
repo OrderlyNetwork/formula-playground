@@ -65,7 +65,7 @@ export function DataSourcePanel() {
           />
           <Input
             type="text"
-            placeholder="搜索数据源..."
+            placeholder="Search data sources..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-7 h-8 text-xs"
@@ -179,7 +179,9 @@ export function DataSourcePanel() {
           {/* No results message */}
           {!hasResults && searchQuery.trim() && (
             <div className="px-2.5 py-4">
-              <p className="text-xs text-gray-500">未找到匹配的数据源</p>
+              <p className="text-xs text-gray-500">
+                No matching data sources found
+              </p>
             </div>
           )}
         </div>
@@ -197,10 +199,10 @@ export function DataSourcePanel() {
         <div className="px-2.5 py-2 text-xs text-gray-600">
           {searchQuery.trim() ? (
             <>
-              显示 {filteredCount} / {totalCount} 个数据源
+              Showing {filteredCount} / {totalCount} data sources
             </>
           ) : (
-            <>共 {totalCount} 个数据源</>
+            <>Total {totalCount} data sources</>
           )}
         </div>
       </div>

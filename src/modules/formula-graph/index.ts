@@ -238,6 +238,25 @@ export async function applyELKLayout(
   edges: FormulaEdge[],
   dimensionsMap?: NodeDimensionsMap
 ): Promise<{ nodes: FormulaNode[]; edges: FormulaEdge[] }> {
+  // Group nodes by layer to calculate dynamic spacing
+  const inputNodes = nodes.filter(node =>
+    node.type === "input" || node.type === "array" ||
+    (node.type === "object" && !node.id.startsWith("formula"))
+  );
+  const outputNodes = nodes.filter(node => node.type === "output");
+
+  // Calculate dynamic Y-axis spacing based on sibling count
+  // More nodes = more compact spacing
+  const calculateSpacing = (nodeCount: number): string => {
+    if (nodeCount <= 3) return "40"; // Normal spacing for few nodes
+    if (nodeCount <= 6) return "25"; // More compact for moderate number
+    if (nodeCount <= 10) return "18"; // Quite compact for many nodes
+    return "12"; // Very compact for many nodes (11+)
+  };
+
+  const inputSpacing = calculateSpacing(inputNodes.length);
+  const outputSpacing = calculateSpacing(outputNodes.length);
+
   const elkNodes: ElkNode["children"] = nodes.map((node) => {
     // Check if we have measured dimensions for this node
     const measuredDimensions = dimensionsMap?.get(node.id);
@@ -300,14 +319,23 @@ export async function applyELKLayout(
     targets: [edge.target],
   }));
 
+  // Create the graph with layer-specific spacing
   const graph: ElkNode = {
     id: "root",
     layoutOptions: {
       "elk.algorithm": "layered",
       "elk.direction": "RIGHT",
-      "elk.spacing.nodeNode": "30", // Increased vertical spacing between nodes in same layer
+      // Use the most compact spacing among layers for overall layout
+      "elk.spacing.nodeNode": Math.min(
+        parseInt(inputSpacing),
+        parseInt(outputSpacing)
+      ).toString(),
       "elk.layered.spacing.nodeNodeBetweenLayers": "100",
       "elk.layered.spacing.edgeNodeBetweenLayers": "50", // Additional spacing for edge-node interactions
+      // Enable node placement strategy for better compactness
+      "elk.layered.nodePlacement.strategy": "LINEAR_SEGMENTS",
+      // Optimize for space efficiency
+      "elk.layered.compaction.strategy": "EDGE_LENGTH",
     },
     children: elkNodes,
     edges: elkEdges,

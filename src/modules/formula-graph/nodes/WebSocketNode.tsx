@@ -95,14 +95,6 @@ export const WebSocketNode = memo(function WebSocketNode({
           </div>
         )}
 
-        {/* WebSocket URL Display */}
-        <div>
-          <div className="text-xs text-gray-600 mb-1">Endpoint:</div>
-          <div className="text-xs font-mono bg-gray-50 text-gray-700 px-2 py-1.5 rounded border border-gray-200 break-all">
-            {url || "Not configured"}
-          </div>
-        </div>
-
         {/* Stream data display */}
         {data.value && (
           <div className="text-xs text-gray-500 mt-2 p-2 bg-teal-50 rounded border border-teal-200">
@@ -125,4 +117,3 @@ export const WebSocketNode = memo(function WebSocketNode({
     </div>
   );
 });
-

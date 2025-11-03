@@ -43,7 +43,7 @@ export function CenterCanvas() {
 
   const { nodes: storeNodes, edges: storeEdges, setNodes } = useGraphStore();
 
-  console.log("storeNodes", storeNodes);
+  // console.log("storeNodes", storeNodes);
 
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
 
