@@ -71,15 +71,15 @@ export function FormulasPanel({
                 <Button
                   variant="ghost"
                   size="sm"
-                  aria-label="配置"
-                  title="配置"
+                  aria-label="Settings"
+                  title="Settings"
                   className="p-0 h-4 w-4"
                   onClick={handleImport}
                 >
                   <Settings2 strokeWidth={1.5} size={14} />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>配置</TooltipContent>
+              <TooltipContent>Settings</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         }
@@ -94,7 +94,7 @@ export function FormulasPanel({
             />
             <Input
               type="text"
-              placeholder="搜索公式..."
+              placeholder="Search formulas..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-7 h-8 text-xs"
@@ -110,7 +110,7 @@ export function FormulasPanel({
             </p>
           ) : filteredFormulas.length === 0 ? (
             <p className="text-xs text-gray-500 px-2.5 py-4">
-              未找到匹配的公式
+              No matching formulas found
             </p>
           ) : (
             filteredFormulas.map((formula) => {
@@ -124,10 +124,10 @@ export function FormulasPanel({
 
               const creationTooltip =
                 formula.creationType === "parsed"
-                  ? "开发者模式解析"
+                  ? "Developer mode parsed"
                   : formula.creationType === "imported"
-                  ? "从GitHub导入"
-                  : "内置公式";
+                  ? "Imported from GitHub"
+                  : "Built-in formula";
 
               return (
                 <button
@@ -176,11 +176,11 @@ export function FormulasPanel({
         <div className="px-2.5 py-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-600 shrink-0">
           {searchQuery.trim() ? (
             <>
-              显示 {filteredFormulas.length} / {formulaDefinitions.length}{" "}
-              个公式
+              Showing {filteredFormulas.length} / {formulaDefinitions.length}{" "}
+              formulas
             </>
           ) : (
-            <>共 {formulaDefinitions.length} 个公式</>
+            <>Total {formulaDefinitions.length} formulas</>
           )}
         </div>
       </Card>

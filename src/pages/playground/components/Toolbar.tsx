@@ -30,30 +30,30 @@ export function Toolbar() {
         <h1 className="text-lg font-bold text-gray-900">SDK Playground</h1>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-6">
         {/* Mode tabs: now route-driven; clicking navigates between "/" and "/dev" */}
         {/* Compact mode tabs: smaller paddings and font size */}
         <div className="flex items-center gap-5">
           <button
             onClick={() => navigate("/")}
-            className={`py-3 text-xs font-medium transition-colors relative ${
+            className={`py-3 font-medium transition-colors relative ${
               isNormal ? "text-gray-900" : "text-gray-500 hover:text-gray-700"
             }`}
           >
-            正常模式
+            Formulas
             {isNormal && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900" />
             )}
           </button>
           <button
             onClick={() => navigate("/dev")}
-            className={`py-3 text-xs font-medium transition-colors relative ${
+            className={`py-3 font-medium transition-colors relative ${
               isDeveloper
                 ? "text-gray-900"
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
-            开发者模式
+            Dev Mode
             {isDeveloper && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900" />
             )}
@@ -61,7 +61,7 @@ export function Toolbar() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-600">Engine</span>
+          {/* <span className="text-xs text-gray-600">Engine</span> */}
           <Select
             value={activeEngine}
             onValueChange={(value) => switchEngine(value as "ts" | "rust")}

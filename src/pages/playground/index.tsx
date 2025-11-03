@@ -248,7 +248,7 @@ function UserLayout() {
 
   return (
     <ResizablePanelGroup direction="horizontal" className="h-full">
-      <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+      <ResizablePanel defaultSize={18} minSize={15} maxSize={30}>
         <div className="h-full">
           <LeftPanel />
         </div>
