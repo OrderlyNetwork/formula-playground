@@ -3,10 +3,10 @@
  * 管理所有 FormulaNode 的 RunnerService 实例和事件通信
  */
 
-import { RunnerService } from './runnerService';
-import type { RunnerDependencies } from '../../../types/runner';
-import type { FormulaDefinition } from '../../../types/formula';
-import { useGraphStore } from '../../../store/graphStore';
+import { RunnerService } from "./runnerService";
+import type { RunnerDependencies } from "@/types/runner";
+import type { FormulaDefinition } from "@/types/formula";
+import { useGraphStore } from "@/store/graphStore";
 
 class RunnerManager {
   private runnerService: RunnerService;
@@ -37,7 +37,7 @@ class RunnerManager {
     formulaDefinition: FormulaDefinition
   ): void {
     console.log(`[RunnerManager] createNodeContext called for ${nodeId}`, {
-      formulaDefinition: formulaDefinition.name
+      formulaDefinition: formulaDefinition.name,
     });
 
     // 获取节点的依赖关系
@@ -45,11 +45,7 @@ class RunnerManager {
     this.nodeDependencies.set(nodeId, dependencies);
 
     // 创建 runner context
-    this.runnerService.createContext(
-      nodeId,
-      formulaDefinition,
-      dependencies
-    );
+    this.runnerService.createContext(nodeId, formulaDefinition, dependencies);
 
     // 设置状态更新回调
     this.runnerService.setUpdateCallback(nodeId, (state) => {
@@ -71,6 +67,8 @@ class RunnerManager {
    */
   startNodeAutoRun(nodeId: string): void {
     this.runnerService.startAutoRun(nodeId);
+    // Update edge animations when auto run is enabled
+    this.updateEdgeAnimations(nodeId, true);
   }
 
   /**
@@ -78,6 +76,8 @@ class RunnerManager {
    */
   stopNodeAutoRun(nodeId: string): void {
     this.runnerService.stopAutoRun(nodeId);
+    // Update edge animations when auto run is disabled
+    this.updateEdgeAnimations(nodeId, false);
   }
 
   /**
@@ -95,7 +95,7 @@ class RunnerManager {
   updateNodeDependencies(nodeId: string): void {
     const dependencies = this.getNodeDependencies(nodeId);
     this.nodeDependencies.set(nodeId, dependencies);
-    
+
     // 更新 runner context 中的依赖关系
     const context = this.runnerService.getContext(nodeId);
     if (context) {
@@ -132,15 +132,30 @@ class RunnerManager {
 
   private setupEventListeners(): void {
     // 监听 FormulaNode 的控制按钮事件
-    window.addEventListener('formulaNode:startAutoRun', this.handleStartAutoRun);
-    window.addEventListener('formulaNode:stopAutoRun', this.handleStopAutoRun);
-    window.addEventListener('formulaNode:manualExecute', this.handleManualExecute);
+    window.addEventListener(
+      "formulaNode:startAutoRun",
+      this.handleStartAutoRun
+    );
+    window.addEventListener("formulaNode:stopAutoRun", this.handleStopAutoRun);
+    window.addEventListener(
+      "formulaNode:manualExecute",
+      this.handleManualExecute
+    );
   }
 
   private removeEventListeners(): void {
-    window.removeEventListener('formulaNode:startAutoRun', this.handleStartAutoRun);
-    window.removeEventListener('formulaNode:stopAutoRun', this.handleStopAutoRun);
-    window.removeEventListener('formulaNode:manualExecute', this.handleManualExecute);
+    window.removeEventListener(
+      "formulaNode:startAutoRun",
+      this.handleStartAutoRun
+    );
+    window.removeEventListener(
+      "formulaNode:stopAutoRun",
+      this.handleStopAutoRun
+    );
+    window.removeEventListener(
+      "formulaNode:manualExecute",
+      this.handleManualExecute
+    );
   }
 
   private setupReactFlowListeners(): void {
@@ -153,30 +168,30 @@ class RunnerManager {
 
     // 找到所有输入连接（target 是当前节点）
     const inputNodes = edges
-      .filter(edge => edge.target === nodeId)
-      .map(edge => ({
+      .filter((edge) => edge.target === nodeId)
+      .map((edge) => ({
         nodeId: edge.source,
-        handleId: edge.sourceHandle || undefined
+        handleId: edge.sourceHandle || undefined,
       }));
 
     // 找到所有输出连接（source 是当前节点）
     const outputNodes = edges
-      .filter(edge => edge.source === nodeId)
-      .map(edge => ({
+      .filter((edge) => edge.source === nodeId)
+      .map((edge) => ({
         nodeId: edge.target,
-        handleId: edge.targetHandle || undefined
+        handleId: edge.targetHandle || undefined,
       }));
 
     return {
       inputNodes,
-      outputNodes
+      outputNodes,
     };
   }
 
   private handleNodeStateUpdate(nodeId: string, state: any): void {
     console.log(`[RunnerManager] Updating state for ${nodeId}:`, {
       isAutoRunning: state.isAutoRunning,
-      status: state.status
+      status: state.status,
     });
 
     const store = useGraphStore.getState();
@@ -188,14 +203,14 @@ class RunnerManager {
       lastExecutionTime: state.lastExecutionTime,
       lastResult: state.lastResult,
       errorMessage: state.errorMessage,
-      inputValues: state.inputValues
+      inputValues: state.inputValues,
     });
 
     // 验证更新后的状态
     const updatedState = store.nodeExecutionStates.get(nodeId);
     console.log(`[RunnerManager] State after update:`, {
       isAutoRunning: updatedState?.isAutoRunning,
-      status: updatedState?.status
+      status: updatedState?.status,
     });
   }
 
@@ -216,7 +231,46 @@ class RunnerManager {
     const { nodeId } = customEvent.detail;
     this.executeNode(nodeId);
   };
+
+  /**
+   * Update edge animations for a formula node
+   * Updates all incoming edges (edges that connect to this formula node)
+   * and outgoing edges (edges that connect from this formula node to OutputNodes)
+   * @param nodeId - The formula node ID
+   * @param animated - Whether to enable animation
+   */
+  private updateEdgeAnimations(nodeId: string, animated: boolean): void {
+    const store = useGraphStore.getState();
+    const { edges, nodes } = store;
+
+    // Update both incoming and outgoing edges
+    const updatedEdges = edges.map((edge) => {
+      // Update incoming edges (edges that connect to this formula node)
+      if (edge.target === nodeId) {
+        return { ...edge, animated };
+      }
+      
+      // Update outgoing edges (edges that connect from this formula node to OutputNodes)
+      if (edge.source === nodeId) {
+        const targetNode = nodes.find((n) => n.id === edge.target);
+        // Only animate edges to OutputNodes when auto run is enabled
+        if (targetNode?.type === "output") {
+          return { ...edge, animated };
+        }
+      }
+      
+      return edge;
+    });
+
+    // Update the edges in the store
+    store.setEdges(updatedEdges);
+
+    console.log(
+      `[RunnerManager] Updated edge animations for ${nodeId}: animated=${animated}`
+    );
+  }
 }
 
 // 创建全局单例
 export const runnerManager = new RunnerManager();
+

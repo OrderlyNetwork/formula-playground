@@ -34,12 +34,13 @@ export async function generateFormulaGraph(
       });
 
       // Create edge from input to formula
+      // Animation will be enabled when auto calculation is turned on
       edges.push({
         id: `e-input-${input.key}-formula`,
         source: `input-${input.key}`,
         target: "formula",
         targetHandle: input.key,
-        animated: true,
+        animated: false,
       });
     } else {
       // Object input: create an object node and child input nodes
@@ -81,22 +82,24 @@ export async function generateFormulaGraph(
             factorType: p.factorType,
           },
         });
+        // Animation will be enabled when auto calculation is turned on
         edges.push({
           id: `e-input-${input.key}.${p.key}-object-${input.key}`,
           source: `input-${input.key}.${p.key}`,
           target: `object-${input.key}`,
           targetHandle: p.key,
-          animated: true,
+          animated: false,
         });
       }
 
       // Object node connects to the formula handle of the object parameter
+      // Animation will be enabled when auto calculation is turned on
       edges.push({
         id: `e-object-${input.key}-formula`,
         source: `object-${input.key}`,
         target: "formula",
         targetHandle: input.key,
-        animated: true,
+        animated: false,
       });
     }
   });
@@ -131,11 +134,14 @@ export async function generateFormulaGraph(
     });
 
     // Create edge from formula to output
+    // Animation will be enabled when auto calculation is turned on
+    // 使用 sourceHandle 指定要传递的 output key，实现解耦
     edges.push({
       id: `e-formula-output-${output.key}`,
       source: "formula",
       target: `output-${output.key}`,
-      animated: true,
+      sourceHandle: output.key, // 指定要传递的 output key（解耦方式）
+      animated: false,
     });
   });
 

@@ -197,7 +197,7 @@ export class RunnerService {
       const executionTime = performance.now() - startTime;
 
       if (result.success) {
-        // 从 outputs 中获取第一个结果作为主要值
+        // 从 outputs 中获取第一个结果作为主要值（用于兼容性）
         const resultValue = result.outputs
           ? Object.values(result.outputs)[0]
           : undefined;
@@ -205,8 +205,8 @@ export class RunnerService {
         context.state.errorMessage = undefined;
         this.updateExecutionState(nodeId, NodeExecutionStatus.SUCCESS);
 
-        // 触发下游节点执行
-        this.triggerDownstreamNodes(nodeId, resultValue);
+        // 触发下游节点执行，传递完整的 outputs 对象以便正确更新 OutputNode
+        this.triggerDownstreamNodes(nodeId, result.outputs || {});
 
         return {
           success: true,
@@ -554,9 +554,10 @@ export class RunnerService {
    * 处理上游节点数据变化
    * 当上游节点执行完成或数据更新时，更新下游节点的输入值
    * 对于 ObjectNode：当任何字段变化时，重新合并对象并通知下游
+   * 对于 OutputNode：更新其 value 属性以显示公式计算结果
    *
    * @param sourceNodeId - 源节点 ID
-   * @param result - 源节点的输出结果
+   * @param result - 源节点的输出结果（可能是单个值或 outputs 对象）
    * @param visitedNodes - 已访问的节点集合，用于防止循环依赖
    */
   notifyUpstreamNodeChange(
@@ -618,6 +619,50 @@ export class RunnerService {
         continue;
       }
 
+      // 如果是 OutputNode，需要从 FormulaNode 的 outputs 中提取对应的值
+      if (downstreamNode.type === "output") {
+        const graphStore = useGraphStore.getState();
+
+        // 优先使用 edge 的 sourceHandle 来指定要传递的 output key（更解耦）
+        // 如果没有 sourceHandle，则从 OutputNode 的 id 中提取（向后兼容）
+        let outputKey: string;
+        if (edge?.sourceHandle) {
+          // 使用 edge 的 sourceHandle 作为 output key（解耦方式）
+          outputKey = edge.sourceHandle;
+        } else {
+          // 向后兼容：从 OutputNode 的 id 中提取（格式：output-${key}）
+          outputKey = downstreamNodeId.replace("output-", "");
+        }
+
+        // 如果 result 是对象（outputs），提取对应的 output 值
+        let outputValue: unknown;
+        if (result && typeof result === "object" && !Array.isArray(result)) {
+          // result 是 outputs 对象，提取对应的 key
+          outputValue = (result as Record<string, unknown>)[outputKey];
+        } else {
+          // result 是单个值（兼容旧逻辑），直接使用
+          outputValue = result;
+        }
+
+        // 更新 OutputNode 的 value（使用深比较确保正确更新）
+        const currentValue = downstreamNode.data?.value;
+        const shouldUpdate =
+          outputValue !== currentValue ||
+          (outputValue === undefined && currentValue !== undefined) ||
+          (outputValue !== undefined && currentValue === undefined);
+
+        if (shouldUpdate) {
+          console.log(
+            `[RunnerService] Updating OutputNode ${downstreamNodeId} with value from key "${outputKey}":`,
+            outputValue
+          );
+          graphStore.updateNodeData(downstreamNodeId, {
+            value: outputValue,
+          });
+        }
+        continue;
+      }
+
       // FormulaNode 的处理逻辑
       const downstreamContext = this.contexts.get(downstreamNodeId);
       if (!downstreamContext) continue;
@@ -628,9 +673,23 @@ export class RunnerService {
       // 根据 targetHandle 更新对应的输入值
       const updatedInputs = { ...currentInputs };
 
+      // 确定要传递的值：如果 result 是 outputs 对象，根据 sourceHandle 提取对应值
+      let valueToPass: unknown = result;
+      if (result && typeof result === "object" && !Array.isArray(result)) {
+        // result 是 outputs 对象
+        if (edge?.sourceHandle) {
+          // 如果有 sourceHandle，从 outputs 中提取对应的值
+          valueToPass = (result as Record<string, unknown>)[edge.sourceHandle];
+        } else {
+          // 如果没有 sourceHandle，使用第一个值（兼容旧逻辑）
+          const outputs = result as Record<string, unknown>;
+          valueToPass = Object.values(outputs)[0];
+        }
+      }
+
       if (edge?.targetHandle) {
         // 如果有明确的 targetHandle，更新对应参数
-        updatedInputs[edge.targetHandle] = result;
+        updatedInputs[edge.targetHandle] = valueToPass;
       } else {
         // 如果没有 targetHandle，尝试使用公式定义的第一个输入参数
         const formulaStore = useFormulaStore.getState();
@@ -638,10 +697,10 @@ export class RunnerService {
           downstreamContext.config.formulaId
         );
         if (formulaDefinition?.inputs && formulaDefinition.inputs.length > 0) {
-          updatedInputs[formulaDefinition.inputs[0].key] = result;
+          updatedInputs[formulaDefinition.inputs[0].key] = valueToPass;
         } else {
           // 最后兜底：使用 "value" 作为 key
-          updatedInputs.value = result;
+          updatedInputs.value = valueToPass;
         }
       }
 

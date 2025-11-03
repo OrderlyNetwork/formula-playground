@@ -27,8 +27,7 @@ function getByPath(obj: unknown, path: string): unknown {
  * @returns Connection and edge change handlers
  */
 export function useGraphConnections() {
-  const { nodes: storeNodes, edges: storeEdges, setNodes, setEdges } =
-    useGraphStore();
+  const { nodes: storeNodes, edges: storeEdges, setEdges } = useGraphStore();
 
   /**
    * Handle connection creation - validates and creates edges between nodes
@@ -66,13 +65,32 @@ export function useGraphConnections() {
           );
         }
 
+        // Find the formula node that this InputNode connects to
+        // Check if that formula node has auto calculation enabled
+        const inputNodeOutgoingEdges = storeEdges.filter(
+          (edge) => edge.source === target
+        );
+        let isAutoRunning = false;
+
+        // Find the formula node connected downstream
+        for (const edge of inputNodeOutgoingEdges) {
+          const downstreamNode = storeNodes.find((n) => n.id === edge.target);
+          if (downstreamNode?.type === "formula") {
+            // Check if this formula node has auto calculation enabled
+            isAutoRunning =
+              downstreamNode.data?.executionState?.isAutoRunning ?? false;
+            break;
+          }
+        }
+
         // Create new edge with sourceHandle if present
+        // Only enable animation when the downstream formula node has auto calculation enabled
         const newEdge = {
           id: `e-${source}-${target}${sourceHandle ? `-${sourceHandle}` : ""}`,
           source,
           target,
           sourceHandle: sourceHandle || undefined,
-          animated: true,
+          animated: isAutoRunning,
         };
 
         // Add the new edge to the updated edges list
@@ -141,4 +159,3 @@ export function useGraphConnections() {
 
   return { onConnect, onEdgesChange };
 }
-

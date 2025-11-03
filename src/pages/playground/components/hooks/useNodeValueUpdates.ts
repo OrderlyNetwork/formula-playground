@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from "react";
 import { useGraphStore } from "@/store/graphStore";
 import type { FormulaExecutionResult } from "@/types/executor";
+import { runnerManager } from "@/modules/formula-graph/services/runnerManager";
 
 /**
  * Helper function to read value by dot path
@@ -38,6 +39,8 @@ export function useNodeValueUpdates(
     const currentNodes = useGraphStore.getState().nodes;
     const currentEdges = useGraphStore.getState().edges;
     let hasChange = false;
+    const inputNodesToNotify: Array<{ nodeId: string; value: unknown }> = [];
+
     const next = currentNodes.map((node) => {
       // Update input nodes with current input values
       // But skip if the node has an incoming connection from API/WebSocket
@@ -55,6 +58,8 @@ export function useNodeValueUpdates(
           const newValue = getByPathMemoized(currentInputs, inputKey);
           if (node.data?.value !== newValue) {
             hasChange = true;
+            // 记录需要通知的 InputNode
+            inputNodesToNotify.push({ nodeId: node.id, value: newValue });
             return {
               ...node,
               data: {
@@ -88,6 +93,8 @@ export function useNodeValueUpdates(
 
               if (node.data?.value !== newValue) {
                 hasChange = true;
+                // 记录需要通知的 InputNode
+                inputNodesToNotify.push({ nodeId: node.id, value: newValue });
                 return {
                   ...node,
                   data: {
@@ -121,9 +128,17 @@ export function useNodeValueUpdates(
 
       return node;
     });
+
     if (hasChange) {
       setNodes(next);
+
+      // 在节点数据更新后，通知下游节点（FormulaNode）InputNode 的值已变化
+      // 这会导致 FormulaNode 重新收集输入值并执行（如果启用了自动运行）
+      inputNodesToNotify.forEach(({ nodeId, value }) => {
+        setTimeout(() => {
+          runnerManager.notifyNodeDataChange(nodeId, value);
+        }, 0);
+      });
     }
   }, [currentInputs, tsResult, setNodes, getByPathMemoized]);
 }
-

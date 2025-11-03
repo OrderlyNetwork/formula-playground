@@ -4,12 +4,19 @@ import type { FormulaNodeData } from "@/types/formula";
 import type { Node } from "reactflow";
 import { cn } from "@/lib/utils";
 // import { Input } from "../../../components/common/Input";
-import { Select } from "@/components/common/Select";
+
 import { useFormulaStore } from "@/store/formulaStore";
 import { useGraphStore } from "@/store/graphStore";
 import { Input } from "@/components/ui/input";
 import { Info } from "lucide-react";
 import { useNodeDimensions } from "../hooks/useNodeDimensions";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface InputNodeProps {
   id: string;
@@ -23,7 +30,7 @@ interface InputNodeProps {
 export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
   const { updateInput, updateInputAt } = useFormulaStore();
   const { nodes: storeNodes, edges } = useGraphStore();
-  
+
   // Measure node dimensions for dynamic layout
   const nodeRef = useNodeDimensions(id);
 
@@ -58,6 +65,14 @@ export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
     fn(data.id, newValue);
   };
 
+  /**
+   * Prevent node dragging when interacting with input elements
+   * This allows users to select text and interact with inputs without dragging the node
+   */
+  const handleInputMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <div
       ref={nodeRef}
@@ -86,18 +101,26 @@ export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
           <span>{data.label}</span>
           <Info size={14} />
         </div>
-        <div className="mt-1">
+        <div className="mt-1 w-full">
           {data.inputType === "boolean" ? (
             <Select
               aria-label={data.label}
               value={String(Boolean(data.value))}
-              onChange={handleBooleanChange}
+              onValueChange={(val) => {
+                handleBooleanChange({
+                  target: { value: val },
+                } as React.ChangeEvent<HTMLSelectElement>);
+              }}
               disabled={hasIncomingConnection}
-              options={[
-                { value: "true", label: "true" },
-                { value: "false", label: "false" },
-              ]}
-            />
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select a boolean" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="true">true</SelectItem>
+                <SelectItem value="false">false</SelectItem>
+              </SelectContent>
+            </Select>
           ) : (
             (() => {
               const valueForInput: string | number =
@@ -112,7 +135,8 @@ export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
                   type={data.inputType === "number" ? "number" : "text"}
                   value={valueForInput}
                   onChange={handleTextOrNumberChange}
-                  className="px-2"
+                  onMouseDown={handleInputMouseDown}
+                  className="px-2 nodrag select-text"
                   disabled={hasIncomingConnection}
                 />
               );
