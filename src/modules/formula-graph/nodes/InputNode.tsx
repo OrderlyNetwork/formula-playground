@@ -3,20 +3,13 @@ import { memo, useMemo } from "react";
 import type { FormulaNodeData } from "@/types/formula";
 import type { Node } from "reactflow";
 import { cn } from "@/lib/utils";
-// import { Input } from "../../../components/common/Input";
 
 import { useFormulaStore } from "@/store/formulaStore";
 import { useGraphStore } from "@/store/graphStore";
-import { Input } from "@/components/ui/input";
 import { Info } from "lucide-react";
 import { useNodeDimensions } from "../hooks/useNodeDimensions";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { TypeAwareInput } from "../components/TypeAwareInput";
+import { getConnectionConfigFromFactorType } from "../utils/nodeTypes";
 
 interface InputNodeProps {
   id: string;
@@ -24,8 +17,10 @@ interface InputNodeProps {
 }
 
 /**
- * InputNode - Custom React Flow node for formula inputs
+ * InputNode - Custom React Flow node for primitive formula inputs (string, number, boolean)
  * Supports both manual input and receiving data from other nodes via connections
+ *
+ * Note: Array inputs are handled by ArrayNode, object inputs are handled by ObjectNode
  */
 export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
   const { updateInput, updateInputAt } = useFormulaStore();
@@ -49,30 +44,25 @@ export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
       : null;
   }, [sourceNodeId, storeNodes]);
 
-  const handleTextOrNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let newValue: string | number = e.target.value;
-    if (data.inputType === "number") {
-      const parsed = parseFloat(newValue);
-      newValue = isNaN(parsed) ? 0 : parsed;
+  // Get dynamic connection configuration based on factor type
+  const connectionConfig = useMemo(() => {
+    if (data.factorType) {
+      return getConnectionConfigFromFactorType(data.factorType);
     }
+    // Fallback to basic configuration based on inputType
+    return {
+      acceptedTypes: [data.inputType || "string"],
+      maxConnections: 1,
+    };
+  }, [data.factorType, data.inputType]);
+
+  // Unified value change handler
+  const handleValueChange = (newValue: any) => {
     const fn = data.id.includes(".") ? updateInputAt : updateInput;
     fn(data.id, newValue);
   };
 
-  const handleBooleanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newValue = e.target.value === "true";
-    const fn = data.id.includes(".") ? updateInputAt : updateInput;
-    fn(data.id, newValue);
-  };
-
-  /**
-   * Prevent node dragging when interacting with input elements
-   * This allows users to select text and interact with inputs without dragging the node
-   */
-  const handleInputMouseDown = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
-
+  
   return (
     <div
       ref={nodeRef}
@@ -91,8 +81,8 @@ export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
         style={{ top: "50%", transform: "translateY(-50%)" }}
         title={
           hasIncomingConnection
-            ? "Click to disconnect or connect another source (will replace current connection)"
-            : "Connect a data source (API/WebSocket) - only one connection allowed"
+            ? `Connected to ${sourceNode?.data?.label || sourceNode?.type}. Click to disconnect or connect another source (will replace current connection)`
+            : `Accepts: ${connectionConfig.acceptedTypes.join(", ")}. Click to connect a data source.`
         }
       />
 
@@ -102,46 +92,17 @@ export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
           <Info size={14} />
         </div>
         <div className="mt-1 w-full">
-          {data.inputType === "boolean" ? (
-            <Select
-              aria-label={data.label}
-              value={String(Boolean(data.value))}
-              onValueChange={(val) => {
-                handleBooleanChange({
-                  target: { value: val },
-                } as React.ChangeEvent<HTMLSelectElement>);
-              }}
-              disabled={hasIncomingConnection}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select a boolean" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="true">true</SelectItem>
-                <SelectItem value="false">false</SelectItem>
-              </SelectContent>
-            </Select>
-          ) : (
-            (() => {
-              const valueForInput: string | number =
-                data.inputType === "number"
-                  ? typeof data.value === "number"
-                    ? data.value
-                    : 0
-                  : String(data.value ?? "");
-              return (
-                <Input
-                  aria-label={data.label}
-                  type={data.inputType === "number" ? "number" : "text"}
-                  value={valueForInput}
-                  onChange={handleTextOrNumberChange}
-                  onMouseDown={handleInputMouseDown}
-                  className="px-2 nodrag select-text"
-                  disabled={hasIncomingConnection}
-                />
-              );
-            })()
-          )}
+          <TypeAwareInput
+            value={data.value ?? ""}
+            factorType={data.factorType || {
+              baseType: data.inputType || "string",
+              nullable: true,
+            }}
+            onChange={handleValueChange}
+            disabled={hasIncomingConnection}
+            label={data.label}
+            className="px-2 select-text w-full"
+          />
         </div>
         {data.description && (
           <div className="text-xs text-gray-500 mt-1 text-left">

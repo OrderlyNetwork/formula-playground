@@ -7,6 +7,36 @@ import { normalizePrecision } from "../../../lib/math";
 import * as perp from "@orderly.network/perp";
 
 /**
+ * Deeply flatten a module by extracting all functions from nested namespaces
+ * This allows direct function calls without namespace prefixes
+ * @param module - Module to flatten
+ * @returns Flattened module with all functions at top level
+ */
+function flattenModule(module: any): any {
+  const flattened: any = {};
+
+  function extractFunctions(obj: any, target: any) {
+    if (!obj || typeof obj !== "object") return;
+
+    for (const key in obj) {
+      const value = obj[key];
+
+      // If it's a function, add it to the target
+      if (typeof value === "function") {
+        target[key] = value;
+      }
+      // If it's an object (namespace), recursively extract functions
+      else if (typeof value === "object" && value !== null) {
+        extractFunctions(value, target);
+      }
+    }
+  }
+
+  extractFunctions(module, flattened);
+  return flattened;
+}
+
+/**
  * Local NPM Package Adapter - Executes formulas from locally installed npm packages
  * Uses static imports for pre-imported packages, falls back to dynamic import() for others
  * Packages must be pre-installed via package.json dependencies
@@ -20,9 +50,10 @@ export class LocalNpmAdapter implements SDKAdapter {
    * Pre-imported packages mapping
    * Maps package names to their statically imported modules
    * This allows for better tree-shaking and type safety
+   * Note: perp module is deeply flattened to extract all functions from namespaces to top level
    */
   private preImportedPackages: Map<string, any> = new Map([
-    ["@orderly.network/perp", perp],
+    ["@orderly.network/perp", flattenModule(perp)],
   ]);
 
   /**
@@ -253,8 +284,8 @@ export class LocalNpmAdapter implements SDKAdapter {
   clearAllCaches(): void {
     this.moduleCache.clear();
     this.preImportedPackages.clear();
-    // Re-register default pre-imported packages
-    this.preImportedPackages.set("@orderly.network/perp", perp);
+    // Re-register default pre-imported packages (deeply flattened)
+    this.preImportedPackages.set("@orderly.network/perp", flattenModule(perp));
   }
 
   /**

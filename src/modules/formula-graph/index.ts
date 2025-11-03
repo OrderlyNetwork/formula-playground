@@ -101,29 +101,65 @@ export async function generateFormulaGraph(
 
       // Child input nodes connect into the object node by handle id = property key
       for (const p of props) {
-        nodes.push({
-          id: `input-${input.key}.${p.key}`,
-          type: "input",
-          position: { x: 0, y: 0 },
-          data: {
-            id: `${input.key}.${p.key}`,
+        // Check if this property is an array type
+        if (p.factorType?.array === true) {
+          // Array property: create an ArrayNode
+          const defaultArrayValue = Array.isArray(p.default)
+            ? p.default
+            : p.default !== undefined && p.default !== null
+            ? [p.default]
+            : [];
+
+          nodes.push({
+            id: `array-${input.key}.${p.key}`,
+            type: "array",
+            position: { x: 0, y: 0 },
+            data: {
+              id: `${input.key}.${p.key}`,
+              type: "array",
+              label: p.key,
+              value: defaultArrayValue,
+              inputType: p.type,
+              unit: p.unit,
+              description: p.description,
+              factorType: p.factorType,
+            },
+          });
+
+          // Create edge from array to object node
+          edges.push({
+            id: `e-array-${input.key}.${p.key}-object-${input.key}`,
+            source: `array-${input.key}.${p.key}`,
+            target: `object-${input.key}`,
+            targetHandle: p.key,
+            animated: false,
+          });
+        } else {
+          // Non-array property: create a regular InputNode
+          nodes.push({
+            id: `input-${input.key}.${p.key}`,
             type: "input",
-            label: `${p.key}`,
-            value: p.default as unknown as FormulaScalar,
-            inputType: p.type,
-            unit: p.unit,
-            description: p.description,
-            factorType: p.factorType,
-          },
-        });
-        // Animation will be enabled when auto calculation is turned on
-        edges.push({
-          id: `e-input-${input.key}.${p.key}-object-${input.key}`,
-          source: `input-${input.key}.${p.key}`,
-          target: `object-${input.key}`,
-          targetHandle: p.key,
-          animated: false,
-        });
+            position: { x: 0, y: 0 },
+            data: {
+              id: `${input.key}.${p.key}`,
+              type: "input",
+              label: `${p.key}`,
+              value: p.default as unknown as FormulaScalar,
+              inputType: p.type,
+              unit: p.unit,
+              description: p.description,
+              factorType: p.factorType,
+            },
+          });
+          // Animation will be enabled when auto calculation is turned on
+          edges.push({
+            id: `e-input-${input.key}.${p.key}-object-${input.key}`,
+            source: `input-${input.key}.${p.key}`,
+            target: `object-${input.key}`,
+            targetHandle: p.key,
+            animated: false,
+          });
+        }
       }
 
       // Object node connects to the formula handle of the object parameter

@@ -21,7 +21,7 @@ import { join, dirname, resolve, extname } from "path";
 import type { FormulaDefinition } from "../types/formula.js";
 import { Project, SourceFile } from "ts-morph";
 import { toSnakeCase } from "../lib/utils.js";
-import { FormulaServiceFactory } from "../services/FormulaServiceFactory.js";
+import { FormulaParser } from "../modules/formula-parser/index.js";
 
 /**
  * Find package.json starting from the given directory and walking up
@@ -212,8 +212,22 @@ async function main() {
   const packageName: string = packageJson.name;
   console.log(`📦 Package name: ${packageName}`);
 
-  // Parse formulas using FormulaParser via Factory (ensures singleton pattern consistency)
-  const parser = FormulaServiceFactory.getParser();
+  // Find tsconfig.json from the source directory
+  const tsConfigPath = join(searchDir, "tsconfig.json");
+  let tsConfigFilePath: string | undefined = undefined;
+  try {
+    if (statSync(tsConfigPath).isFile()) {
+      tsConfigFilePath = tsConfigPath;
+      console.log(`📝 Using tsconfig: ${tsConfigPath}`);
+    }
+  } catch {
+    // tsconfig.json not found, continue without it
+    console.warn("⚠️  No tsconfig.json found, type resolution may be limited");
+  }
+
+  // Parse formulas using FormulaParser with real file system access (not in-memory)
+  // We create a dedicated parser instance for CLI usage instead of using the factory singleton
+  const parser = new FormulaParser(false, tsConfigFilePath); // false = use real file system
   let formulas: FormulaDefinition[] = [];
 
   try {
@@ -298,7 +312,7 @@ async function main() {
       localNpmInfo: {
         packageName,
         functionName: functionName!,
-        enabled: false, // Default to disabled, user can enable manually
+        enabled: true, // Default to enabled, formulas will use local npm package
       },
     };
 

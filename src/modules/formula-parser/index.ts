@@ -16,9 +16,12 @@ export class FormulaParser {
   private project: Project;
   private typeAnalyzer: TypeAnalyzer;
 
-  constructor() {
+  constructor(useInMemoryFileSystem = true, tsConfigFilePath?: string) {
     this.project = new Project({
-      useInMemoryFileSystem: true,
+      useInMemoryFileSystem,
+      tsConfigFilePath,
+      // Skip adding files from tsconfig to avoid loading unnecessary files
+      skipAddingFilesFromTsConfig: true,
     });
     this.typeAnalyzer = new TypeAnalyzer();
   }

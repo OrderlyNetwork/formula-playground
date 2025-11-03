@@ -45,7 +45,7 @@ export const OutputNode = memo(function OutputNode({
     const sourceValue = sourceNode.data?.value;
     if (sourceValue !== undefined && data.value !== sourceValue) {
       // 如果有 sourceHandle，可能需要从对象中提取特定字段
-      let valueToUse = sourceValue;
+      let valueToUse: unknown = sourceValue;
       if (
         incomingEdge.sourceHandle &&
         typeof sourceValue === "object" &&

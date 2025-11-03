@@ -55,7 +55,14 @@ export const ArrayNode = memo(function ArrayNode({ id, data }: ArrayNodeProps) {
         const sourceNode = storeNodes.find((n: Node) => n.id === edge.source);
         return sourceNode ? { edge, sourceNode } : null;
       })
-      .filter((item): item is { edge: typeof incomingConnections[0]; sourceNode: Node } => item !== null);
+      .filter(
+        (
+          item
+        ): item is {
+          edge: (typeof incomingConnections)[0];
+          sourceNode: Node;
+        } => item !== null
+      );
   }, [incomingConnections, storeNodes]);
 
   // Get current array value, ensuring it's always an array
@@ -77,81 +84,102 @@ export const ArrayNode = memo(function ArrayNode({ id, data }: ArrayNodeProps) {
   }, [data.factorType]);
 
   const properties = data.factorType?.properties ?? [];
-  const baseElementType = data.inputType || data.factorType?.baseType || `string`;
+  const baseElementType =
+    data.inputType || data.factorType?.baseType || `string`;
 
   /**
    * Handle adding a new element to the array
    */
   const handleAddElement = useCallback(() => {
     const currentArray = Array.isArray(data.value) ? [...data.value] : [];
-    
+
     if (isObjectArray) {
       // Create a new object with default values from properties
       const newObj: Record<string, unknown> = {};
       properties.forEach((prop) => {
-        newObj[prop.key] = prop.default ?? 
-          (prop.type === "number" ? 0 : 
-           prop.type === "boolean" ? false : "");
+        newObj[prop.key] =
+          prop.default ??
+          (prop.type === "number" ? 0 : prop.type === "boolean" ? false : "");
       });
       currentArray.push(newObj);
     } else {
       // Add default value based on base type
-      const defaultValue = 
-        baseElementType === "number" ? 0 :
-        baseElementType === "boolean" ? false : "";
+      const defaultValue =
+        baseElementType === "number"
+          ? 0
+          : baseElementType === "boolean"
+          ? false
+          : "";
       currentArray.push(defaultValue);
     }
 
     const fn = data.id.includes(".") ? updateInputAt : updateInput;
     fn(data.id, currentArray);
-  }, [data.value, data.id, isObjectArray, properties, baseElementType, updateInput, updateInputAt]);
+  }, [
+    data.value,
+    data.id,
+    isObjectArray,
+    properties,
+    baseElementType,
+    updateInput,
+    updateInputAt,
+  ]);
 
   /**
    * Handle removing an element from the array
    */
-  const handleRemoveElement = useCallback((index: number) => {
-    const currentArray = Array.isArray(data.value) ? [...data.value] : [];
-    currentArray.splice(index, 1);
-    
-    const fn = data.id.includes(".") ? updateInputAt : updateInput;
-    fn(data.id, currentArray);
-  }, [data.value, data.id, updateInput, updateInputAt]);
+  const handleRemoveElement = useCallback(
+    (index: number) => {
+      const currentArray = Array.isArray(data.value) ? [...data.value] : [];
+      currentArray.splice(index, 1);
+
+      const fn = data.id.includes(".") ? updateInputAt : updateInput;
+      fn(data.id, currentArray);
+    },
+    [data.value, data.id, updateInput, updateInputAt]
+  );
 
   /**
    * Handle updating an element value (for primitive arrays)
    */
-  const handleElementChange = useCallback((index: number, newValue: string | number | boolean) => {
-    const currentArray = Array.isArray(data.value) ? [...data.value] : [];
-    currentArray[index] = newValue;
-    
-    const fn = data.id.includes(".") ? updateInputAt : updateInput;
-    fn(data.id, currentArray);
-  }, [data.value, data.id, updateInput, updateInputAt]);
+  const handleElementChange = useCallback(
+    (index: number, newValue: string | number | boolean) => {
+      const currentArray = Array.isArray(data.value) ? [...data.value] : [];
+      currentArray[index] = newValue;
+
+      const fn = data.id.includes(".") ? updateInputAt : updateInput;
+      fn(data.id, currentArray);
+    },
+    [data.value, data.id, updateInput, updateInputAt]
+  );
 
   /**
    * Handle updating a property of an object element (for object arrays)
    */
-  const handleObjectPropertyChange = useCallback((
-    index: number,
-    propertyKey: string,
-    newValue: string | number | boolean
-  ) => {
-    const currentArray = Array.isArray(data.value) ? [...data.value] : [];
-    if (!currentArray[index]) {
-      currentArray[index] = {};
-    }
-    const obj = currentArray[index] as Record<string, unknown>;
-    obj[propertyKey] = newValue;
-    
-    const fn = data.id.includes(".") ? updateInputAt : updateInput;
-    if (data.id.includes(".")) {
-      // Use nested path for object arrays
-      fn(`${data.id}[${index}].${propertyKey}`, newValue);
-    } else {
-      // Update the entire array
-      fn(data.id, currentArray);
-    }
-  }, [data.value, data.id, updateInput, updateInputAt]);
+  const handleObjectPropertyChange = useCallback(
+    (
+      index: number,
+      propertyKey: string,
+      newValue: string | number | boolean
+    ) => {
+      const currentArray = Array.isArray(data.value) ? [...data.value] : [];
+      if (!currentArray[index]) {
+        currentArray[index] = {};
+      }
+      const obj = currentArray[index] as Record<string, unknown>;
+      obj[propertyKey] = newValue;
+
+      const fn = data.id.includes(".") ? updateInputAt : updateInput;
+      if (data.id.includes(".")) {
+        // Use nested path for object arrays
+        fn(`${data.id}[${index}].${propertyKey}`, newValue);
+      } else {
+        // Update the entire array
+        fn(data.id, currentArray);
+      }
+    },
+    [data.value, data.id, updateInput, updateInputAt]
+  );
 
   /**
    * Prevent node dragging when interacting with input elements
@@ -164,7 +192,7 @@ export const ArrayNode = memo(function ArrayNode({ id, data }: ArrayNodeProps) {
     <div
       ref={nodeRef}
       className={cn(
-        "px-4 py-3 rounded-lg border-2 bg-white shadow-sm min-w-[400px] max-w-[600px] relative",
+        "px-4 py-3 rounded-lg border-2 bg-white shadow-sm min-w-[300px] max-w-[600px] relative",
         "border-purple-400",
         data.isError && "border-red-500",
         hasIncomingConnections && "border-purple-600 border-dashed"
@@ -229,7 +257,7 @@ export const ArrayNode = memo(function ArrayNode({ id, data }: ArrayNodeProps) {
                       {properties.map((prop) => {
                         const obj = element as Record<string, unknown>;
                         const propValue = obj[prop.key];
-                        const displayValue = propValue ?? (prop.default ?? "");
+                        const displayValue = propValue ?? prop.default ?? "";
 
                         return (
                           <TableCell key={prop.key} className="p-1">
@@ -255,7 +283,9 @@ export const ArrayNode = memo(function ArrayNode({ id, data }: ArrayNodeProps) {
                               </Select>
                             ) : (
                               <Input
-                                type={prop.type === "number" ? "number" : "text"}
+                                type={
+                                  prop.type === "number" ? "number" : "text"
+                                }
                                 value={
                                   prop.type === "number"
                                     ? typeof displayValue === "number"
@@ -303,7 +333,9 @@ export const ArrayNode = memo(function ArrayNode({ id, data }: ArrayNodeProps) {
                         </Select>
                       ) : (
                         <Input
-                          type={baseElementType === "number" ? "number" : "text"}
+                          type={
+                            baseElementType === "number" ? "number" : "text"
+                          }
                           value={
                             baseElementType === "number"
                               ? typeof element === "number"
@@ -345,7 +377,8 @@ export const ArrayNode = memo(function ArrayNode({ id, data }: ArrayNodeProps) {
                     colSpan={isObjectArray ? properties.length + 1 : 2}
                     className="text-center text-xs text-gray-500 py-4"
                   >
-                    No items. Click "Add Item" to add elements or connect InputNode/ObjectNode/ArrayNode.
+                    No items. Click "Add Item" to add elements or connect
+                    InputNode/ObjectNode/ArrayNode.
                   </TableCell>
                 </TableRow>
               )}
@@ -381,4 +414,3 @@ export const ArrayNode = memo(function ArrayNode({ id, data }: ArrayNodeProps) {
     </div>
   );
 });
-

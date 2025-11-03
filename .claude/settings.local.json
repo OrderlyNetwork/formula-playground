@@ -4,7 +4,12 @@
       "Bash(pnpm build:*)",
       "Bash(pnpm lint:*)",
       "mcp__ide__getDiagnostics",
-      "Bash(pnpm dev)"
+      "Bash(pnpm dev)",
+      "Bash(npx ts-node:*)",
+      "Bash(pnpm run generate:formulas:*)",
+      "Bash(node:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npx eslint:*)"
     ],
     "deny": [],
     "ask": []

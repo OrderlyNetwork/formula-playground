@@ -4,6 +4,7 @@ import { applyEdgeChanges } from "reactflow";
 import { useGraphStore } from "@/store/graphStore";
 import { useFormulaStore } from "@/store/formulaStore";
 import { runnerManager } from "@/modules/formula-graph/services/runnerManager";
+import { validateValueForFactorType } from "@/modules/formula-graph/utils/nodeTypes";
 
 /**
  * Helper function to read value by dot path
@@ -51,21 +52,99 @@ export function useGraphConnections() {
   }
 
   /**
+   * Validates if a connection between nodes is compatible based on their types
+   */
+  function validateConnectionCompatibility(
+    sourceNode: any,
+    targetNode: any,
+    targetHandle?: string | null,
+    sourceHandle?: string | null
+  ): { isValid: boolean; reason?: string } {
+    // Get target factor type based on handle or node type
+    let targetFactorType;
+
+    if (targetNode.type === "input") {
+      // For InputNode, use the node's factorType
+      targetFactorType = targetNode.data?.factorType || {
+        baseType: targetNode.data?.inputType || "string",
+        nullable: true,
+      };
+    } else if (targetNode.type === "object" && targetHandle) {
+      // For ObjectNode with specific handle, find the property factor type
+      const property = targetNode.data?.inputs?.find((input: any) => input.key === targetHandle);
+      targetFactorType = property?.factorType || {
+        baseType: property?.type || "string",
+        nullable: true,
+      };
+    } else if (targetNode.type === "array") {
+      // For ArrayNode, check if source value can be part of an array
+      targetFactorType = {
+        baseType: "object", // Arrays accept any type that can be JSON serialized
+        array: true,
+        nullable: true,
+      };
+    } else {
+      // Fallback
+      targetFactorType = { baseType: "string", nullable: true };
+    }
+
+    // Get source value for validation
+    let sourceValue = sourceNode.data?.value;
+
+    // Extract field value if sourceHandle is present (for API nodes)
+    if (sourceHandle && sourceNode.type === "api") {
+      sourceValue = getByPath(sourceValue, sourceHandle);
+    }
+
+    // Validate compatibility
+    if (targetFactorType.array) {
+      // Array nodes can accept any value (will be converted to array element)
+      return { isValid: true };
+    }
+
+    // For non-array targets, validate the actual value
+    const validation = validateValueForFactorType(sourceValue, targetFactorType);
+    if (!validation.isValid) {
+      return {
+        isValid: false,
+        reason: `Type mismatch: ${validation.error}`
+      };
+    }
+
+    return { isValid: true };
+  }
+
+  /**
    * Handle connection creation - validates and creates edges between nodes
    * - Allows API/WebSocket nodes to connect to InputNode (single connection)
    * - Allows InputNode/ObjectNode/ArrayNode to connect to ArrayNode (multiple connections)
+   * - Validates type compatibility between source and target nodes
    * Enforces single connection rule for InputNode: removes existing connections before creating new ones
    * Supports field path extraction from sourceHandle for API nodes
    */
   const onConnect = useCallback(
     (connection: Connection) => {
-      const { source, target, sourceHandle } = connection;
+      const { source, target, sourceHandle, targetHandle } = connection;
       if (!source || !target) return;
 
       const sourceNode = storeNodes.find((n) => n.id === source);
       const targetNode = storeNodes.find((n) => n.id === target);
 
       if (!sourceNode || !targetNode) return;
+
+      // Validate type compatibility
+      const compatibilityValidation = validateConnectionCompatibility(
+        sourceNode,
+        targetNode,
+        targetHandle,
+        sourceHandle
+      );
+
+      if (!compatibilityValidation.isValid) {
+        console.warn(`Connection validation failed: ${compatibilityValidation.reason}`);
+        // Optionally show user feedback about the validation failure
+        return;
+      }
 
       // Handle connections to ArrayNode (supports multiple connections)
       if (

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router";
 import { Card } from "@/components/common/Card";
 import { Button } from "@/components/common/Button";
 import { useFormulaStore } from "@/store/formulaStore";
@@ -27,8 +28,8 @@ export function FormulasPanel({
   sourceCodeDialogOpen,
   setSourceCodeDialogOpen,
 }: FormulasPanelProps) {
-  const { formulaDefinitions, selectedFormulaId, selectFormula } =
-    useFormulaStore();
+  const { formulaDefinitions, selectedFormulaId } = useFormulaStore();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
 
   /**
@@ -131,7 +132,7 @@ export function FormulasPanel({
               return (
                 <button
                   key={formula.id}
-                  onClick={() => selectFormula(formula.id)}
+                  onClick={() => navigate(`/formula/${formula.id}`)}
                   className={`w-full text-left px-2.5 py-1.5 text-xs transition-colors ${
                     selectedFormulaId === formula.id
                       ? "bg-blue-100 text-blue-900 "

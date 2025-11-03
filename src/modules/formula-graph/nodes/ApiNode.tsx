@@ -570,8 +570,8 @@ export const ApiNode = memo(function ApiNode({ id, data }: ApiNodeProps) {
         )}
       </div>
 
-      {/* Source handles for each field */}
-      {fieldCount > 0 ? (
+      {/* Source handles for each field - only show when data is successfully fetched */}
+      {data.value && !data.isError && fieldCount > 0 ? (
         responseFields.map((fieldPath, index) => (
           <Fragment key={fieldPath}>
             <Handle
@@ -604,7 +604,8 @@ export const ApiNode = memo(function ApiNode({ id, data }: ApiNodeProps) {
             </span>
           </Fragment>
         ))
-      ) : (
+      ) : data.value && !data.isError ? (
+        // Show single handle when data exists but no structured fields
         <Handle
           type="source"
           position={Position.Right}
@@ -614,7 +615,7 @@ export const ApiNode = memo(function ApiNode({ id, data }: ApiNodeProps) {
               HEADER_HEIGHT + configSectionHeight + HEADER_TO_FIRST_HANDLE_GAP,
           }}
         />
-      )}
+      ) : null}
     </div>
   );
 });

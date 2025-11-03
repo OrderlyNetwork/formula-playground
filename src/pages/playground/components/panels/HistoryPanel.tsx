@@ -28,7 +28,7 @@ export function HistoryPanel() {
     <Card title="History">
       <div className="space-y-1.5">
         {runHistory.length === 0 ? (
-          <p className="text-xs text-gray-500">No execution history</p>
+          <p className="text-xs text-gray-500 p-3">No execution history</p>
         ) : (
           <>
             <div className="flex justify-end mb-1.5">

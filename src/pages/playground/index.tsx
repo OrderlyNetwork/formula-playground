@@ -20,6 +20,7 @@ import { CodeInput } from "./components/CodeInput";
 import { db } from "../../lib/dexie";
 import { formulaRepository } from "@/modules/formulaRepository";
 import { parseUrlList } from "@/lib/urls";
+import { useFormulaUrlSync } from "./hooks/useFormulaUrlSync";
 
 /**
  * PlaygroundPage
@@ -148,6 +149,7 @@ export function PlaygroundPage() {
           element: <RootLayout />,
           children: [
             { path: "/", element: <UserLayout /> },
+            { path: "/formula/:id", element: <UserLayout /> },
             { path: "/dev", element: <DeveloperLayout /> },
             { path: "*", loader: () => redirect("/") },
           ],
@@ -234,8 +236,16 @@ function DeveloperLayout() {
  * UserLayout
  *
  * Three-area layout: left navigation, main canvas, and bottom docs/code split.
+ * Integrates URL synchronization for formula sharing.
  */
 function UserLayout() {
+  // Sync formula ID and parameters with URL
+  // This hook handles:
+  // - Updating URL when formula/params change
+  // - Restoring state from URL when page loads/shared URL is opened
+  // - Preventing circular updates
+  useFormulaUrlSync();
+
   return (
     <ResizablePanelGroup direction="horizontal" className="h-full">
       <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
