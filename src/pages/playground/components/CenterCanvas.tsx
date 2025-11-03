@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useMemo } from "react";
+import { useCallback, useEffect, useRef, useMemo, useState } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -24,7 +24,11 @@ import { useModeData } from "@/store/useModeData";
 import { useAppStore } from "@/store/appStore";
 import { useGraphStore } from "@/store/graphStore";
 import { useFormulaStore } from "@/store/formulaStore";
-import { generateFormulaGraph } from "@/modules/formula-graph";
+import {
+  generateFormulaGraph,
+  applyELKLayout,
+  type NodeDimensionsMap,
+} from "@/modules/formula-graph";
 import { runnerManager } from "@/modules/formula-graph/services/runnerManager";
 
 const nodeTypes = {
@@ -52,6 +56,18 @@ export function CenterCanvas() {
   } = useGraphStore();
 
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
+
+  // Store measured node dimensions for dynamic layout recalculation
+  const [nodeDimensionsMap, setNodeDimensionsMap] = useState<NodeDimensionsMap>(
+    new Map()
+  );
+  const nodeDimensionsMapRef = useRef<NodeDimensionsMap>(new Map());
+  const layoutRecalculationTimeoutRef = useRef<number | null>(null);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    nodeDimensionsMapRef.current = nodeDimensionsMap;
+  }, [nodeDimensionsMap]);
 
   /**
    * Handle drag over event to allow dropping
@@ -135,12 +151,15 @@ export function CenterCanvas() {
     if (!selectedFormula) {
       // When no formula is selected, ensure graph is cleared
       resetGraph();
+      setNodeDimensionsMap(new Map());
       return;
     }
 
     generateFormulaGraph(selectedFormula).then(({ nodes, edges }) => {
       setNodes(nodes);
       setEdges(edges);
+      // Reset dimensions map when generating new graph
+      setNodeDimensionsMap(new Map());
       // fit view after layout updates
       // defer to next frame to ensure ReactFlow has received new nodes/edges
       requestAnimationFrame(() => {
@@ -148,6 +167,74 @@ export function CenterCanvas() {
       });
     });
   }, [selectedFormula, setNodes, setEdges, resetGraph]);
+
+  /**
+   * Recalculate layout when node dimensions change
+   */
+  useEffect(() => {
+    const handleNodeDimensionsChanged = (
+      event: CustomEvent<{
+        nodeId: string;
+        width: number;
+        height: number;
+      }>
+    ) => {
+      const { nodeId, width, height } = event.detail;
+
+      // Update dimensions map
+      setNodeDimensionsMap((prev) => {
+        const updated = new Map(prev);
+        updated.set(nodeId, { width, height });
+        return updated;
+      });
+
+      // Debounce layout recalculation to avoid excessive recalculations
+      if (layoutRecalculationTimeoutRef.current) {
+        clearTimeout(layoutRecalculationTimeoutRef.current);
+      }
+
+      layoutRecalculationTimeoutRef.current = window.setTimeout(async () => {
+        const currentNodes = useGraphStore.getState().nodes;
+        const currentEdges = useGraphStore.getState().edges;
+
+        // Only recalculate if we have measured dimensions for at least some nodes
+        if (currentNodes.length > 0) {
+          // Use current dimensions map from ref (includes latest updates)
+          const currentDimensions = new Map(nodeDimensionsMapRef.current);
+          currentDimensions.set(nodeId, { width, height });
+
+          // Recalculate layout with measured dimensions
+          const { nodes: layoutedNodes } = await applyELKLayout(
+            currentNodes,
+            currentEdges,
+            currentDimensions
+          );
+
+          setNodes(layoutedNodes);
+
+          // Fit view after layout update
+          requestAnimationFrame(() => {
+            reactFlowInstanceRef.current?.fitView?.({ padding: 0.2 });
+          });
+        }
+      }, 300); // 300ms debounce
+    };
+
+    window.addEventListener(
+      "node-dimensions-changed",
+      handleNodeDimensionsChanged as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        "node-dimensions-changed",
+        handleNodeDimensionsChanged as EventListener
+      );
+      if (layoutRecalculationTimeoutRef.current) {
+        clearTimeout(layoutRecalculationTimeoutRef.current);
+      }
+    };
+  }, [setNodes]);
 
   // helper to read by dot path - memoized to prevent re-creation
   const getByPath = useCallback((obj: unknown, path: string) => {
@@ -277,8 +364,9 @@ export function CenterCanvas() {
       changes.forEach((change) => {
         if ("id" in change && "source" in change && "target" in change) {
           // 边的添加或删除会影响 source 和 target 节点的依赖关系
-          const edge = current.find((e) => e.id === change.id) || 
-                      next.find((e) => e.id === change.id);
+          const edge =
+            current.find((e) => e.id === change.id) ||
+            next.find((e) => e.id === change.id);
           if (edge) {
             affectedNodes.add(edge.source);
             affectedNodes.add(edge.target);
@@ -316,14 +404,18 @@ export function CenterCanvas() {
         targetNode.type === "input"
       ) {
         // Check if target InputNode already has existing connections
-        const existingConnections = storeEdges.filter((edge) => edge.target === target);
+        const existingConnections = storeEdges.filter(
+          (edge) => edge.target === target
+        );
 
         let updatedEdges = [...storeEdges];
 
         // Remove existing connections to this InputNode (enforce single connection rule)
         if (existingConnections.length > 0) {
           updatedEdges = storeEdges.filter((edge) => edge.target !== target);
-          console.log(`Removed ${existingConnections.length} existing connection(s) from InputNode ${target}`);
+          console.log(
+            `Removed ${existingConnections.length} existing connection(s) from InputNode ${target}`
+          );
         }
 
         // Create new edge with sourceHandle if present
@@ -340,7 +432,7 @@ export function CenterCanvas() {
         setEdges(updatedEdges);
 
         // Update InputNode value if source node has a value
-        if (sourceNode.data?.value !== undefined) {
+        if (sourceNode.data?.value !== undefined && targetNode) {
           const inputKey = targetNode.id.replace("input-", "");
           const { updateInput, updateInputAt } = useFormulaStore.getState();
           const fn = targetNode.id.includes(".") ? updateInputAt : updateInput;
@@ -349,7 +441,10 @@ export function CenterCanvas() {
           let valueToSet = sourceNode.data.value;
           if (sourceHandle && sourceNode.type === "api") {
             // For API nodes, extract field value using path
-            const extractedValue = getByPath(sourceNode.data.value, sourceHandle);
+            const extractedValue = getByPath(
+              sourceNode.data.value,
+              sourceHandle
+            );
             if (extractedValue !== undefined) {
               valueToSet = extractedValue;
             } else {
@@ -358,12 +453,6 @@ export function CenterCanvas() {
           }
 
           fn(inputKey, valueToSet);
-
-          // 如果连接到 ObjectNode，通知 ObjectNode 数据变化
-          const targetNode = storeNodes.find((n) => n.id === target);
-          if (targetNode?.type === "object") {
-            runnerManager.notifyNodeDataChange(target, valueToSet);
-          }
         }
       }
     },

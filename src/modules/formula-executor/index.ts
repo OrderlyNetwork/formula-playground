@@ -41,38 +41,50 @@ export class FormulaExecutor {
   }
 
   /**
+   * Generic method to execute formula via Worker
+   * Extracts common Worker communication logic to eliminate code duplication
+   * 
+   * @param worker - The Worker instance to use for execution
+   * @param formula - Formula definition to execute
+   * @param inputs - Input values for the formula
+   * @param engine - Engine type identifier ("ts" or "local")
+   * @returns Promise resolving to execution result
+   */
+  private async executeWithWorker(
+    worker: Worker | null,
+    formula: FormulaDefinition,
+    inputs: Record<string, any>,
+    engine: "ts" | "local"
+  ): Promise<FormulaExecutionResult> {
+    if (!worker) {
+      return {
+        success: false,
+        error: `${engine.toUpperCase()} Worker not initialized`,
+        durationMs: 0,
+        engine,
+      };
+    }
+
+    return new Promise((resolve) => {
+      const handleMessage = (event: MessageEvent<FormulaExecutionResult>) => {
+        worker.removeEventListener("message", handleMessage);
+        resolve(event.data);
+      };
+
+      worker.addEventListener("message", handleMessage);
+      const request: FormulaExecutionRequest = { formula, inputs };
+      worker.postMessage(request);
+    });
+  }
+
+  /**
    * Execute a formula using the TS engine
    */
   async executeTS(
     formula: FormulaDefinition,
     inputs: Record<string, any>
   ): Promise<FormulaExecutionResult> {
-    if (!this.tsWorker) {
-      return {
-        success: false,
-        error: "TS Worker not initialized",
-        durationMs: 0,
-        engine: "ts",
-      };
-    }
-
-    return new Promise((resolve) => {
-      const handleMessage = (event: MessageEvent<FormulaExecutionResult>) => {
-        if (this.tsWorker) {
-          this.tsWorker.removeEventListener("message", handleMessage);
-        }
-        resolve(event.data);
-      };
-
-      if (this.tsWorker) {
-        this.tsWorker.addEventListener("message", handleMessage);
-      }
-
-      const request: FormulaExecutionRequest = { formula, inputs };
-      if (this.tsWorker) {
-        this.tsWorker.postMessage(request);
-      }
-    });
+    return this.executeWithWorker(this.tsWorker, formula, inputs, "ts");
   }
 
   /**
@@ -82,32 +94,7 @@ export class FormulaExecutor {
     formula: FormulaDefinition,
     inputs: Record<string, any>
   ): Promise<FormulaExecutionResult> {
-    if (!this.localWorker) {
-      return {
-        success: false,
-        error: "Local Worker not initialized",
-        durationMs: 0,
-        engine: "local",
-      };
-    }
-
-    return new Promise((resolve) => {
-      const handleMessage = (event: MessageEvent<FormulaExecutionResult>) => {
-        if (this.localWorker) {
-          this.localWorker.removeEventListener("message", handleMessage);
-        }
-        resolve(event.data);
-      };
-
-      if (this.localWorker) {
-        this.localWorker.addEventListener("message", handleMessage);
-      }
-
-      const request: FormulaExecutionRequest = { formula, inputs };
-      if (this.localWorker) {
-        this.localWorker.postMessage(request);
-      }
-    });
+    return this.executeWithWorker(this.localWorker, formula, inputs, "local");
   }
 
   /**

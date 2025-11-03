@@ -3,7 +3,6 @@
  * 管理单个 FormulaNode 的执行上下文和自动运行逻辑
  */
 
-import { FormulaExecutor } from "../../formula-executor";
 import { NodeExecutionStatus } from "../../../types/runner";
 import type {
   RunnerConfig,
@@ -16,6 +15,8 @@ import type { FormulaDefinition } from "@/types/formula";
 import type { FormulaNode, FormulaEdge } from "@/types/formula";
 import { useFormulaStore } from "@/store/formulaStore";
 import { useGraphStore } from "@/store/graphStore";
+import { FormulaServiceFactory } from "../../../services/FormulaServiceFactory";
+import type { FormulaExecutor } from "../../formula-executor";
 
 export class RunnerService {
   private contexts = new Map<string, RunnerContext>();
@@ -23,7 +24,9 @@ export class RunnerService {
   private debounceTimers = new Map<string, number>();
 
   constructor() {
-    this.formulaExecutor = new FormulaExecutor();
+    // Use Factory to get singleton instance instead of creating new instance
+    // This ensures consistent resource management and prevents multiple Worker instances
+    this.formulaExecutor = FormulaServiceFactory.getExecutor();
   }
 
   /**

@@ -146,23 +146,68 @@ export async function generateFormulaGraph(
 }
 
 /**
- * Apply ELK.js automatic layout to the graph
+ * Node dimensions map for dynamic layout calculation
  */
-async function applyELKLayout(
+export type NodeDimensionsMap = Map<string, { width: number; height: number }>;
+
+/**
+ * Apply ELK.js automatic layout to the graph
+ * @param nodes - Graph nodes
+ * @param edges - Graph edges
+ * @param dimensionsMap - Optional map of measured node dimensions (nodeId -> {width, height})
+ *                        If provided, uses measured dimensions; otherwise falls back to estimated dimensions
+ */
+export async function applyELKLayout(
   nodes: FormulaNode[],
-  edges: FormulaEdge[]
+  edges: FormulaEdge[],
+  dimensionsMap?: NodeDimensionsMap
 ): Promise<{ nodes: FormulaNode[]; edges: FormulaEdge[] }> {
   const elkNodes: ElkNode["children"] = nodes.map((node) => {
+    // Check if we have measured dimensions for this node
+    const measuredDimensions = dimensionsMap?.get(node.id);
+
+    if (measuredDimensions) {
+      // Use measured dimensions if available
+      return {
+        id: node.id,
+        width: measuredDimensions.width,
+        height: measuredDimensions.height,
+      };
+    }
+
+    // Fall back to estimated dimensions
     const isBoxWithHandles = node.type === "formula" || node.type === "object";
     const baseHeight = node.type === "formula" ? 100 : 80;
     const handles = node.data.inputs?.length ?? 0;
     const handleHeight = isBoxWithHandles
       ? Math.max(1, handles) * 24 + (node.type === "formula" ? 80 : 40)
       : 0;
+
+    // Calculate dimensions based on node type
+    let width: number;
+    let height: number;
+
+    if (isBoxWithHandles) {
+      width = 220;
+      height = Math.max(baseHeight, handleHeight);
+    } else if (node.type === "input") {
+      // InputNode actual width is 220px (w-[220px] in component)
+      // Height needs to account for: padding (py-3 = 24px), label (~20px),
+      // input field (~32px), description (~16px if present), connection info (~32px if present)
+      // Base height: ~100px, with description/connection: up to ~140px
+      width = 220;
+      // Use a safer height that accounts for description and connection info
+      height = node.data.description ? 140 : 120;
+    } else {
+      // OutputNode or other types
+      width = 180;
+      height = 100; // OutputNode can have description and diff info
+    }
+
     return {
       id: node.id,
-      width: isBoxWithHandles ? 220 : 180,
-      height: isBoxWithHandles ? Math.max(baseHeight, handleHeight) : 80,
+      width,
+      height,
     };
   });
 
@@ -177,8 +222,9 @@ async function applyELKLayout(
     layoutOptions: {
       "elk.algorithm": "layered",
       "elk.direction": "RIGHT",
-      "elk.spacing.nodeNode": "20",
+      "elk.spacing.nodeNode": "30", // Increased vertical spacing between nodes in same layer
       "elk.layered.spacing.nodeNodeBetweenLayers": "100",
+      "elk.layered.spacing.edgeNodeBetweenLayers": "50", // Additional spacing for edge-node interactions
     },
     children: elkNodes,
     edges: elkEdges,

@@ -9,6 +9,7 @@ import { useFormulaStore } from "@/store/formulaStore";
 import { useGraphStore } from "@/store/graphStore";
 import { Input } from "@/components/ui/input";
 import { Info } from "lucide-react";
+import { useNodeDimensions } from "../hooks/useNodeDimensions";
 
 interface InputNodeProps {
   id: string;
@@ -22,6 +23,9 @@ interface InputNodeProps {
 export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
   const { updateInput, updateInputAt } = useFormulaStore();
   const { nodes: storeNodes, edges } = useGraphStore();
+  
+  // Measure node dimensions for dynamic layout
+  const nodeRef = useNodeDimensions(id);
 
   // Check if this node has any incoming connections
   const incomingConnection = useMemo(() => {
@@ -56,8 +60,9 @@ export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
 
   return (
     <div
+      ref={nodeRef}
       className={cn(
-        "px-4 py-3 rounded-lg border-2 bg-white shadow-sm w-[180px] relative",
+        "px-4 py-3 rounded-lg border-2 bg-white shadow-sm w-[220px] relative",
         "border-blue-400",
         data.isError && "border-red-500",
         hasIncomingConnection && "border-blue-600 border-dashed"
@@ -115,7 +120,9 @@ export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
           )}
         </div>
         {data.description && (
-          <div className="text-xs text-gray-500 mt-1">{data.description}</div>
+          <div className="text-xs text-gray-500 mt-1 text-left">
+            {data.description}
+          </div>
         )}
         {hasIncomingConnection && sourceNode && (
           <div className="text-xs text-blue-600 mt-1 italic flex flex-col gap-1">

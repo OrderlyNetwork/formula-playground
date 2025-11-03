@@ -35,6 +35,9 @@ type WorkerResponse =
       error: string;
     };
 
+// Note: In Web Worker context, each Worker has its own isolated execution context.
+// Creating a new instance here is acceptable since Workers don't share state with the main thread.
+// Using Factory here would create a separate singleton per Worker, which may not be desired.
 const parser = new FormulaParser();
 
 // Utilities

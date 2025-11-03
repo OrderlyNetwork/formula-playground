@@ -18,10 +18,10 @@
 
 import { readFileSync, writeFileSync, statSync, readdirSync } from "fs";
 import { join, dirname, resolve, extname } from "path";
-import { FormulaParser } from "../modules/formula-parser/index.js";
 import type { FormulaDefinition } from "../types/formula.js";
 import { Project, SourceFile } from "ts-morph";
 import { toSnakeCase } from "../lib/utils.js";
+import { FormulaServiceFactory } from "../services/FormulaServiceFactory.js";
 
 /**
  * Find package.json starting from the given directory and walking up
@@ -212,8 +212,8 @@ async function main() {
   const packageName: string = packageJson.name;
   console.log(`📦 Package name: ${packageName}`);
 
-  // Parse formulas using FormulaParser
-  const parser = new FormulaParser();
+  // Parse formulas using FormulaParser via Factory (ensures singleton pattern consistency)
+  const parser = FormulaServiceFactory.getParser();
   let formulas: FormulaDefinition[] = [];
 
   try {

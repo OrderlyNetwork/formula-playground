@@ -10,6 +10,28 @@ import { FormulaServiceFactory } from "../services/FormulaServiceFactory";
  */
 export class BaseFormulaStore {
   /**
+   * Wrap async operation with standard error handling
+   * Provides consistent error handling pattern across all store methods
+   * 
+   * @param operation - Async operation to execute
+   * @param defaultErrorMessage - Default error message if operation fails
+   * @returns Result object with success flag and optional data/error
+   */
+  protected async withErrorHandling<T>(
+    operation: () => Promise<T>,
+    defaultErrorMessage: string
+  ): Promise<{ success: boolean; data?: T; error?: string }> {
+    try {
+      const data = await operation();
+      return { success: true, data };
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : defaultErrorMessage;
+      return { success: false, error: errorMessage };
+    }
+  }
+  /**
    * Initialize inputs with default values based on formula definition
    * Common logic used by both stores when selecting a formula
    */
@@ -79,7 +101,7 @@ export class BaseFormulaStore {
     result?: FormulaExecutionResult;
     error?: string;
   }> {
-    try {
+    return this.withErrorHandling(async () => {
       const executor = FormulaServiceFactory.getExecutor();
       const result = await executor.execute(formula, inputs, engine);
 
@@ -98,24 +120,19 @@ export class BaseFormulaStore {
         });
       }
 
-      return {
-        success: true,
-        result
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Execution failed";
-      return {
-        success: false,
-        error: errorMessage
-      };
-    }
+      return result;
+    }, "Execution failed").then(({ success, data, error }) => ({
+      success,
+      result: data,
+      error,
+    }));
   }
 
   /**
    * Load execution history with common error handling
    */
   public async loadHistoryBase(formulaId?: string): Promise<RunRecord[]> {
-    try {
+    const result = await this.withErrorHandling(async () => {
       const historyManager = FormulaServiceFactory.getHistoryManager();
 
       const records = formulaId
@@ -123,24 +140,28 @@ export class BaseFormulaStore {
         : await historyManager.getAllRecords();
 
       return records;
-    } catch (error) {
-      console.error("Failed to load history:", error);
+    }, "Failed to load history");
+
+    if (!result.success) {
+      console.error("Failed to load history:", result.error);
       return [];
     }
+
+    return result.data || [];
   }
 
   /**
    * Clear all history with common error handling
    */
   public async clearHistoryBase(): Promise<{ success: boolean; error?: string }> {
-    try {
+    return this.withErrorHandling(async () => {
       const historyManager = FormulaServiceFactory.getHistoryManager();
       await historyManager.clearAllRecords();
-      return { success: true };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to clear history";
-      return { success: false, error: errorMessage };
-    }
+      return true;
+    }, "Failed to clear history").then(({ success, error }) => ({
+      success,
+      error,
+    }));
   }
 
   /**
@@ -153,28 +174,22 @@ export class BaseFormulaStore {
     inputs?: Record<string, any>;
     error?: string;
   }> {
-    try {
+    const result = await this.withErrorHandling(async () => {
       const historyManager = FormulaServiceFactory.getHistoryManager();
       const record = await historyManager.getRecordById(recordId);
 
       if (!record) {
-        return {
-          success: false,
-          error: "History record not found"
-        };
+        throw new Error("History record not found");
       }
 
-      return {
-        success: true,
-        inputs: record.inputs
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to replay history record";
-      return {
-        success: false,
-        error: errorMessage
-      };
-    }
+      return record.inputs;
+    }, "Failed to replay history record");
+
+    return {
+      success: result.success,
+      inputs: result.data,
+      error: result.error,
+    };
   }
 
   /**
@@ -187,13 +202,14 @@ export class BaseFormulaStore {
     formulas?: FormulaDefinition[];
     error?: string;
   }> {
-    try {
+    // Handle empty source files early
+    if (!sourceFiles || sourceFiles.length === 0) {
+      return { success: true, formulas: [] };
+    }
+
+    return this.withErrorHandling(async () => {
       const parser = FormulaServiceFactory.getParser();
       let formulas: FormulaDefinition[];
-
-      if (!sourceFiles || sourceFiles.length === 0) {
-        return { success: true, formulas: [] };
-      }
 
       if (typeof sourceFiles[0] === "string") {
         // Parse from source file paths
@@ -208,16 +224,11 @@ export class BaseFormulaStore {
         formulas = sourceFiles as FormulaDefinition[];
       }
 
-      return {
-        success: true,
-        formulas
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to parse formulas";
-      return {
-        success: false,
-        error: errorMessage
-      };
-    }
+      return formulas;
+    }, "Failed to parse formulas").then(({ success, data, error }) => ({
+      success,
+      formulas: data,
+      error,
+    }));
   }
 }
