@@ -42,17 +42,62 @@ function extractFunctionBody(
 }
 
 /**
- * Map formula IDs to their function names in the SDK
+ * Extract formula ID to function name mappings from JSDoc annotations in source code
+ * This automatically builds the mapping instead of requiring hard-coded values
  */
-const formulaIdToFunctionName: Record<string, string> = {
-  funding_fee: "calculateFundingFee",
-  liquidation_price: "calculateLiquidationPrice",
-  pnl_calculation: "calculatePnL",
-  margin_requirement: "calculateMarginRequirement",
-  percentage_change: "calculatePercentageChange",
-  est_liq_price: "estLiqPrice", // If you add this function
-  order_fee: "calculateOrderFee", // If you add this function
-};
+function extractFormulaMappings(sourceCode: string): Record<string, string> {
+  const mappings: Record<string, string> = {};
+
+  // Regex to match JSDoc with @formulaId and the following export function
+  // This pattern captures the formula ID from @formulaId and the function name from export function
+  const formulaRegex = /\/\*\*[\s\S]*?\*\s*@formulaId\s+([a-zA-Z0-9_-]+)[\s\S]*?\*\/[\s\S]*?export\s+function\s+([a-zA-Z0-9_]+)/g;
+
+  let match;
+  while ((match = formulaRegex.exec(sourceCode)) !== null) {
+    const [, formulaId, functionName] = match;
+    mappings[formulaId] = functionName;
+
+    console.debug(`Auto-mapped formula: ${formulaId} → ${functionName}`);
+  }
+
+  return mappings;
+}
+
+/**
+ * Convert formula ID to function name using naming conventions
+ * Fallback when no JSDoc mapping is found
+ */
+function idToFunctionName(formulaId: string): string {
+  return 'calculate' + formulaId
+    .split('_')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('');
+}
+
+// Auto-generated mappings cache - populated from JSDoc annotations
+let cachedMappings: Record<string, string> | null = null;
+
+/**
+ * Get function name for a formula ID using automatic resolution
+ * Priority: JSDoc extraction > naming convention
+ */
+function getFunctionNameForFormula(formulaId: string): string {
+  // Initialize mappings cache if not already done
+  if (!cachedMappings) {
+    cachedMappings = extractFormulaMappings(sdkSourceRaw);
+    console.info(`Auto-extracted ${Object.keys(cachedMappings).length} formula mappings from SDK JSDoc`);
+  }
+
+  // First try to find mapping from JSDoc
+  if (cachedMappings[formulaId]) {
+    return cachedMappings[formulaId];
+  }
+
+  // Fallback to naming convention
+  const conventionalName = idToFunctionName(formulaId);
+  console.debug(`Using conventional naming for formula: ${formulaId} → ${conventionalName}`);
+  return conventionalName;
+}
 
 /**
  * Enrich formula definitions with source code
@@ -62,15 +107,22 @@ export function enrichFormulasWithSource(
   formulas: FormulaDefinition[]
 ): FormulaDefinition[] {
   return formulas.map((formula) => {
-    const functionName = formulaIdToFunctionName[formula.id];
-
-    if (!functionName) {
-      console.warn(`No function mapping found for formula: ${formula.id}`);
-      return formula;
-    }
+    const functionName = getFunctionNameForFormula(formula.id);
 
     const sourceCode = extractFunctionSource(sdkSourceRaw, functionName);
     const formulaText = extractFunctionBody(sdkSourceRaw, functionName);
+
+    // If no source code found, it means the function doesn't exist in the SDK yet
+    // Provide a placeholder implementation
+    if (!sourceCode || !formulaText) {
+      const placeholderSource = generatePlaceholderSource(formula, functionName);
+      return {
+        ...formula,
+        sourceCode: placeholderSource,
+        formulaText: placeholderSource,
+        creationType: formula.creationType ?? "external", // Mark as external since it's not in SDK
+      };
+    }
 
     return {
       ...formula,
@@ -83,17 +135,39 @@ export function enrichFormulasWithSource(
 }
 
 /**
+ * Generate placeholder source code for formulas not yet implemented in SDK
+ */
+function generatePlaceholderSource(formula: FormulaDefinition, functionName: string): string {
+  const inputs = Object.entries(formula.inputTypes || {})
+    .map(([name, type]) => {
+      const defaultValue = type === 'number' ? '0' : type === 'boolean' ? 'false' : '""';
+      return `  ${name}: ${type} = ${defaultValue}`;
+    })
+    .join(',\n');
+
+  const returnType = formula.outputType || 'number';
+
+  return `/**
+ * Placeholder implementation for ${formula.name || formula.id}
+ * TODO: Implement actual formula logic in SDK
+ */
+export function ${functionName}(
+${inputs}
+): ${returnType} {
+  // TODO: Implement actual formula logic
+  console.warn('Using placeholder implementation for ${formula.id}');
+  return ${returnType === 'number' ? '0' : returnType === 'boolean' ? 'false' : '""'};
+}`;
+}
+
+/**
  * Get source code for a specific formula
  */
 export function getFormulaSource(formulaId: string): {
   sourceCode?: string;
   formulaText?: string;
 } {
-  const functionName = formulaIdToFunctionName[formulaId];
-
-  if (!functionName) {
-    return {};
-  }
+  const functionName = getFunctionNameForFormula(formulaId);
 
   return {
     sourceCode: extractFunctionSource(sdkSourceRaw, functionName),
@@ -106,4 +180,21 @@ export function getFormulaSource(formulaId: string): {
  */
 export function getFullSDKSource(): string {
   return sdkSourceRaw;
+}
+
+/**
+ * Get all auto-extracted formula mappings (for debugging)
+ */
+export function getExtractedFormulaMappings(): Record<string, string> {
+  if (!cachedMappings) {
+    cachedMappings = extractFormulaMappings(sdkSourceRaw);
+  }
+  return { ...cachedMappings };
+}
+
+/**
+ * Clear the mappings cache (useful for testing or dynamic reloading)
+ */
+export function clearFormulaMappingsCache(): void {
+  cachedMappings = null;
 }

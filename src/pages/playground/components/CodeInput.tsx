@@ -1,21 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import * as monaco from "monaco-editor";
+import Editor from "@monaco-editor/react";
+import type { EditorProps } from "@monaco-editor/react";
 import { useDeveloperStore } from "@/store/developerStore";
 import { Button } from "@/components/ui/button";
 
 /**
- * Multiline TypeScript sample used purely as a visual placeholder when the
- * current editor value is empty. We DO NOT inject this into the model to
- * avoid treating it as real content; instead we render an overlay.
+ * Multiline TypeScript sample used as the default content when the
+ * current editor value is empty. This provides users with a ready-to-use
+ * example of how to structure formula code with proper JSDoc annotations.
  */
 const PLACEHOLDER_TS_SAMPLE = `/**
 * @formulaId custom_formula
-* @name 自定义公式
-* @description 示例：输入与输出的说明
+* @name Custom Formula
+* @description Example: input and output description
 * @version 1.0.0
-* @param {number} a - 第一个输入 @default 1 @unit unitA
-* @param {number} b - 第二个输入 @default 2 @unit unitB
-* @returns {number} 结果 @unit unitR
+* @param {number} a - First input @default 1 @unit unitA
+* @param {number} b - Second input @default 2 @unit unitB
+* @returns {number} Result @unit unitR
 */
 export function add(a: number, b: number): number {
   return a + b;
@@ -41,11 +42,25 @@ export function CodeInput() {
   const [submitting, setSubmitting] = useState(false);
 
   /**
-   * Ref to the container DOM element for Monaco and a ref to the editor instance.
-   * We keep the editor uncontrolled internally and sync to Zustand on changes.
+   * Track whether the user has ever edited the code.
+   * Placeholder is only shown when code is empty AND user has never edited.
    */
-  const editorContainerRef = useRef<HTMLDivElement | null>(null);
-  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const hasUserEditedRef = useRef(false);
+
+  /**
+   * Initialize: if codeInput already has content on mount, mark as edited
+   * This handles cases where codeInput is restored from store or has initial value
+   */
+  useEffect(() => {
+    if (
+      codeInput &&
+      codeInput.length > 0 &&
+      codeInput !== PLACEHOLDER_TS_SAMPLE
+    ) {
+      hasUserEditedRef.current = true;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount to check initial state
 
   /**
    * Parse and create - parse the code and add formulas to the developer store
@@ -59,65 +74,60 @@ export function CodeInput() {
   /** Clear the editor content and any visible error. */
   const handleClear = useCallback(() => {
     clearCode();
+    // Don't reset hasUserEditedRef - user has already edited, so no placeholder
   }, [clearCode]);
 
   /**
-   * Initialize Monaco editor once when the container mounts. Dispose on unmount.
+   * Handle editor content changes - update the global store
+   * Mark that user has edited whenever they change the content
    */
-  useEffect(() => {
-    if (!editorContainerRef.current) return;
+  const handleChange = useCallback(
+    (value: string | undefined) => {
+      const newValue = value ?? "";
+      setCodeInput(newValue);
 
-    // Initialize model with either existing input or empty string.
-    // Placeholder is rendered as an overlay instead of actual content.
-    const initialValue = codeInput && codeInput.length > 0 ? codeInput : "";
-
-    // Create editor with TypeScript language and sensible defaults for coding
-    editorRef.current = monaco.editor.create(editorContainerRef.current, {
-      value: initialValue,
-      language: "typescript",
-      theme: "vs",
-      automaticLayout: true,
-      fontSize: 12,
-      minimap: { enabled: false },
-      scrollBeyondLastLine: false,
-      wordWrap: "on",
-      tabSize: 2,
-    });
-
-    // Propagate content changes back to the global store
-    const model = editorRef.current.getModel();
-    const disposable = model?.onDidChangeContent(() => {
-      const next = editorRef.current?.getValue() ?? "";
-      setCodeInput(next);
-    });
-
-    return () => {
-      disposable?.dispose?.();
-      editorRef.current?.dispose();
-      editorRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      // Mark that user has edited if they changed the value
+      // This includes editing the placeholder or any other content
+      if (newValue !== PLACEHOLDER_TS_SAMPLE) {
+        hasUserEditedRef.current = true;
+      }
+    },
+    [setCodeInput]
+  );
 
   /**
-   * Keep Monaco content in sync when `codeInput` is updated elsewhere (e.g. 清空/导入成功).
-   * Avoid infinite loops by only setting when values differ.
+   * Get the current editor value.
+   * Only show placeholder if:
+   * 1. codeInput is empty (or only whitespace)
+   * 2. User has never edited (hasUserEditedRef.current === false)
    */
-  useEffect(() => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    const current = editor.getValue();
-    if (current !== codeInput) {
-      editor.setValue(codeInput ?? "");
-    }
-  }, [codeInput]);
+  const editorValue =
+    codeInput && codeInput.trim().length > 0
+      ? codeInput
+      : hasUserEditedRef.current
+      ? ""
+      : PLACEHOLDER_TS_SAMPLE;
+
+  /**
+   * Monaco editor options - optimized for code editing
+   * Note: language is set as a prop on Editor, not in options
+   */
+  const editorOptions: EditorProps["options"] = {
+    theme: "vs",
+    automaticLayout: true,
+    fontSize: 12,
+    minimap: { enabled: false },
+    scrollBeyondLastLine: false,
+    wordWrap: "on",
+    tabSize: 2,
+  };
 
   return (
     // Make the editor panel more compact while keeping readability
     <div className="h-full w-full flex flex-col bg-white">
       <div className="px-3 py-1.5 border-b bg-gray-50 flex items-center justify-between">
         <h3 className="font-medium text-gray-800 text-sm">
-          输入 TypeScript 公式代码
+          Enter TypeScript Formula Code
         </h3>
         <div className="flex items-center gap-1.5">
           <Button
@@ -126,25 +136,29 @@ export function CodeInput() {
             onClick={handleClear}
             disabled={submitting}
           >
-            清空
+            Clear
           </Button>
         </div>
       </div>
       <div className="flex-1 overflow-auto">
         {/*
          * Monaco container: stretches to available height.
-         * Placeholder is rendered as a non-interactive overlay when empty.
+         * Default sample code is loaded directly into the editor when empty.
+         * Using @monaco-editor/react for automatic lifecycle management.
          */}
         <div className="relative w-full h-full min-h-[240px]">
-          <div
-            ref={editorContainerRef}
-            className="w-full h-full min-h-[240px]"
+          <Editor
+            height="100%"
+            language="typescript"
+            value={editorValue}
+            onChange={handleChange}
+            options={editorOptions}
+            loading={
+              <div className="flex items-center justify-center h-full text-sm text-gray-500">
+                Loading editor...
+              </div>
+            }
           />
-          {(!codeInput || codeInput.length === 0) && (
-            <pre className="pointer-events-none text-xs absolute inset-0 left-12 text-gray-400 whitespace-pre-wrap p-2.5">
-              {PLACEHOLDER_TS_SAMPLE}
-            </pre>
-          )}
         </div>
 
         {parseError && (
@@ -160,7 +174,7 @@ export function CodeInput() {
       </div>
       <div className="px-3 py-2 border-t bg-gray-50 flex items-center justify-end">
         <Button onClick={handleParseAndCreate} disabled={submitting}>
-          {submitting ? "解析中..." : "解析"}
+          {submitting ? "Parsing..." : "Parse"}
         </Button>
       </div>
     </div>

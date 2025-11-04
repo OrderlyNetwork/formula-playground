@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
+import Editor from "@monaco-editor/react";
+import type { EditorProps } from "@monaco-editor/react";
 import { useFormulaStore } from "../../../store/formulaStore";
-// import { ScrollArea } from "@/components/ui/scroll-area";
-import * as monaco from "monaco-editor";
 
 /**
  * Read-only code viewer for the selected formula using Monaco Editor.
@@ -9,6 +9,7 @@ import * as monaco from "monaco-editor";
  * Why Monaco:
  * - Replaces hljs with an embeddable editor for consistent rendering and future extensibility
  * - Configured as read-only and auto-sized for this panel
+ * - Using @monaco-editor/react for automatic lifecycle management
  */
 export function FormulaCode() {
   const { formulaDefinitions, selectedFormulaId, activeEngine } =
@@ -25,49 +26,18 @@ export function FormulaCode() {
   // Monaco does not support Rust out-of-the-box; fallback to plaintext for Rust
   const monacoLanguage = activeEngine === "rust" ? "plaintext" : "typescript";
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    // Create editor only once for the container
-    // Slightly smaller font size for a denser read-only viewer
-    editorRef.current = monaco.editor.create(containerRef.current, {
-      value: code,
-      language: monacoLanguage,
-      readOnly: true,
-      automaticLayout: true,
-      lineNumbers: "on",
-      minimap: { enabled: false },
-      scrollBeyondLastLine: false,
-      theme: "vs", // light theme to match existing UI
-      fontSize: 12,
-    });
-
-    return () => {
-      // Dispose editor on unmount to avoid leaks
-      editorRef.current?.dispose();
-      editorRef.current = null;
-    };
-    // We want to initialize once per mount; updates handled below
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    // Update content when code changes
-    if (editorRef.current && code !== editorRef.current.getValue()) {
-      editorRef.current.setValue(code);
-    }
-  }, [code]);
-
-  useEffect(() => {
-    // Update model language when engine changes
-    if (!editorRef.current) return;
-    const model = editorRef.current.getModel();
-    if (!model) return;
-    monaco.editor.setModelLanguage(model, monacoLanguage);
-  }, [monacoLanguage]);
+  /**
+   * Monaco editor options - optimized for read-only code viewing
+   */
+  const editorOptions: EditorProps["options"] = {
+    readOnly: true,
+    automaticLayout: true,
+    lineNumbers: "on",
+    minimap: { enabled: false },
+    scrollBeyondLastLine: false,
+    theme: "vs", // light theme to match existing UI
+    fontSize: 12,
+  };
 
   return (
     <div className="h-full w-full bg-gray-50">
@@ -77,7 +47,17 @@ export function FormulaCode() {
         </div>
       ) : code ? (
         <div className="mt-1.5 h-[60vh] w-full overflow-hidden bg-white">
-          <div ref={containerRef} className="h-full w-full" />
+          <Editor
+            height="100%"
+            value={code}
+            language={monacoLanguage}
+            options={editorOptions}
+            loading={
+              <div className="flex items-center justify-center h-full text-sm text-gray-500">
+                加载代码...
+              </div>
+            }
+          />
         </div>
       ) : (
         <p className="text-xs text-gray-500">No source code available.</p>

@@ -44,7 +44,8 @@ export type FormulaCreationType =
   | "parsed" // Created by parsing TypeScript code in developer mode
   | "imported" // Imported from GitHub or other external sources
   | "uploaded" // Uploaded from local files
-  | "builtin"; // Built-in formula definitions
+  | "builtin" // Built-in formula definitions
+  | "external"; // External formula without SDK implementation (placeholder)
 
 /**
  * @description Formula definition parsed from SDK source code (via JSDoc)
