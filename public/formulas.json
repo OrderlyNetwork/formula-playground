@@ -1,9 +1,10 @@
 [
   {
-    "id": "unrealizedPnL\nCalculates the unrealized profit or loss of a single position.",
+    "id": "unrealizedPnL",
     "name": "unrealizedPnL",
     "version": "1.0.0",
-    "description": "",
+    "description": "Calculates the unrealized profit or loss of a single position.",
+    "formula": "qty * (markPrice - openPrice)",
     "inputs": [
       {
         "key": "inputs",
@@ -21,7 +22,8 @@
                 "baseType": "number",
                 "nullable": false,
                 "array": false
-              }
+              },
+              "description": "symbol mark price"
             },
             {
               "key": "openPrice",
@@ -30,7 +32,8 @@
                 "baseType": "number",
                 "nullable": false,
                 "array": false
-              }
+              },
+              "description": "symbol open price"
             },
             {
               "key": "qty",
@@ -39,7 +42,8 @@
                 "baseType": "number",
                 "nullable": false,
                 "array": false
-              }
+              },
+              "description": "symbol quantity"
             }
           ]
         }

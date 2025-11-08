@@ -5,13 +5,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Calculator,
-  Database,
-  History,
-  Settings,
-  SquareFunction,
-} from "lucide-react";
+import { Database, History, Settings, SquareFunction } from "lucide-react";
 
 type CategoryType = "formulas" | "datasource" | "history" | "settings";
 

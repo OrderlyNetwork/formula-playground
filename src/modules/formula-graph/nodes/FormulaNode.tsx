@@ -93,7 +93,7 @@ export const FormulaNode = memo(function FormulaNode({
         "border-purple-500",
         executionStatus === "error" && "border-red-500",
         // Selected state: thicker border, stronger shadow, and subtle background highlight
-        selected && "border-purple-600 border-[3px] shadow-lg ring-2 ring-purple-200 ring-opacity-50"
+        selected && "border-purple-600 shadow-lg ring-2 ring-purple-200"
       )}
       style={{ minHeight: containerMinHeight }}
     >

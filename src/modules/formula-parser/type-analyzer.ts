@@ -156,10 +156,27 @@ export class TypeAnalyzer {
         if (nested.length > 0) factorType.properties = nested;
       }
 
+      // Extract JSDoc comments from property declaration
+      let description: string | undefined;
+      const jsDocs = decl.getJsDocs();
+      if (jsDocs.length > 0) {
+        // Get description from JSDoc comment
+        const jsDoc = jsDocs[0];
+        description = jsDoc.getDescription()?.toString() || undefined;
+        // If no description, try to get comment text
+        if (!description) {
+          const comment = jsDoc.getComment();
+          if (comment) {
+            description = comment.toString().trim() || undefined;
+          }
+        }
+      }
+
       properties.push({
         key,
         type: baseType,
         factorType,
+        description,
       });
     }
 
@@ -178,6 +195,7 @@ export class TypeAnalyzer {
   /**
    * Parse properties from type text as fallback when ts-morph can't resolve types
    * Handles cases like: { holding: number; indexPrice: number; }
+   * Also extracts JSDoc comments from property definitions
    */
   private parsePropertiesFromTypeText(typeText: string): NonNullable<FactorType["properties"]> {
     const properties: NonNullable<FactorType["properties"]> = [];
@@ -189,11 +207,86 @@ export class TypeAnalyzer {
     const content = objectMatch[1];
 
     // Split by semicolons and parse each property
-    const propStrings = content.split(';').map(s => s.trim()).filter(s => s.length > 0);
+    // We need to be careful with semicolons inside comments
+    const propStrings: string[] = [];
+    let currentProp = '';
+    let inComment = false;
+    let commentType: 'single' | 'multi' | null = null;
 
+    for (let i = 0; i < content.length; i++) {
+      const char = content[i];
+      const nextChar = content[i + 1];
+      const prevChar = i > 0 ? content[i - 1] : '';
+
+      // Check for comment start
+      if (!inComment && char === '/' && nextChar === '*') {
+        inComment = true;
+        commentType = 'multi';
+        currentProp += char;
+        i++; // Skip next char
+        continue;
+      } else if (!inComment && char === '/' && nextChar === '/') {
+        inComment = true;
+        commentType = 'single';
+        currentProp += char;
+        i++; // Skip next char
+        continue;
+      }
+
+      // Check for comment end
+      if (inComment && commentType === 'multi' && prevChar === '*' && char === '/') {
+        inComment = false;
+        commentType = null;
+        currentProp += char;
+        continue;
+      } else if (inComment && commentType === 'single' && char === '\n') {
+        inComment = false;
+        commentType = null;
+        currentProp += char;
+        continue;
+      }
+
+      // Check for property separator (semicolon outside comments)
+      if (!inComment && char === ';') {
+        const trimmed = currentProp.trim();
+        if (trimmed.length > 0) {
+          propStrings.push(trimmed);
+        }
+        currentProp = '';
+        continue;
+      }
+
+      currentProp += char;
+    }
+
+    // Add last property if exists
+    const trimmed = currentProp.trim();
+    if (trimmed.length > 0) {
+      propStrings.push(trimmed);
+    }
+
+    // Parse each property string
     for (const propString of propStrings) {
+      // Match JSDoc comment pattern: /** comment */ or // comment
+      let description: string | undefined;
+      let propContent = propString;
+
+      // Match multi-line comment: /** ... */
+      const multiCommentMatch = propString.match(/\/\*\*\s*(.+?)\s*\*\//s);
+      if (multiCommentMatch) {
+        description = multiCommentMatch[1].trim();
+        propContent = propString.replace(/\/\*\*\s*.+?\s*\*\//s, '').trim();
+      } else {
+        // Match single-line comment: // comment
+        const singleCommentMatch = propString.match(/\/\/\s*(.+?)(?:\n|$)/);
+        if (singleCommentMatch) {
+          description = singleCommentMatch[1].trim();
+          propContent = propString.replace(/\/\/\s*.+?(?:\n|$)/, '').trim();
+        }
+      }
+
       // Match property pattern: propertyName: type
-      const propMatch = propString.match(/^(\w+)\s*:\s*(.+)$/);
+      const propMatch = propContent.match(/^(\w+)\s*:\s*(.+)$/);
       if (!propMatch) continue;
 
       const [, key, propTypeText] = propMatch;
@@ -209,6 +302,7 @@ export class TypeAnalyzer {
         key,
         type: baseType,
         factorType,
+        description,
       });
     }
 

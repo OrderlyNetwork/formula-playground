@@ -62,7 +62,7 @@ export const WebSocketNode = memo(function WebSocketNode({
         "border-teal-400",
         data.isError && "border-red-500",
         // Selected state: thicker border, stronger shadow, and subtle background highlight
-        selected && "border-teal-600 border-[3px] shadow-lg ring-2 ring-teal-200 ring-opacity-50"
+        selected && "border-teal-600 shadow-lg ring-2 ring-teal-200"
       )}
     >
       {/* Header */}

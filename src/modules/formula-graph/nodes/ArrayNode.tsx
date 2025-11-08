@@ -202,8 +202,7 @@ export const ArrayNode = memo(function ArrayNode({
         data.isError && "border-red-500",
         hasIncomingConnections && "border-purple-600 border-dashed",
         // Selected state: thicker border, stronger shadow, and subtle background highlight
-        selected &&
-          "border-purple-600 border-[3px] shadow-lg ring-2 ring-purple-200 ring-opacity-50"
+        selected && "border-purple-600 shadow-lg ring-2 ring-purple-200"
       )}
     >
       {/* Input Handle - allows receiving data from multiple nodes */}

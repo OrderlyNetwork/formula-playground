@@ -241,7 +241,9 @@ export class FormulaParser {
     const formulaIdTag = jsDoc
       .getTags()
       .find((tag) => tag.getTagName() === "formulaId");
-    return formulaIdTag?.getComment()?.toString() || null;
+    // Trim whitespace and newlines from the formula ID
+    const comment = formulaIdTag?.getComment()?.toString();
+    return comment?.trim() || null;
   }
 
   private extractName(jsDoc: JSDoc): string | null {

@@ -15,7 +15,11 @@ const HANDLE_GAP = 24;
 const HEADER_TO_FIRST_HANDLE_GAP = 12;
 const BOTTOM_PADDING = 12;
 
-export const ObjectNode = memo(function ObjectNode({ id, data, selected }: ObjectNodeProps) {
+export const ObjectNode = memo(function ObjectNode({
+  id,
+  data,
+  selected,
+}: ObjectNodeProps) {
   const inputs = data.inputs ?? [];
   const handleCount = inputs.length;
   const containerMinHeight =
@@ -26,13 +30,18 @@ export const ObjectNode = memo(function ObjectNode({ id, data, selected }: Objec
 
   // Generate dynamic connection configuration for each property
   const propertyConfigs = useMemo(() => {
-    const configs = new Map<string, { acceptedTypes: string[]; allowArray: boolean }>();
+    const configs = new Map<
+      string,
+      { acceptedTypes: string[]; allowArray: boolean }
+    >();
 
     inputs.forEach((input) => {
-      const config = getConnectionConfigFromFactorType(input.factorType || {
-        baseType: input.type,
-        nullable: true,
-      });
+      const config = getConnectionConfigFromFactorType(
+        input.factorType || {
+          baseType: input.type,
+          nullable: true,
+        }
+      );
       configs.set(input.key, {
         acceptedTypes: config.acceptedTypes,
         allowArray: config.allowArray || false,
@@ -49,7 +58,7 @@ export const ObjectNode = memo(function ObjectNode({ id, data, selected }: Objec
         "border-sky-500",
         data.isError && "border-red-500",
         // Selected state: thicker border, stronger shadow, and subtle background highlight
-        selected && "border-sky-600 border-[3px] shadow-lg ring-2 ring-sky-200 ring-opacity-50"
+        selected && "border-sky-600 shadow-lg ring-2 ring-sky-200"
       )}
       style={{ minHeight: containerMinHeight }}
     >
@@ -65,7 +74,9 @@ export const ObjectNode = memo(function ObjectNode({ id, data, selected }: Objec
       {inputs.map((input, index) => {
         const config = propertyConfigs.get(input.key);
         const acceptedTypesText = config
-          ? `Accepts: ${config.acceptedTypes.join(", ")}${config.allowArray ? " (or arrays)" : ""}`
+          ? `Accepts: ${config.acceptedTypes.join(", ")}${
+              config.allowArray ? " (or arrays)" : ""
+            }`
           : `Accepts: ${input.type}`;
 
         return (
@@ -94,10 +105,14 @@ export const ObjectNode = memo(function ObjectNode({ id, data, selected }: Objec
                   index * HANDLE_GAP,
                 left: 16,
               }}
-              title={`${input.key}: ${input.type}${input.unit ? ` (${input.unit})` : ""}`}
+              title={`${input.key}: ${input.type}${
+                input.unit ? ` (${input.unit})` : ""
+              }`}
             >
               {input.key}
-              {input.unit && <span className="text-[8px] ml-1">({input.unit})</span>}
+              {input.unit && (
+                <span className="text-[8px] ml-1">({input.unit})</span>
+              )}
             </span>
           </Fragment>
         );

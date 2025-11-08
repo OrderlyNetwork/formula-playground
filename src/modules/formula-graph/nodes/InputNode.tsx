@@ -10,6 +10,13 @@ import { Info } from "lucide-react";
 import { useNodeDimensions } from "../hooks/useNodeDimensions";
 import { TypeAwareInput } from "../components/TypeAwareInput";
 import { getConnectionConfigFromFactorType } from "../utils/nodeTypes";
+import {
+  Tooltip,
+  TooltipArrow,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface InputNodeProps {
   id: string;
@@ -23,7 +30,11 @@ interface InputNodeProps {
  *
  * Note: Array inputs are handled by ArrayNode, object inputs are handled by ObjectNode
  */
-export const InputNode = memo(function InputNode({ id, data, selected }: InputNodeProps) {
+export const InputNode = memo(function InputNode({
+  id,
+  data,
+  selected,
+}: InputNodeProps) {
   const { updateInput, updateInputAt } = useFormulaStore();
   const { nodes: storeNodes, edges } = useGraphStore();
 
@@ -68,7 +79,6 @@ export const InputNode = memo(function InputNode({ id, data, selected }: InputNo
     e.stopPropagation();
   };
 
-  
   return (
     <div
       ref={nodeRef}
@@ -78,7 +88,7 @@ export const InputNode = memo(function InputNode({ id, data, selected }: InputNo
         data.isError && "border-red-500",
         hasIncomingConnection && "border-blue-600 border-dashed",
         // Selected state: thicker border, stronger shadow, and subtle background highlight
-        selected && "border-blue-600 border-[3px] shadow-lg ring-2 ring-blue-200 ring-opacity-50"
+        selected && "border-blue-600 shadow-lg ring-2 ring-blue-200"
       )}
     >
       {/* Input Handle - allows receiving data from other nodes */}
@@ -89,23 +99,47 @@ export const InputNode = memo(function InputNode({ id, data, selected }: InputNo
         style={{ top: "50%", transform: "translateY(-50%)" }}
         title={
           hasIncomingConnection
-            ? `Connected to ${sourceNode?.data?.label || sourceNode?.type}. Click to disconnect or connect another source (will replace current connection)`
-            : `Accepts: ${connectionConfig.acceptedTypes.join(", ")}. Click to connect a data source.`
+            ? `Connected to ${
+                sourceNode?.data?.label || sourceNode?.type
+              }. Click to disconnect or connect another source (will replace current connection)`
+            : `Accepts: ${connectionConfig.acceptedTypes.join(
+                ", "
+              )}. Click to connect a data source.`
         }
       />
 
       <div className="flex flex-col gap-1 items-start">
         <div className="font-medium text-gray-900 flex items-center gap-1">
           <span>{data.label}</span>
-          <Info size={14} />
+          {data.description ? (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info size={14} className="cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  align="center"
+                  className="bg-gray-800 text-white border-gray-700 max-w-[280px]"
+                >
+                  <p className="text-xs whitespace-pre-wrap break-words">
+                    {data.description}
+                  </p>
+                  <TooltipArrow className="fill-gray-800" />
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : null}
         </div>
         <div className="mt-1 w-full">
           <TypeAwareInput
             value={data.value ?? ""}
-            factorType={data.factorType || {
-              baseType: data.inputType || "string",
-              nullable: true,
-            }}
+            factorType={
+              data.factorType || {
+                baseType: data.inputType || "string",
+                nullable: true,
+              }
+            }
             onChange={handleValueChange}
             disabled={hasIncomingConnection}
             label={data.label}
@@ -113,11 +147,11 @@ export const InputNode = memo(function InputNode({ id, data, selected }: InputNo
             onMouseDown={handleInputMouseDown}
           />
         </div>
-        {data.description && (
+        {/* {data.description && (
           <div className="text-xs text-gray-500 mt-1 text-left">
             {data.description}
           </div>
-        )}
+        )} */}
         {hasIncomingConnection && sourceNode && (
           <div className="text-xs text-blue-600 mt-1 italic flex flex-col gap-1">
             <span className="flex items-center gap-1">

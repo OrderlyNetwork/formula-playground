@@ -75,12 +75,11 @@ export function useFormulaUrlSync() {
   // Get graph store to check if nodes are generated
   const { nodes: graphNodes } = useGraphStore();
   // Get canvas store for multi-formula mode
-  const { 
-    mode: canvasMode, 
-    canvasFormulaIds, 
+  const {
+    mode: canvasMode,
+    canvasFormulaIds,
     formulaParams,
     setFormulaParams,
-    replaceCanvasFormula,
   } = useCanvasStore();
 
   // Track if we're currently syncing from URL to prevent circular updates
@@ -125,7 +124,7 @@ export function useFormulaUrlSync() {
           })),
         };
         
-        const encodedFormulas = encodeParams(multiFormulaData);
+        const encodedFormulas = encodeParams(multiFormulaData as Record<string, unknown>);
         
         // Use the first formula ID as the main path (or current selectedFormulaId if available)
         const mainFormulaId = formulaId || canvasFormulaIds[0] || params.id;

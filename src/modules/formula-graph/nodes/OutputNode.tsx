@@ -142,8 +142,7 @@ export const OutputNode = memo(function OutputNode({
           data.diff > 1e-10 &&
           "border-orange-500 shadow-lg",
         // Selected state: thicker border, stronger shadow, and subtle background highlight
-        selected &&
-          "border-green-600 border-[3px] shadow-lg ring-2 ring-green-200 ring-opacity-50"
+        selected && "border-green-600 shadow-lg ring-2 ring-green-200"
       )}
     >
       <Handle
