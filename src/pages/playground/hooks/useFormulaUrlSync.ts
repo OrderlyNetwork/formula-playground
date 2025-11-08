@@ -573,17 +573,22 @@ export function useFormulaUrlSync() {
     // When switching from single to multi mode, migrate current params
     if (canvasMode === "multi" && selectedFormulaId) {
       const canvasStore = useCanvasStore.getState();
-      // If formula is on canvas but doesn't have params yet, use currentInputs
-      if (
+      // If formula is NOT yet on canvas, add it (this happens when switching from single to multi)
+      if (!canvasStore.canvasFormulaIds.includes(selectedFormulaId)) {
+        // Add the current formula to canvas in multi mode
+        canvasStore.addFormulaToCanvas(selectedFormulaId);
+
+        // Set params if we have any
+        if (Object.keys(currentInputs).length > 0) {
+          setFormulaParams(selectedFormulaId, currentInputs);
+        }
+      } else if (
         canvasStore.canvasFormulaIds.includes(selectedFormulaId) &&
         !canvasStore.formulaParams[selectedFormulaId]
       ) {
+        // Formula is on canvas but doesn't have params yet, use currentInputs
         if (Object.keys(currentInputs).length > 0) {
           setFormulaParams(selectedFormulaId, currentInputs);
-          // Also update URL to multi-formula format
-          // This will be handled by the URL sync effect, but we trigger it here
-          // to ensure immediate update when mode switches
-          updateUrl(selectedFormulaId, currentInputs);
         }
       }
     }

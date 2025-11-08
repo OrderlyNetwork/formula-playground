@@ -19,12 +19,12 @@ export async function generateFormulaGraph(
     // Check if this is an array type input
     if (input.factorType?.array === true) {
       // Array input: create an ArrayNode
-      const defaultArrayValue = Array.isArray(input.default) 
-        ? input.default 
+      const defaultArrayValue = Array.isArray(input.default)
+        ? input.default
         : input.default !== undefined && input.default !== null
         ? [input.default]
         : [];
-      
+
       nodes.push({
         id: `array-${input.key}`,
         type: "array",
@@ -239,11 +239,13 @@ export async function applyELKLayout(
   dimensionsMap?: NodeDimensionsMap
 ): Promise<{ nodes: FormulaNode[]; edges: FormulaEdge[] }> {
   // Group nodes by layer to calculate dynamic spacing
-  const inputNodes = nodes.filter(node =>
-    node.type === "input" || node.type === "array" ||
-    (node.type === "object" && !node.id.startsWith("formula"))
+  const inputNodes = nodes.filter(
+    (node) =>
+      node.type === "input" ||
+      node.type === "array" ||
+      (node.type === "object" && !node.id.startsWith("formula"))
   );
-  const outputNodes = nodes.filter(node => node.type === "output");
+  const outputNodes = nodes.filter((node) => node.type === "output");
 
   // Calculate dynamic Y-axis spacing based on sibling count
   // More nodes = more compact spacing
@@ -289,7 +291,9 @@ export async function applyELKLayout(
       // ArrayNode has table UI, needs more space
       // Base width: 400-600px (min-w-[400px] max-w-[600px])
       // Height depends on array length: header (~60px) + table rows (~35px each) + add button (~30px)
-      const arrayLength = Array.isArray(node.data?.value) ? node.data.value.length : 0;
+      const arrayLength = Array.isArray(node.data?.value)
+        ? node.data.value.length
+        : 0;
       width = 500; // Default width for ArrayNode
       height = 60 + Math.max(1, arrayLength) * 35 + 30; // Header + rows + button
     } else if (node.type === "input") {

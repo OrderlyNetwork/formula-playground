@@ -15,8 +15,17 @@ import { toSnakeCase } from "../../lib/utils";
 export class FormulaParser {
   private project: Project;
   private typeAnalyzer: TypeAnalyzer;
+  /**
+   * Controls whether formulas without explicit @formulaId are ignored.
+   * When true, only formulas declaring @formulaId are parsed.
+   */
+  private readonly requireFormulaId: boolean;
 
-  constructor(useInMemoryFileSystem = true, tsConfigFilePath?: string) {
+  constructor(
+    useInMemoryFileSystem = true,
+    tsConfigFilePath?: string,
+    requireFormulaId = false
+  ) {
     this.project = new Project({
       useInMemoryFileSystem,
       tsConfigFilePath,
@@ -24,6 +33,7 @@ export class FormulaParser {
       skipAddingFilesFromTsConfig: true,
     });
     this.typeAnalyzer = new TypeAnalyzer();
+    this.requireFormulaId = requireFormulaId;
   }
 
   /**
@@ -107,7 +117,15 @@ export class FormulaParser {
     if (!jsDoc) return null;
 
     // Extract basic information
-    const id = this.extractFormulaId(jsDoc) || toSnakeCase(name);
+    const explicitFormulaId = this.extractFormulaId(jsDoc);
+    if (this.requireFormulaId && !explicitFormulaId) {
+      /**
+       * Skips formulas without @formulaId when the parser is configured
+       * to require explicit identifiers (CLI usage).
+       */
+      return null;
+    }
+    const id = explicitFormulaId || toSnakeCase(name);
     const formulaName = this.extractName(jsDoc) || name;
     const description = this.extractDescription(jsDoc);
     const formula = this.extractFormula(jsDoc);

@@ -100,8 +100,16 @@ function extractFunctionNames(sourceFile: SourceFile): Map<string, string> {
       .getTags()
       .find((tag) => tag.getTagName() === "formulaId");
 
-    const formulaId =
-      formulaIdTag?.getComment()?.toString() || toSnakeCase(name);
+    const formulaIdComment = formulaIdTag?.getComment()?.toString();
+    if (!formulaIdComment) {
+      /**
+       * Ensures formulas without @formulaId are ignored when generating
+       * configuration via the CLI entry point.
+       */
+      continue;
+    }
+
+    const formulaId = formulaIdComment || toSnakeCase(name);
 
     functionNameMap.set(formulaId, name);
   }
@@ -227,7 +235,7 @@ async function main() {
 
   // Parse formulas using FormulaParser with real file system access (not in-memory)
   // We create a dedicated parser instance for CLI usage instead of using the factory singleton
-  const parser = new FormulaParser(false, tsConfigFilePath); // false = use real file system
+  const parser = new FormulaParser(false, tsConfigFilePath, true); // false = use real file system, true = require @formulaId
   let formulas: FormulaDefinition[] = [];
 
   try {

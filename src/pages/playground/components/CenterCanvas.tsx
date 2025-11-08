@@ -8,7 +8,6 @@ import ReactFlow, {
 } from "reactflow";
 import type { NodeChange, ReactFlowInstance } from "reactflow";
 import "reactflow/dist/style.css";
-import { Layers, GitBranch } from "lucide-react";
 
 import { InputNode } from "@/modules/formula-graph/nodes/InputNode";
 import { FormulaNode } from "@/modules/formula-graph/nodes/FormulaNode";
@@ -24,6 +23,7 @@ import { useCanvasStore } from "@/store/canvasStore";
 import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
+  TooltipArrow,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
@@ -51,8 +51,17 @@ export function CenterCanvas() {
   const { formulaDefinitions, selectedFormulaId, currentInputs, tsResult } =
     useModeData();
 
-  const { nodes: storeNodes, edges: storeEdges, setNodes, setEdges } = useGraphStore();
-  const { mode: canvasMode, toggleMode, removeFormulaFromCanvas } = useCanvasStore();
+  const {
+    nodes: storeNodes,
+    edges: storeEdges,
+    setNodes,
+    setEdges,
+  } = useGraphStore();
+  const {
+    mode: canvasMode,
+    toggleMode,
+    removeFormulaFromCanvas,
+  } = useCanvasStore();
 
   // console.log("storeNodes", storeNodes);
 
@@ -83,7 +92,11 @@ export function CenterCanvas() {
    * In single-formula mode, nodes are identified by edges
    */
   const findRelatedNodes = useCallback(
-    (formulaNodeId: string, nodes: typeof storeNodes, edges: typeof storeEdges): string[] => {
+    (
+      formulaNodeId: string,
+      nodes: typeof storeNodes,
+      edges: typeof storeEdges
+    ): string[] => {
       const relatedNodeIds = new Set<string>();
       relatedNodeIds.add(formulaNodeId);
 
@@ -146,7 +159,8 @@ export function CenterCanvas() {
       const currentEdges = useGraphStore.getState().edges;
 
       // Check if any FormulaNode is being deleted
-      const deletedFormulaNodes: Array<{ nodeId: string; formulaId?: string }> = [];
+      const deletedFormulaNodes: Array<{ nodeId: string; formulaId?: string }> =
+        [];
       changes.forEach((change) => {
         if (change.type === "remove") {
           const node = currentNodes.find((n) => n.id === change.id);
@@ -167,7 +181,11 @@ export function CenterCanvas() {
 
         deletedFormulaNodes.forEach(({ nodeId: formulaNodeId, formulaId }) => {
           // Find all related nodes
-          const relatedNodeIds = findRelatedNodes(formulaNodeId, currentNodes, currentEdges);
+          const relatedNodeIds = findRelatedNodes(
+            formulaNodeId,
+            currentNodes,
+            currentEdges
+          );
           relatedNodeIds.forEach((nodeId) => nodesToDelete.add(nodeId));
 
           // Find all edges connected to these nodes
@@ -200,7 +218,9 @@ export function CenterCanvas() {
         setNodes(nextNodes);
 
         // Remove related edges
-        const nextEdges = currentEdges.filter((edge) => !edgesToDelete.has(edge.id));
+        const nextEdges = currentEdges.filter(
+          (edge) => !edgesToDelete.has(edge.id)
+        );
         setEdges(nextEdges);
       } else {
         // Normal node changes (no FormulaNode deletion)
@@ -255,24 +275,24 @@ export function CenterCanvas() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-md shadow-sm border border-gray-200">
-                  <Layers className="w-4 h-4 text-gray-600" />
-                  <span className="text-xs text-gray-700">单公式</span>
+                <div className="flex items-center gap-2">
                   <Switch
                     checked={canvasMode === "multi"}
                     onCheckedChange={toggleMode}
-                    aria-label={`Switch to ${canvasMode === "single" ? "multi" : "single"} formula mode`}
+                    aria-label={`Switch to ${
+                      canvasMode === "single" ? "multi" : "single"
+                    } formula mode`}
                   />
-                  <GitBranch className="w-4 h-4 text-gray-600" />
-                  <span className="text-xs text-gray-700">组合公式</span>
+                  <span className="text-xs text-gray-700">Composite</span>
                 </div>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent className="max-w-[280px]">
                 <p className="text-xs">
                   {canvasMode === "single"
-                    ? "单公式模式：点击公式列表中的公式会替换当前canvas上的公式"
-                    : "组合公式模式：点击公式列表中的公式会追加到canvas上，每个公式的输出可以作为其他公式的输入"}
+                    ? "Single formula mode: selecting a formula from the list replaces the current formula on the canvas."
+                    : "Composite formula mode: selecting a formula from the list appends it to the canvas, allowing each formula's output to serve as another formula's input."}
                 </p>
+                <TooltipArrow />
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
