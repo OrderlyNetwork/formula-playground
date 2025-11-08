@@ -222,3 +222,16 @@ export type FormulaNode = Node<FormulaNodeData>;
  * @description Type-safe React Flow edge type
  */
 export type FormulaEdge = Edge;
+
+/**
+ * @description User-defined data source saved from OutputNode values
+ */
+export interface UserDataSource {
+  id: string; // Unique identifier
+  name: string; // User-provided name
+  value: FormulaScalar; // The saved value from OutputNode
+  unit?: string; // Unit if available
+  description?: string; // Optional description
+  timestamp: number; // When it was saved
+  sourceNodeId?: string; // The OutputNode ID that created this data source
+}
