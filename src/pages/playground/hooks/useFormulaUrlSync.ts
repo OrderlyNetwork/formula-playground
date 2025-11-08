@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useFormulaStore } from "@/store/formulaStore";
 import { useGraphStore } from "@/store/graphStore";
+import { useCanvasStore } from "@/store/canvasStore";
 
 /**
  * Encodes an object to base64 URL-safe string
@@ -39,11 +40,23 @@ function decodeParams(encoded: string): Record<string, unknown> | null {
 }
 
 /**
+ * Multi-formula URL data structure
+ * Used when canvas mode is "multi" to store multiple formulas and their params
+ */
+interface MultiFormulaUrlData {
+  formulas: Array<{
+    id: string;
+    params: Record<string, unknown>;
+  }>;
+}
+
+/**
  * Hook to sync formula ID and parameters with URL
  * - When formula ID changes, updates URL path to /formula/:id
  * - When parameters change, updates URL search params with base64 encoded params
  * - When URL changes, decodes and applies params to store
  * - Prevents circular updates by tracking sync state
+ * - Supports multi-formula mode: when canvas mode is "multi", stores all formulas in "formulas" param
  */
 export function useFormulaUrlSync() {
   const navigate = useNavigate();
@@ -61,6 +74,14 @@ export function useFormulaUrlSync() {
   const store = useFormulaStore;
   // Get graph store to check if nodes are generated
   const { nodes: graphNodes } = useGraphStore();
+  // Get canvas store for multi-formula mode
+  const { 
+    mode: canvasMode, 
+    canvasFormulaIds, 
+    formulaParams,
+    setFormulaParams,
+    replaceCanvasFormula,
+  } = useCanvasStore();
 
   // Track if we're currently syncing from URL to prevent circular updates
   const isSyncingFromUrlRef = useRef(false);
@@ -76,12 +97,15 @@ export function useFormulaUrlSync() {
   /**
    * Update URL with current formula ID and parameters
    * Uses replace to avoid adding history entries
+   * Supports both single and multi formula modes
    */
   const updateUrl = useCallback(
     (formulaId: string | null, inputs: Record<string, unknown>) => {
       console.log("[useFormulaUrlSync] updateUrl called", {
         formulaId,
         inputs,
+        canvasMode,
+        canvasFormulaIds,
         isSyncing: isSyncingFromUrlRef.current,
       });
 
@@ -91,6 +115,46 @@ export function useFormulaUrlSync() {
         return;
       }
 
+      // Multi-formula mode: store all formulas in "formulas" param
+      if (canvasMode === "multi" && canvasFormulaIds.length > 0) {
+        // Build multi-formula data structure
+        const multiFormulaData: MultiFormulaUrlData = {
+          formulas: canvasFormulaIds.map((id) => ({
+            id,
+            params: formulaParams[id] || {},
+          })),
+        };
+        
+        const encodedFormulas = encodeParams(multiFormulaData);
+        
+        // Use the first formula ID as the main path (or current selectedFormulaId if available)
+        const mainFormulaId = formulaId || canvasFormulaIds[0] || params.id;
+        
+        if (mainFormulaId) {
+          const newSearchParams: Record<string, string> = {};
+          if (encodedFormulas) {
+            newSearchParams.formulas = encodedFormulas;
+          }
+          
+          // If we have a selected formula with inputs, also include single params for backward compatibility
+          if (formulaId && Object.keys(inputs).length > 0) {
+            const encoded = encodeParams(inputs);
+            if (encoded) {
+              newSearchParams.params = encoded;
+            }
+          }
+          
+          const queryString = new URLSearchParams(newSearchParams).toString();
+          const newUrl = `/formula/${mainFormulaId}${queryString ? `?${queryString}` : ""}`;
+          
+          if (mainFormulaId !== params.id || queryString !== new URLSearchParams(searchParams).toString()) {
+            navigate(newUrl, { replace: true });
+          }
+        }
+        return;
+      }
+
+      // Single formula mode: use existing logic
       // Update path if formula ID changed
       if (formulaId && formulaId !== params.id) {
         const encoded = encodeParams(inputs);
@@ -136,15 +200,18 @@ export function useFormulaUrlSync() {
         }
       }
     },
-    [navigate, params.id, searchParams, setSearchParams]
+    [navigate, params.id, searchParams, setSearchParams, canvasMode, canvasFormulaIds, formulaParams]
   );
 
   /**
    * Sync formula ID from URL to store
    * This effect runs when URL params change (e.g., user pastes a shared URL)
+   * Handles both single and multi formula modes
    */
   useEffect(() => {
     const urlFormulaId = params.id;
+    const encodedFormulas = searchParams.get("formulas");
+    const encodedParams = searchParams.get("params");
 
     // Check if formula exists in definitions
     const formulaExists = urlFormulaId
@@ -158,6 +225,8 @@ export function useFormulaUrlSync() {
       loading,
       formulaDefinitionsCount: formulaDefinitions.length,
       isInitialMount: isInitialMountRef.current,
+      hasFormulasParam: Boolean(encodedFormulas),
+      hasParamsParam: Boolean(encodedParams),
     });
 
     // CRITICAL: Wait for formulas to load before proceeding
@@ -168,9 +237,66 @@ export function useFormulaUrlSync() {
       return;
     }
 
+    // Handle multi-formula mode URL restoration
+    if (encodedFormulas) {
+      const decodedFormulas = decodeParams(encodedFormulas) as MultiFormulaUrlData | null;
+      if (decodedFormulas && Array.isArray(decodedFormulas.formulas)) {
+        console.log("[useFormulaUrlSync] Restoring multi-formula mode from URL", {
+          formulasCount: decodedFormulas.formulas.length,
+        });
+
+        isSyncingFromUrlRef.current = true;
+        try {
+          // Switch to multi mode if not already
+          if (useCanvasStore.getState().mode !== "multi") {
+            useCanvasStore.getState().setMode("multi");
+          }
+
+          // Clear current canvas
+          useCanvasStore.getState().clearCanvas();
+
+          // Restore each formula with its params
+          for (const formulaData of decodedFormulas.formulas) {
+            const { id, params: formulaParams } = formulaData;
+            
+            // Check if formula exists
+            if (formulaDefinitions.some((f) => f.id === id)) {
+              // Add formula to canvas
+              useCanvasStore.getState().addFormulaToCanvas(id);
+              
+              // Store formula params
+              if (formulaParams && Object.keys(formulaParams).length > 0) {
+                useCanvasStore.getState().setFormulaParams(id, formulaParams);
+              }
+              
+              // Select the first formula (or URL formula ID if it matches)
+              if (!selectedFormulaId || selectedFormulaId === id || decodedFormulas.formulas[0]?.id === id) {
+                selectFormula(id);
+                if (formulaParams && Object.keys(formulaParams).length > 0) {
+                  // Restore params for the selected formula
+                  queueMicrotask(() => {
+                    setInputs(formulaParams);
+                    lastSyncedInputsRef.current = formulaParams;
+                  });
+                }
+              }
+            }
+          }
+
+          setTimeout(() => {
+            isSyncingFromUrlRef.current = false;
+          }, 100);
+        } catch (error) {
+          console.error("Failed to restore multi-formula mode from URL:", error);
+          isSyncingFromUrlRef.current = false;
+        }
+        return;
+      }
+    }
+
+    // Handle single formula mode (existing logic)
     if (urlFormulaId && formulaExists) {
       // Check if URL has params that haven't been applied yet
-      const encodedParams = searchParams.get("params");
       const hasUrlParams = Boolean(encodedParams);
       let hasUnappliedParams = false;
 
@@ -419,6 +545,69 @@ export function useFormulaUrlSync() {
   ]); // Include graphNodes.length to detect when nodes are ready
 
   /**
+   * Sync current formula params to canvasStore when in multi mode
+   * This ensures each formula's params are tracked separately
+   */
+  useEffect(() => {
+    if (
+      canvasMode === "multi" &&
+      selectedFormulaId &&
+      Object.keys(currentInputs).length > 0 &&
+      !isSyncingFromUrlRef.current
+    ) {
+      // Update canvasStore with current formula's params
+      setFormulaParams(selectedFormulaId, currentInputs);
+    }
+  }, [canvasMode, selectedFormulaId, currentInputs, setFormulaParams]);
+
+  /**
+   * Handle mode switching: migrate params between single and multi modes
+   * When switching from single to multi mode, migrate current single formula params
+   * When switching from multi to single mode, use first formula's params
+   */
+  useEffect(() => {
+    if (isSyncingFromUrlRef.current || isInitialMountRef.current) {
+      return;
+    }
+
+    // When switching from single to multi mode, migrate current params
+    if (canvasMode === "multi" && selectedFormulaId) {
+      const canvasStore = useCanvasStore.getState();
+      // If formula is on canvas but doesn't have params yet, use currentInputs
+      if (
+        canvasStore.canvasFormulaIds.includes(selectedFormulaId) &&
+        !canvasStore.formulaParams[selectedFormulaId]
+      ) {
+        if (Object.keys(currentInputs).length > 0) {
+          setFormulaParams(selectedFormulaId, currentInputs);
+          // Also update URL to multi-formula format
+          // This will be handled by the URL sync effect, but we trigger it here
+          // to ensure immediate update when mode switches
+          updateUrl(selectedFormulaId, currentInputs);
+        }
+      }
+    }
+
+    // When switching from multi to single mode, params are already handled in canvasStore.setMode
+    // But we need to update URL to single formula format
+    if (canvasMode === "single" && selectedFormulaId) {
+      // Check if URL has formulas param (multi mode format)
+      const hasFormulasParam = searchParams.has("formulas");
+      if (hasFormulasParam) {
+        // Clear formulas param and use single params format
+        const currentParams = searchParams.get("params");
+        if (currentParams) {
+          // Keep the params param, just remove formulas
+          setSearchParams({ params: currentParams }, { replace: true });
+        } else {
+          // No params, just remove formulas
+          setSearchParams({}, { replace: true });
+        }
+      }
+    }
+  }, [canvasMode, selectedFormulaId, currentInputs, setFormulaParams, searchParams, setSearchParams, updateUrl]);
+
+  /**
    * Sync formula ID and parameters to URL when they change
    * This effect runs when store state changes (e.g., user selects formula or changes inputs)
    */
@@ -426,6 +615,8 @@ export function useFormulaUrlSync() {
     console.log("[useFormulaUrlSync] URL sync effect triggered", {
       selectedFormulaId,
       currentInputs,
+      canvasMode,
+      canvasFormulaIds,
       isSyncing: isSyncingFromUrlRef.current,
       isInitialMount: isInitialMountRef.current,
       hasPendingParams: !!pendingParamsRestoreRef.current,
@@ -459,7 +650,7 @@ export function useFormulaUrlSync() {
       console.log("[useFormulaUrlSync] Blocked: still loading");
       return;
     }
-    if (urlId && urlId !== selectedFormulaId) {
+    if (urlId && urlId !== selectedFormulaId && canvasMode === "single") {
       console.log(
         "[useFormulaUrlSync] Blocked: URL id doesn't match selection",
         {
@@ -470,6 +661,18 @@ export function useFormulaUrlSync() {
       return;
     }
 
+    // In multi mode, update URL when canvasFormulaIds or formulaParams change
+    if (canvasMode === "multi") {
+      // Use current formula params or get from canvasStore
+      const paramsToUse = selectedFormulaId && formulaParams[selectedFormulaId]
+        ? formulaParams[selectedFormulaId]
+        : currentInputs;
+      
+      updateUrl(selectedFormulaId, paramsToUse);
+      return;
+    }
+
+    // Single mode: existing logic
     // Additional check: only update if currentInputs actually differ from last synced
     // This prevents unnecessary updates when selectFormula sets default values
     const inputsStr = JSON.stringify(currentInputs);
@@ -519,6 +722,9 @@ export function useFormulaUrlSync() {
     searchParams,
     params.id,
     loading,
+    canvasMode,
+    canvasFormulaIds,
+    formulaParams,
   ]);
 
   /**

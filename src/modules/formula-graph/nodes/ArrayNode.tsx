@@ -28,13 +28,18 @@ import { Button } from "@/components/ui/button";
 interface ArrayNodeProps {
   id: string;
   data: FormulaNodeData;
+  selected?: boolean;
 }
 
 /**
  * ArrayNode - Custom React Flow node for array-type formula inputs
  * Supports both manual editing via table UI and receiving data from multiple connected nodes
  */
-export const ArrayNode = memo(function ArrayNode({ id, data }: ArrayNodeProps) {
+export const ArrayNode = memo(function ArrayNode({
+  id,
+  data,
+  selected,
+}: ArrayNodeProps) {
   const { updateInput, updateInputAt } = useFormulaStore();
   const { nodes: storeNodes, edges } = useGraphStore();
 
@@ -195,7 +200,10 @@ export const ArrayNode = memo(function ArrayNode({ id, data }: ArrayNodeProps) {
         "px-4 py-3 rounded-lg border-2 bg-white shadow-sm min-w-[300px] max-w-[600px] relative",
         "border-purple-400",
         data.isError && "border-red-500",
-        hasIncomingConnections && "border-purple-600 border-dashed"
+        hasIncomingConnections && "border-purple-600 border-dashed",
+        // Selected state: thicker border, stronger shadow, and subtle background highlight
+        selected &&
+          "border-purple-600 border-[3px] shadow-lg ring-2 ring-purple-200 ring-opacity-50"
       )}
     >
       {/* Input Handle - allows receiving data from multiple nodes */}

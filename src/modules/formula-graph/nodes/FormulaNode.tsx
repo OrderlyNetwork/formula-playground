@@ -17,6 +17,7 @@ import {
 interface FormulaNodeProps {
   id: string;
   data: FormulaNodeData;
+  selected?: boolean;
 }
 
 const HEADER_HEIGHT = 96; // title + 2-line description space
@@ -30,6 +31,7 @@ const BOTTOM_PADDING = 16;
 export const FormulaNode = memo(function FormulaNode({
   id,
   data,
+  selected,
 }: FormulaNodeProps) {
   const inputs = data.inputs ?? [];
   const handleCount = inputs.length;
@@ -89,7 +91,9 @@ export const FormulaNode = memo(function FormulaNode({
       className={cn(
         "p-4 rounded-lg border-2 bg-white shadow-md w-[300px] relative",
         "border-purple-500",
-        executionStatus === "error" && "border-red-500"
+        executionStatus === "error" && "border-red-500",
+        // Selected state: thicker border, stronger shadow, and subtle background highlight
+        selected && "border-purple-600 border-[3px] shadow-lg ring-2 ring-purple-200 ring-opacity-50"
       )}
       style={{ minHeight: containerMinHeight }}
     >

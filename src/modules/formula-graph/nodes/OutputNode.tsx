@@ -11,6 +11,7 @@ import { Save, X } from "lucide-react";
 interface OutputNodeProps {
   id: string;
   data: FormulaNodeData;
+  selected?: boolean;
 }
 
 /**
@@ -20,6 +21,7 @@ interface OutputNodeProps {
 export const OutputNode = memo(function OutputNode({
   id,
   data,
+  selected,
 }: OutputNodeProps) {
   const { edges, nodes, updateNodeData } = useGraphStore();
   const { saveDataSource } = useDataSourceStore();
@@ -138,7 +140,9 @@ export const OutputNode = memo(function OutputNode({
         data.isError && "border-red-500",
         data.diff !== undefined &&
           data.diff > 1e-10 &&
-          "border-orange-500 shadow-lg"
+          "border-orange-500 shadow-lg",
+        // Selected state: thicker border, stronger shadow, and subtle background highlight
+        selected && "border-green-600 border-[3px] shadow-lg ring-2 ring-green-200 ring-opacity-50"
       )}
     >
       <Handle

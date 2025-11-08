@@ -5,7 +5,9 @@ import { cn } from "../../../lib/utils";
 import { Radio } from "lucide-react";
 
 interface WebSocketNodeProps {
+  id: string;
   data: FormulaNodeData;
+  selected?: boolean;
 }
 
 /**
@@ -13,7 +15,9 @@ interface WebSocketNodeProps {
  * Displays pre-configured WebSocket endpoint information
  */
 export const WebSocketNode = memo(function WebSocketNode({
+  id,
   data,
+  selected,
 }: WebSocketNodeProps) {
   const url = data.wsConfig?.url || "";
   const topic = data.wsConfig?.topic || "";
@@ -56,7 +60,9 @@ export const WebSocketNode = memo(function WebSocketNode({
       className={cn(
         "px-4 py-3 rounded-lg border-2 bg-white shadow-sm min-w-[260px]",
         "border-teal-400",
-        data.isError && "border-red-500"
+        data.isError && "border-red-500",
+        // Selected state: thicker border, stronger shadow, and subtle background highlight
+        selected && "border-teal-600 border-[3px] shadow-lg ring-2 ring-teal-200 ring-opacity-50"
       )}
     >
       {/* Header */}

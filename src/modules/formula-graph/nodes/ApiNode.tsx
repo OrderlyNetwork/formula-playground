@@ -18,6 +18,7 @@ import { runnerManager } from "../services/runnerManager";
 interface ApiNodeProps {
   id: string;
   data: FormulaNodeData;
+  selected?: boolean;
 }
 
 const HEADER_HEIGHT = 80;
@@ -163,7 +164,7 @@ function transformResponse(response: unknown): unknown {
  * ApiNode - Custom React Flow node for RESTful API requests
  * Supports automatic requests, field extraction, and manual triggering
  */
-export const ApiNode = memo(function ApiNode({ id, data }: ApiNodeProps) {
+export const ApiNode = memo(function ApiNode({ id, data, selected }: ApiNodeProps) {
   const { settings } = useSettingsStore();
   const { updateNodeData } = useGraphStore();
 
@@ -466,7 +467,9 @@ export const ApiNode = memo(function ApiNode({ id, data }: ApiNodeProps) {
       className={cn(
         "px-4 py-3 rounded-lg border-2 bg-white shadow-sm min-w-[260px] relative",
         "border-orange-400",
-        data.isError && "border-red-500"
+        data.isError && "border-red-500",
+        // Selected state: thicker border, stronger shadow, and subtle background highlight
+        selected && "border-orange-600 border-[3px] shadow-lg ring-2 ring-orange-200 ring-opacity-50"
       )}
       style={{ minHeight: containerMinHeight }}
     >

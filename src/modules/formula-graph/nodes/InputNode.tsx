@@ -14,6 +14,7 @@ import { getConnectionConfigFromFactorType } from "../utils/nodeTypes";
 interface InputNodeProps {
   id: string;
   data: FormulaNodeData;
+  selected?: boolean;
 }
 
 /**
@@ -22,7 +23,7 @@ interface InputNodeProps {
  *
  * Note: Array inputs are handled by ArrayNode, object inputs are handled by ObjectNode
  */
-export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
+export const InputNode = memo(function InputNode({ id, data, selected }: InputNodeProps) {
   const { updateInput, updateInputAt } = useFormulaStore();
   const { nodes: storeNodes, edges } = useGraphStore();
 
@@ -75,7 +76,9 @@ export const InputNode = memo(function InputNode({ id, data }: InputNodeProps) {
         "px-4 py-3 rounded-lg border-2 bg-white shadow-sm w-[220px] relative",
         "border-blue-400",
         data.isError && "border-red-500",
-        hasIncomingConnection && "border-blue-600 border-dashed"
+        hasIncomingConnection && "border-blue-600 border-dashed",
+        // Selected state: thicker border, stronger shadow, and subtle background highlight
+        selected && "border-blue-600 border-[3px] shadow-lg ring-2 ring-blue-200 ring-opacity-50"
       )}
     >
       {/* Input Handle - allows receiving data from other nodes */}

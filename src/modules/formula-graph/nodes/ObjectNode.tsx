@@ -5,7 +5,9 @@ import { cn } from "@/lib/utils";
 import { getConnectionConfigFromFactorType } from "../utils/nodeTypes";
 
 interface ObjectNodeProps {
+  id: string;
   data: FormulaNodeData;
+  selected?: boolean;
 }
 
 const HEADER_HEIGHT = 44;
@@ -13,7 +15,7 @@ const HANDLE_GAP = 24;
 const HEADER_TO_FIRST_HANDLE_GAP = 12;
 const BOTTOM_PADDING = 12;
 
-export const ObjectNode = memo(function ObjectNode({ data }: ObjectNodeProps) {
+export const ObjectNode = memo(function ObjectNode({ id, data, selected }: ObjectNodeProps) {
   const inputs = data.inputs ?? [];
   const handleCount = inputs.length;
   const containerMinHeight =
@@ -45,7 +47,9 @@ export const ObjectNode = memo(function ObjectNode({ data }: ObjectNodeProps) {
       className={cn(
         "p-3 rounded-lg border-2 bg-white shadow-sm min-w-[240px] relative",
         "border-sky-500",
-        data.isError && "border-red-500"
+        data.isError && "border-red-500",
+        // Selected state: thicker border, stronger shadow, and subtle background highlight
+        selected && "border-sky-600 border-[3px] shadow-lg ring-2 ring-sky-200 ring-opacity-50"
       )}
       style={{ minHeight: containerMinHeight }}
     >
