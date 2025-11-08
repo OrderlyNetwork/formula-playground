@@ -1,10 +1,11 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import type { ReactFlowInstance } from "reactflow";
 import { generateFormulaGraph, applyELKLayout } from "@/modules/formula-graph";
 import type { NodeDimensionsMap } from "@/modules/formula-graph";
 import { useGraphStore } from "@/store/graphStore";
 import { useAppStore } from "@/store/appStore";
 import { useCanvasStore } from "@/store/canvasStore";
+import type { CanvasMode } from "@/store/canvasStore";
 import type {
   FormulaDefinition,
   FormulaNode,
@@ -85,20 +86,8 @@ export function useGraphGeneration(
   useEffect(() => {
     // Reset graph store when mode changes to avoid showing stale graphs from previous mode
     resetGraph();
-    // Clear canvas formula IDs when switching app modes
-    // BUT preserve current formula if we're switching to multi mode to avoid duplication
-    const currentState = useCanvasStore.getState();
-    if (
-      currentState.mode === "single" &&
-      canvasMode === "multi" &&
-      currentState.canvasFormulaIds.length > 0
-    ) {
-      // We're switching from single to multi mode, preserve the current formula
-      // Don't clear canvas, let the multi-mode logic handle it
-      return;
-    }
-    useCanvasStore.getState().clearCanvas();
-  }, [mode, resetGraph, canvasMode]);
+    setNodeDimensionsMap(new Map());
+  }, [mode, resetGraph, setNodeDimensionsMap]);
 
   /**
    * Generate graph for a single formula and merge with existing graph
@@ -123,16 +112,13 @@ export function useGraphGeneration(
       });
     } else {
       // Multi mode: append formula to canvas
-      const currentCanvasFormulaIds =
-        useCanvasStore.getState().canvasFormulaIds;
+      // Always try to add formula to canvas (addFormulaToCanvas handles duplicates)
+      addFormulaToCanvas(formulaId);
 
-      // Check if formula is already on canvas (skip if already processed)
-      if (!currentCanvasFormulaIds.includes(formulaId)) {
-        addFormulaToCanvas(formulaId);
-      }
+      // Only generate graph if nodes don't exist yet or if it's an initial load
+      const shouldRegenerate = !hasFormulaNodes(formulaId) || isInitialLoad;
 
-      // Only generate graph if nodes don't exist yet
-      if (!hasFormulaNodes(formulaId) || isInitialLoad) {
+      if (shouldRegenerate) {
         // Prefix node IDs to avoid conflicts
         const { nodes: prefixedNodes, edges: prefixedEdges } = prefixNodeIds(
           nodes,
@@ -144,9 +130,19 @@ export function useGraphGeneration(
         const { nodes: currentNodes, edges: currentEdges } =
           useGraphStore.getState();
 
+        // Filter out any existing nodes for this formula before merging to prevent duplicates
+        const filteredCurrentNodes = currentNodes.filter(
+          node => !node.id.startsWith(`${formulaId}-`)
+        );
+        const filteredCurrentEdges = currentEdges.filter(
+          edge => !edge.id.startsWith(`${formulaId}-`) &&
+                  !edge.source.startsWith(`${formulaId}-`) &&
+                  !edge.target.startsWith(`${formulaId}-`)
+        );
+
         // Merge with existing nodes and edges
-        const mergedNodes = [...currentNodes, ...prefixedNodes];
-        const mergedEdges = [...currentEdges, ...prefixedEdges];
+        const mergedNodes = [...filteredCurrentNodes, ...prefixedNodes];
+        const mergedEdges = [...filteredCurrentEdges, ...prefixedEdges];
 
         // Recalculate layout for the entire merged graph
         applyELKLayout(mergedNodes, mergedEdges).then(
@@ -166,8 +162,6 @@ export function useGraphGeneration(
 
   // Generate graph when formula ID changes (not when formula object reference changes)
   // This ensures layout is only calculated once per formula switch, not on every render
-  // In multi mode, if the formula is already on canvas, skip to avoid duplicate generation
-  // (the second useEffect will handle batch generation for all formulas)
   useEffect(() => {
     if (!selectedFormulaId || !selectedFormula) {
       // When no formula is selected, ensure graph is cleared (only in single mode)
@@ -178,21 +172,9 @@ export function useGraphGeneration(
       return;
     }
 
-    // In multi mode, check if formula is already on canvas and has nodes
-    // If so, skip to avoid duplicate generation (second useEffect handles batch generation)
-    if (canvasMode === "multi") {
-      // If formula is on canvas but nodes don't exist yet, let the second useEffect handle it
-      // (it will batch generate all formulas together)
-      const isOnCanvas = canvasFormulaIds.includes(selectedFormulaId);
-      if (isOnCanvas && !hasFormulaNodes(selectedFormulaId)) {
-        // Skip - second useEffect will handle batch generation
-        return;
-      }
-
-      // If nodes already exist, skip to avoid duplicate layout calculation
-      if (hasFormulaNodes(selectedFormulaId)) {
-        return;
-      }
+    // In multi mode, if formula already has nodes, skip to avoid duplicate generation
+    if (canvasMode === "multi" && hasFormulaNodes(selectedFormulaId)) {
+      return;
     }
 
     // Generate graph for selected formula
@@ -200,7 +182,6 @@ export function useGraphGeneration(
   }, [
     selectedFormulaId, // Only depend on ID to ensure layout is calculated once per formula switch
     canvasMode, // Re-run when canvas mode changes
-    canvasFormulaIds, // Include to check formula on canvas
     resetGraph, // Include resetGraph to avoid stale references
     generateAndMergeGraph, // Include to avoid stale references
     selectedFormula, // Include for generateAndMergeGraph

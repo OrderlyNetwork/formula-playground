@@ -40,13 +40,13 @@ export function FormulaCode() {
   };
 
   return (
-    <div className="h-full w-full bg-gray-50">
+    <div className="h-full w-full bg-gray-50 flex flex-col">
       {!selectedFormula ? (
         <div className="h-full w-full flex items-center justify-center text-xs text-gray-500">
           Select a formula to view implementation
         </div>
       ) : code ? (
-        <div className="mt-1.5 h-[60vh] w-full overflow-hidden bg-white">
+        <div className="h-full w-full overflow-hidden bg-white">
           <Editor
             height="100%"
             value={code}
@@ -60,7 +60,9 @@ export function FormulaCode() {
           />
         </div>
       ) : (
-        <p className="text-xs text-gray-500">No source code available.</p>
+        <div className="h-full w-full flex items-center justify-center">
+          <p className="text-xs text-gray-500">No source code available.</p>
+        </div>
       )}
     </div>
   );

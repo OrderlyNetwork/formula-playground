@@ -1,5 +1,98 @@
 [
   {
+    "id": "imr",
+    "name": "IMR",
+    "version": "1.0.0",
+    "description": "Initial margin rate for a symbol.\nMax(1 / Max Account Leverage, Base IMR i, IMR Factor i * Abs(Position Notional i + Order Notional i)^(4/5))",
+    "inputs": [
+      {
+        "key": "inputs",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": false,
+          "properties": [
+            {
+              "key": "maxLeverage",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              },
+              "description": "\neffective max leverage"
+            },
+            {
+              "key": "baseIMR",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "IMR_Factor",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "positionNotional",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "ordersNotional",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "IMR_factor_power",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number",
+          "nullable": false,
+          "array": false
+        }
+      }
+    ],
+    "formulaText": "{\n  const {\n    maxLeverage,\n    baseIMR,\n    IMR_Factor,\n    positionNotional,\n    ordersNotional: orderNotional,\n    IMR_factor_power = IMRFactorPower,\n  } = inputs;\n  return Math.max(\n    1 / maxLeverage,\n    baseIMR,\n    new Decimal(IMR_Factor)\n      .mul(\n        new Decimal(positionNotional)\n          .add(orderNotional)\n          .abs()\n          .toPower(IMR_factor_power),\n      )\n      .toNumber(),\n  );\n}",
+    "sourceCode": "export function IMR(inputs: IMRInputs): number {\n  const {\n    maxLeverage,\n    baseIMR,\n    IMR_Factor,\n    positionNotional,\n    ordersNotional: orderNotional,\n    IMR_factor_power = IMRFactorPower,\n  } = inputs;\n  return Math.max(\n    1 / maxLeverage,\n    baseIMR,\n    new Decimal(IMR_Factor)\n      .mul(\n        new Decimal(positionNotional)\n          .add(orderNotional)\n          .abs()\n          .toPower(IMR_factor_power),\n      )\n      .toNumber(),\n  );\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "IMR",
+      "enabled": true
+    }
+  },
+  {
     "id": "unrealizedPnL",
     "name": "unrealizedPnL",
     "version": "1.0.0",

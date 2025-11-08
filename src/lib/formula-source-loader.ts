@@ -102,11 +102,26 @@ function getFunctionNameForFormula(formulaId: string): string {
 /**
  * Enrich formula definitions with source code
  * Also sets creationType to "builtin" for formulas loaded from SDK mock
+ * 
+ * Note: If a formula already has sourceCode/formulaText, they will be preserved
+ * and not overwritten by SDK extraction.
  */
 export function enrichFormulasWithSource(
   formulas: FormulaDefinition[]
 ): FormulaDefinition[] {
   return formulas.map((formula) => {
+    // If formula already has sourceCode, preserve it and don't overwrite
+    if (formula.sourceCode) {
+      return {
+        ...formula,
+        // Ensure formulaText exists, use sourceCode as fallback if not present
+        formulaText: formula.formulaText || formula.sourceCode,
+        // Set creationType to "builtin" if not already set
+        creationType: formula.creationType ?? "builtin",
+      };
+    }
+
+    // Otherwise, try to extract from SDK source
     const functionName = getFunctionNameForFormula(formula.id);
 
     const sourceCode = extractFunctionSource(sdkSourceRaw, functionName);
