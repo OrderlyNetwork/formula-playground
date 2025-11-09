@@ -1,12 +1,9 @@
 import { Handle, Position } from "reactflow";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo } from "react";
 import type { FormulaNodeData } from "@/types/formula";
 import { cn } from "@/lib/utils";
 import { useGraphStore } from "@/store/graphStore";
-import { useDataSourceStore } from "@/store/dataSourceStore";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Save, X } from "lucide-react";
+import { SaveToDataSourceForm } from "./SaveToDataSourceForm";
 
 interface OutputNodeProps {
   id: string;
@@ -24,12 +21,6 @@ export const OutputNode = memo(function OutputNode({
   selected,
 }: OutputNodeProps) {
   const { edges, nodes, updateNodeData } = useGraphStore();
-  const { saveDataSource } = useDataSourceStore();
-
-  // State for save functionality
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveName, setSaveName] = useState("");
-  const [isSavingMode, setIsSavingMode] = useState(false);
 
   // Find the upstream node connected to this OutputNode (via edge)
   const incomingEdge = useMemo(() => {
@@ -72,65 +63,6 @@ export const OutputNode = memo(function OutputNode({
       }
     }
   }, [sourceNode, incomingEdge, data.value, id, updateNodeData]);
-
-  /**
-   * Handle save button click - toggle save mode
-   */
-  const handleSaveClick = () => {
-    setIsSavingMode(true);
-    setSaveName("");
-  };
-
-  /**
-   * Handle cancel save
-   */
-  const handleCancelSave = () => {
-    setIsSavingMode(false);
-    setSaveName("");
-  };
-
-  /**
-   * Handle confirm save - save the current value to data source
-   */
-  const handleConfirmSave = async () => {
-    if (!saveName.trim()) {
-      return; // Don't save if name is empty
-    }
-
-    if (data.value === undefined) {
-      return; // Don't save if value is undefined
-    }
-
-    setIsSaving(true);
-    try {
-      await saveDataSource(
-        saveName.trim(),
-        data.value,
-        data.unit,
-        data.description,
-        id
-      );
-      // Reset save mode after successful save
-      setIsSavingMode(false);
-      setSaveName("");
-    } catch (error) {
-      console.error("Failed to save data source:", error);
-      // Keep save mode open on error so user can retry
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  /**
-   * Handle Enter key press in save name input
-   */
-  const handleSaveNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && saveName.trim()) {
-      handleConfirmSave();
-    } else if (e.key === "Escape") {
-      handleCancelSave();
-    }
-  };
 
   return (
     <div
@@ -175,51 +107,12 @@ export const OutputNode = memo(function OutputNode({
 
         {/* Save to DataSource section */}
         {data.value !== undefined && (
-          <div className="mt-2 pt-2 border-t border-gray-200">
-            {!isSavingMode ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSaveClick}
-                className="w-full h-7 text-xs"
-              >
-                <Save className="w-3 h-3 mr-1" />
-                Save to Data Source
-              </Button>
-            ) : (
-              <div className="flex flex-col gap-1.5">
-                <Input
-                  type="text"
-                  placeholder="Enter data source name"
-                  value={saveName}
-                  onChange={(e) => setSaveName(e.target.value)}
-                  onKeyDown={handleSaveNameKeyDown}
-                  className="h-7 text-xs"
-                  autoFocus
-                />
-                <div className="flex gap-1">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={handleConfirmSave}
-                    disabled={!saveName.trim() || isSaving}
-                    className="flex-1 h-7 text-xs"
-                  >
-                    {isSaving ? "Saving..." : "Save"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCancelSave}
-                    disabled={isSaving}
-                    className="h-7 w-7 p-0"
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+          <SaveToDataSourceForm
+            value={data.value}
+            unit={data.unit}
+            description={data.description}
+            nodeId={id}
+          />
         )}
       </div>
     </div>
