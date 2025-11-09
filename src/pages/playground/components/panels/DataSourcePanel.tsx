@@ -104,11 +104,6 @@ export function DataSourcePanel() {
                     }}
                     className="flex items-start gap-2 px-2.5 py-1.5 rounded-md bg-white  hover:bg-orange-50 cursor-move transition-colors"
                   >
-                    <Globe
-                      size={16}
-                      strokeWidth={1.5}
-                      className="text-orange-600 mt-0.5 shrink-0"
-                    />
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-medium text-gray-900 truncate">
                         {source.label}
@@ -154,11 +149,6 @@ export function DataSourcePanel() {
                     }}
                     className="flex items-start gap-2 px-2.5 py-1.5 rounded-md bg-white hover:bg-teal-50 cursor-move transition-colors"
                   >
-                    <Radio
-                      size={16}
-                      strokeWidth={1.5}
-                      className="text-teal-600 mt-0.5 shrink-0"
-                    />
                     <div className="min-w-0 flex-1">
                       <div className="text-xs font-medium text-gray-900 truncate">
                         {source.label}

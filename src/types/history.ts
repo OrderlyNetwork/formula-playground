@@ -1,3 +1,5 @@
+import type { FormulaNode, FormulaEdge } from "./formula";
+
 /**
  * @description Single formula run record
  */
@@ -20,4 +22,18 @@ export interface RunRecord {
   };
   hash?: string; // Optional, hash of input+formula+engine, used for deduplication or quick lookup
   note?: string; // User note
+}
+
+/**
+ * @description Canvas snapshot - manually saved canvas state
+ * Contains nodes, edges, formula parameters, and canvas mode
+ */
+export interface CanvasSnapshot {
+  id: string; // UUID
+  timestamp: number; // Save timestamp
+  name: string; // Display name (formatted timestamp string)
+  nodes: FormulaNode[]; // Canvas nodes snapshot
+  edges: FormulaEdge[]; // Canvas edges snapshot
+  formulaParams: Record<string, Record<string, unknown>>; // Formula parameters for each formula
+  canvasMode: "single" | "multi"; // Canvas mode at save time
 }

@@ -4,7 +4,6 @@ import ReactFlow, {
   Controls,
   BackgroundVariant,
   applyNodeChanges,
-  Panel,
 } from "reactflow";
 import type { NodeChange, ReactFlowInstance } from "reactflow";
 import "reactflow/dist/style.css";
@@ -20,14 +19,7 @@ import { useModeData } from "@/store/useModeData";
 import { useAppStore } from "@/store/appStore";
 import { useGraphStore } from "@/store/graphStore";
 import { useCanvasStore } from "@/store/canvasStore";
-import { Switch } from "@/components/ui/switch";
-import {
-  Tooltip,
-  TooltipArrow,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { CanvasControlsPanel } from "./panels/CanvasControlsPanel";
 import { useGraphDragDrop } from "./hooks/useGraphDragDrop";
 import { useGraphGeneration } from "./hooks/useGraphGeneration";
 import { useNodeDimensions } from "./hooks/useNodeDimensions";
@@ -57,11 +49,7 @@ export function CenterCanvas() {
     setNodes,
     setEdges,
   } = useGraphStore();
-  const {
-    mode: canvasMode,
-    toggleMode,
-    removeFormulaFromCanvas,
-  } = useCanvasStore();
+  const { mode: canvasMode, removeFormulaFromCanvas } = useCanvasStore();
 
   // console.log("storeNodes", storeNodes);
 
@@ -270,33 +258,7 @@ export function CenterCanvas() {
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
         <Controls />
-        {/* Canvas mode toggle panel */}
-        <Panel position="top-right" className="m-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={canvasMode === "multi"}
-                    onCheckedChange={toggleMode}
-                    aria-label={`Switch to ${
-                      canvasMode === "single" ? "multi" : "single"
-                    } formula mode`}
-                  />
-                  <span className="text-xs text-gray-700">Composite</span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-[280px]">
-                <p className="text-xs">
-                  {canvasMode === "single"
-                    ? "Single formula mode: selecting a formula from the list replaces the current formula on the canvas."
-                    : "Composite formula mode: selecting a formula from the list appends it to the canvas, allowing each formula's output to serve as another formula's input."}
-                </p>
-                <TooltipArrow />
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </Panel>
+        <CanvasControlsPanel />
         {/* <MiniMap /> */}
       </ReactFlow>
     </div>

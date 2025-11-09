@@ -1,11 +1,10 @@
-import { useEffect, useCallback, useRef, useState } from "react";
+import { useEffect, useCallback } from "react";
 import type { ReactFlowInstance } from "reactflow";
 import { generateFormulaGraph, applyELKLayout } from "@/modules/formula-graph";
 import type { NodeDimensionsMap } from "@/modules/formula-graph";
 import { useGraphStore } from "@/store/graphStore";
 import { useAppStore } from "@/store/appStore";
 import { useCanvasStore } from "@/store/canvasStore";
-import type { CanvasMode } from "@/store/canvasStore";
 import type {
   FormulaDefinition,
   FormulaNode,
@@ -93,72 +92,84 @@ export function useGraphGeneration(
    * Generate graph for a single formula and merge with existing graph
    * Used both for selected formula changes and for restoring multiple formulas from URL
    */
-  const generateAndMergeGraph = useCallback(async (
-    formulaId: string,
-    formula: FormulaDefinition,
-    isInitialLoad = false
-  ) => {
-    const { nodes, edges } = await generateFormulaGraph(formula);
+  const generateAndMergeGraph = useCallback(
+    async (
+      formulaId: string,
+      formula: FormulaDefinition,
+      isInitialLoad = false
+    ) => {
+      const { nodes, edges } = await generateFormulaGraph(formula);
 
-    if (canvasMode === "single") {
-      // Single mode: replace entire graph
-      replaceCanvasFormula(formulaId);
-      setNodes(nodes);
-      setEdges(edges);
-      setNodeDimensionsMap(new Map());
-      // Fit view after layout updates
-      requestAnimationFrame(() => {
-        reactFlowInstanceRef.current?.fitView?.({ padding: 0.2 });
-      });
-    } else {
-      // Multi mode: append formula to canvas
-      // Always try to add formula to canvas (addFormulaToCanvas handles duplicates)
-      addFormulaToCanvas(formulaId);
+      if (canvasMode === "single") {
+        // Single mode: replace entire graph
+        replaceCanvasFormula(formulaId);
+        setNodes(nodes);
+        setEdges(edges);
+        setNodeDimensionsMap(new Map());
+        // Fit view after layout updates
+        requestAnimationFrame(() => {
+          reactFlowInstanceRef.current?.fitView?.({ padding: 0.2 });
+        });
+      } else {
+        // Multi mode: append formula to canvas
+        // Always try to add formula to canvas (addFormulaToCanvas handles duplicates)
+        addFormulaToCanvas(formulaId);
 
-      // Only generate graph if nodes don't exist yet or if it's an initial load
-      const shouldRegenerate = !hasFormulaNodes(formulaId) || isInitialLoad;
+        // Only generate graph if nodes don't exist yet or if it's an initial load
+        const shouldRegenerate = !hasFormulaNodes(formulaId) || isInitialLoad;
 
-      if (shouldRegenerate) {
-        // Prefix node IDs to avoid conflicts
-        const { nodes: prefixedNodes, edges: prefixedEdges } = prefixNodeIds(
-          nodes,
-          edges,
-          formulaId
-        );
+        if (shouldRegenerate) {
+          // Prefix node IDs to avoid conflicts
+          const { nodes: prefixedNodes, edges: prefixedEdges } = prefixNodeIds(
+            nodes,
+            edges,
+            formulaId
+          );
 
-        // Get current nodes and edges from store (to ensure we have latest state)
-        const { nodes: currentNodes, edges: currentEdges } =
-          useGraphStore.getState();
+          // Get current nodes and edges from store (to ensure we have latest state)
+          const { nodes: currentNodes, edges: currentEdges } =
+            useGraphStore.getState();
 
-        // Filter out any existing nodes for this formula before merging to prevent duplicates
-        const filteredCurrentNodes = currentNodes.filter(
-          node => !node.id.startsWith(`${formulaId}-`)
-        );
-        const filteredCurrentEdges = currentEdges.filter(
-          edge => !edge.id.startsWith(`${formulaId}-`) &&
-                  !edge.source.startsWith(`${formulaId}-`) &&
-                  !edge.target.startsWith(`${formulaId}-`)
-        );
+          // Filter out any existing nodes for this formula before merging to prevent duplicates
+          const filteredCurrentNodes = currentNodes.filter(
+            (node) => !node.id.startsWith(`${formulaId}-`)
+          );
+          const filteredCurrentEdges = currentEdges.filter(
+            (edge) =>
+              !edge.id.startsWith(`${formulaId}-`) &&
+              !edge.source.startsWith(`${formulaId}-`) &&
+              !edge.target.startsWith(`${formulaId}-`)
+          );
 
-        // Merge with existing nodes and edges
-        const mergedNodes = [...filteredCurrentNodes, ...prefixedNodes];
-        const mergedEdges = [...filteredCurrentEdges, ...prefixedEdges];
+          // Merge with existing nodes and edges
+          const mergedNodes = [...filteredCurrentNodes, ...prefixedNodes];
+          const mergedEdges = [...filteredCurrentEdges, ...prefixedEdges];
 
-        // Recalculate layout for the entire merged graph
-        applyELKLayout(mergedNodes, mergedEdges).then(
-          ({ nodes: layoutedNodes, edges: layoutedEdges }) => {
-            setNodes(layoutedNodes);
-            setEdges(layoutedEdges);
-            setNodeDimensionsMap(new Map());
-            // Fit view after layout updates
-            requestAnimationFrame(() => {
-              reactFlowInstanceRef.current?.fitView?.({ padding: 0.2 });
-            });
-          }
-        );
+          // Recalculate layout for the entire merged graph
+          applyELKLayout(mergedNodes, mergedEdges).then(
+            ({ nodes: layoutedNodes, edges: layoutedEdges }) => {
+              setNodes(layoutedNodes);
+              setEdges(layoutedEdges);
+              setNodeDimensionsMap(new Map());
+              // Fit view after layout updates
+              requestAnimationFrame(() => {
+                reactFlowInstanceRef.current?.fitView?.({ padding: 0.2 });
+              });
+            }
+          );
+        }
       }
-    }
-  }, [canvasMode, setNodes, setEdges, setNodeDimensionsMap, addFormulaToCanvas, replaceCanvasFormula, reactFlowInstanceRef]);
+    },
+    [
+      canvasMode,
+      setNodes,
+      setEdges,
+      setNodeDimensionsMap,
+      addFormulaToCanvas,
+      replaceCanvasFormula,
+      reactFlowInstanceRef,
+    ]
+  );
 
   // Generate graph when formula ID changes (not when formula object reference changes)
   // This ensures layout is only calculated once per formula switch, not on every render

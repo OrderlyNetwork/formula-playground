@@ -249,11 +249,12 @@ export async function applyELKLayout(
 
   // Calculate dynamic Y-axis spacing based on sibling count
   // More nodes = more compact spacing
+  // Reduced spacing values for tighter Y-axis layout
   const calculateSpacing = (nodeCount: number): string => {
-    if (nodeCount <= 3) return "40"; // Normal spacing for few nodes
-    if (nodeCount <= 6) return "25"; // More compact for moderate number
-    if (nodeCount <= 10) return "18"; // Quite compact for many nodes
-    return "12"; // Very compact for many nodes (11+)
+    if (nodeCount <= 3) return "25"; // Reduced spacing for few nodes
+    if (nodeCount <= 6) return "15"; // More compact for moderate number
+    if (nodeCount <= 10) return "10"; // Quite compact for many nodes
+    return "8"; // Very compact for many nodes (11+)
   };
 
   const inputSpacing = calculateSpacing(inputNodes.length);

@@ -1,8 +1,10 @@
 import { Handle, Position } from "reactflow";
-import { Fragment, memo, useMemo } from "react";
+import { Fragment, memo, useMemo, useState, useCallback } from "react";
 import type { FormulaNodeData } from "@/types/formula";
 import { cn } from "@/lib/utils";
 import { getConnectionConfigFromFactorType } from "../utils/nodeTypes";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { useGraphStore } from "@/store/graphStore";
 
 interface ObjectNodeProps {
   id: string;
@@ -20,13 +22,73 @@ export const ObjectNode = memo(function ObjectNode({
   data,
   selected,
 }: ObjectNodeProps) {
+  // Collapse/expand state management
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  
+  // Access graph store to manage connected nodes and edges visibility
+  const { nodes: storeNodes, edges: storeEdges, setNodes, setEdges } =
+    useGraphStore();
+
   const inputs = data.inputs ?? [];
   const handleCount = inputs.length;
-  const containerMinHeight =
-    HEADER_HEIGHT +
-    HEADER_TO_FIRST_HANDLE_GAP +
-    Math.max(1, handleCount) * HANDLE_GAP +
-    BOTTOM_PADDING;
+
+  // Find all edges connected to this ObjectNode (incoming edges)
+  const connectedEdges = useMemo(() => {
+    return storeEdges.filter((edge) => edge.target === id);
+  }, [storeEdges, id]);
+
+  // Find all source nodes connected to this ObjectNode
+  const connectedSourceNodeIds = useMemo(() => {
+    return new Set(connectedEdges.map((edge) => edge.source));
+  }, [connectedEdges]);
+
+  /**
+   * Handle collapse/expand toggle and update visibility of connected nodes and edges
+   */
+  const handleToggleCollapse = useCallback(
+    (newCollapsedState: boolean) => {
+      setIsCollapsed(newCollapsedState);
+
+      // Update visibility of connected nodes and edges
+      if (connectedEdges.length === 0) return;
+
+      // Update edges: set hidden property based on collapse state
+      const updatedEdges = storeEdges.map((edge) => {
+        if (edge.target === id) {
+          return { ...edge, hidden: newCollapsedState };
+        }
+        return edge;
+      });
+
+      // Update nodes: set hidden property for connected source nodes
+      const updatedNodes = storeNodes.map((node) => {
+        if (connectedSourceNodeIds.has(node.id)) {
+          return { ...node, hidden: newCollapsedState };
+        }
+        return node;
+      });
+
+      setEdges(updatedEdges);
+      setNodes(updatedNodes);
+    },
+    [
+      id,
+      connectedEdges,
+      connectedSourceNodeIds,
+      storeEdges,
+      storeNodes,
+      setEdges,
+      setNodes,
+    ]
+  );
+  
+  // Dynamic height calculation based on collapse state
+  const containerMinHeight = isCollapsed
+    ? HEADER_HEIGHT + BOTTOM_PADDING
+    : HEADER_HEIGHT +
+      HEADER_TO_FIRST_HANDLE_GAP +
+      Math.max(1, handleCount) * HANDLE_GAP +
+      BOTTOM_PADDING;
 
   // Generate dynamic connection configuration for each property
   const propertyConfigs = useMemo(() => {
@@ -62,8 +124,25 @@ export const ObjectNode = memo(function ObjectNode({
       )}
       style={{ minHeight: containerMinHeight }}
     >
-      <div className="font-semibold text-gray-900 mb-1">
-        Object: {data.label}
+      <div className="font-semibold text-gray-900 mb-1 flex items-center justify-between gap-2">
+        <span>Object: {data.label}</span>
+        {handleCount > 0 && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleToggleCollapse(!isCollapsed);
+            }}
+            className="flex-shrink-0 p-1 hover:bg-gray-100 rounded transition-colors"
+            title={isCollapsed ? "展开" : "折叠"}
+            aria-label={isCollapsed ? "展开" : "折叠"}
+          >
+            {isCollapsed ? (
+              <ChevronDown className="w-4 h-4 text-gray-600" />
+            ) : (
+              <ChevronUp className="w-4 h-4 text-gray-600" />
+            )}
+          </button>
+        )}
       </div>
       {data.description && (
         <div className="text-xs text-gray-600 mb-2 line-clamp-2">
@@ -85,7 +164,10 @@ export const ObjectNode = memo(function ObjectNode({
               id={input.key}
               type="target"
               position={Position.Left}
-              className="w-3 h-3 bg-sky-500"
+              className={cn(
+                "w-3 h-3 bg-sky-500",
+                isCollapsed && "opacity-0 pointer-events-none"
+              )}
               style={{
                 top:
                   HEADER_HEIGHT +
@@ -96,7 +178,10 @@ export const ObjectNode = memo(function ObjectNode({
               title={`${input.key}: ${acceptedTypesText}`}
             />
             <span
-              className="absolute text-[10px] text-sky-700 bg-sky-50 border border-sky-200 rounded px-1 py-0.5"
+              className={cn(
+                "absolute text-[10px] text-sky-700 bg-sky-50 border border-sky-200 rounded px-1 py-0.5",
+                isCollapsed && "hidden"
+              )}
               style={{
                 top:
                   HEADER_HEIGHT -

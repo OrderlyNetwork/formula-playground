@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { RunRecord } from "../types/history";
+import type { RunRecord, CanvasSnapshot } from "../types/history";
 import type { FormulaDefinition, CompiledFormula, SharedCodeEntry, FormulaReference, UserDataSource } from "../types/formula";
 
 /**
@@ -12,6 +12,7 @@ export class FormulaPlaygroundDB extends Dexie {
   sharedCode!: Table<SharedCodeEntry, string>;
   formulaReferences!: Table<FormulaReference, string>;
   userDataSources!: Table<UserDataSource, string>;
+  canvasSnapshots!: Table<CanvasSnapshot, string>;
 
   constructor() {
     super("FormulaPlaygroundDB");
@@ -21,7 +22,8 @@ export class FormulaPlaygroundDB extends Dexie {
     // v3: add compiledFormulas table for storing jsDelivr executables
     // v4: add sharedCode and formulaReferences tables for optimized storage
     // v5: add userDataSources table for storing user-saved output values
-    this.version(5).stores({
+    // v6: add canvasSnapshots table for storing manually saved canvas states
+    this.version(6).stores({
       runRecords:
         "id, timestamp, formulaId, engine, sdkVersion, formulaVersion",
       formulas: "id, name, version, githubUrl", // Metadata from GitHub
@@ -29,6 +31,7 @@ export class FormulaPlaygroundDB extends Dexie {
       sharedCode: "id, url, version, timestamp", // Shared code entries (new storage strategy)
       formulaReferences: "id, formulaId, version, sharedCodeId, timestamp", // Formula references to shared code
       userDataSources: "id, name, timestamp, sourceNodeId", // User-defined data sources from OutputNode
+      canvasSnapshots: "id, timestamp, name", // Canvas snapshots with timestamp and name indexes
     });
   }
 }

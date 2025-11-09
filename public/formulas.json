@@ -93,6 +93,145 @@
     }
   },
   {
+    "id": "estLiqPrice",
+    "name": "estLiqPrice",
+    "version": "1.0.0",
+    "description": "Estimated liquidation price",
+    "inputs": [
+      {
+        "key": "inputs",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": false,
+          "properties": [
+            {
+              "key": "totalCollateral",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "markPrice",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "baseMMR",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "baseIMR",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "IMR_Factor",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "orderFee",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "positions",
+              "type": "object",
+              "factorType": {
+                "baseType": "object",
+                "nullable": false,
+                "array": true
+              }
+            },
+            {
+              "key": "newOrder",
+              "type": "object",
+              "factorType": {
+                "baseType": "object",
+                "nullable": false,
+                "array": false,
+                "properties": [
+                  {
+                    "key": "symbol",
+                    "type": "string",
+                    "factorType": {
+                      "baseType": "string",
+                      "nullable": false,
+                      "array": false
+                    }
+                  },
+                  {
+                    "key": "qty",
+                    "type": "number",
+                    "factorType": {
+                      "baseType": "number",
+                      "nullable": false,
+                      "array": false
+                    }
+                  },
+                  {
+                    "key": "price",
+                    "type": "number",
+                    "factorType": {
+                      "baseType": "number",
+                      "nullable": false,
+                      "array": false
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number",
+          "nullable": false,
+          "array": false
+        }
+      }
+    ],
+    "formulaText": "{\n  const {\n    positions,\n    newOrder,\n    totalCollateral,\n    markPrice,\n    baseIMR,\n    baseMMR,\n    orderFee,\n    IMR_Factor,\n  } = inputs;\n  // opened positions for the symbol\n  let currentPosition:\n    | Pick<\n        orderUtils.PositionExt,\n        \"position_qty\" | \"mark_price\" | \"symbol\" | \"mmr\"\n      >\n    | undefined = undefined;\n\n  let newTotalMM = zero;\n\n  const hasPosition =\n    positions.filter((item) => item.position_qty > 0).length > 0;\n\n  const basePrice = hasPosition ? markPrice : newOrder.price;\n\n  const newOrderNotional = new Decimal(newOrder.qty).mul(newOrder.price);\n\n  for (let index = 0; index < positions.length; index++) {\n    const position = positions[index];\n    let notional = new Decimal(position.position_qty).mul(position.mark_price);\n    if (newOrder.symbol === position.symbol) {\n      currentPosition = position;\n      notional = notional.add(newOrderNotional);\n    }\n\n    newTotalMM = newTotalMM.add(notional.abs().mul(position.mmr));\n  }\n\n  // if no position\n  if (!currentPosition) {\n    newTotalMM = newTotalMM.add(newOrderNotional.mul(baseMMR));\n  }\n\n  const newMMR = Math.max(\n    baseMMR,\n    new Decimal(baseMMR)\n      .div(baseIMR)\n      .mul(IMR_Factor)\n      .mul(\n        newOrderNotional\n          .add(\n            !!currentPosition\n              ? new Decimal(currentPosition.position_qty).mul(\n                  currentPosition.mark_price,\n                )\n              : zero,\n          )\n          .abs(),\n      )\n      .toPower(4 / 5)\n      .toNumber(),\n  );\n\n  // console.log(\"new MMR\", newMMR, newTotalMM.toNumber());\n\n  const newQty = new Decimal(newOrder.qty).add(\n    currentPosition?.position_qty ?? 0,\n  );\n\n  if (newQty.eq(0)) {\n    return 0;\n  }\n\n  const denominator = newQty.abs().mul(newMMR).sub(newQty);\n\n  if (denominator.eq(zero)) {\n    return 0;\n  }\n\n  const price = new Decimal(basePrice)\n    .add(\n      new Decimal(totalCollateral)\n        .sub(newTotalMM)\n        .sub(orderFee)\n        .div(denominator),\n    )\n    .toNumber();\n\n  return Math.max(0, price);\n}",
+    "sourceCode": "export function estLiqPrice(inputs: EstimatedLiquidationPriceInputs): number {\n  const {\n    positions,\n    newOrder,\n    totalCollateral,\n    markPrice,\n    baseIMR,\n    baseMMR,\n    orderFee,\n    IMR_Factor,\n  } = inputs;\n  // opened positions for the symbol\n  let currentPosition:\n    | Pick<\n        orderUtils.PositionExt,\n        \"position_qty\" | \"mark_price\" | \"symbol\" | \"mmr\"\n      >\n    | undefined = undefined;\n\n  let newTotalMM = zero;\n\n  const hasPosition =\n    positions.filter((item) => item.position_qty > 0).length > 0;\n\n  const basePrice = hasPosition ? markPrice : newOrder.price;\n\n  const newOrderNotional = new Decimal(newOrder.qty).mul(newOrder.price);\n\n  for (let index = 0; index < positions.length; index++) {\n    const position = positions[index];\n    let notional = new Decimal(position.position_qty).mul(position.mark_price);\n    if (newOrder.symbol === position.symbol) {\n      currentPosition = position;\n      notional = notional.add(newOrderNotional);\n    }\n\n    newTotalMM = newTotalMM.add(notional.abs().mul(position.mmr));\n  }\n\n  // if no position\n  if (!currentPosition) {\n    newTotalMM = newTotalMM.add(newOrderNotional.mul(baseMMR));\n  }\n\n  const newMMR = Math.max(\n    baseMMR,\n    new Decimal(baseMMR)\n      .div(baseIMR)\n      .mul(IMR_Factor)\n      .mul(\n        newOrderNotional\n          .add(\n            !!currentPosition\n              ? new Decimal(currentPosition.position_qty).mul(\n                  currentPosition.mark_price,\n                )\n              : zero,\n          )\n          .abs(),\n      )\n      .toPower(4 / 5)\n      .toNumber(),\n  );\n\n  // console.log(\"new MMR\", newMMR, newTotalMM.toNumber());\n\n  const newQty = new Decimal(newOrder.qty).add(\n    currentPosition?.position_qty ?? 0,\n  );\n\n  if (newQty.eq(0)) {\n    return 0;\n  }\n\n  const denominator = newQty.abs().mul(newMMR).sub(newQty);\n\n  if (denominator.eq(zero)) {\n    return 0;\n  }\n\n  const price = new Decimal(basePrice)\n    .add(\n      new Decimal(totalCollateral)\n        .sub(newTotalMM)\n        .sub(orderFee)\n        .div(denominator),\n    )\n    .toNumber();\n\n  return Math.max(0, price);\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "estLiqPrice",
+      "enabled": true
+    }
+  },
+  {
     "id": "unrealizedPnL",
     "name": "unrealizedPnL",
     "version": "1.0.0",
