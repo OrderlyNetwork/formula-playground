@@ -151,7 +151,10 @@ export class TypeAnalyzer {
         array: isArray,
       };
 
-      if (baseType === "object" && !isArray) {
+      // Extract properties for object types, including array element types
+      // When isArray is true, elementType is the array element type (object)
+      // When isArray is false, elementType is the property type itself
+      if (baseType === "object") {
         const nested = this.extractObjectProperties(elementType);
         if (nested.length > 0) factorType.properties = nested;
       }
@@ -290,13 +293,29 @@ export class TypeAnalyzer {
       if (!propMatch) continue;
 
       const [, key, propTypeText] = propMatch;
-      const baseType = this.inferTypeFromText(propTypeText);
+      const isArray = propTypeText.includes('[]');
+      
+      // Extract element type for arrays (remove [] suffix)
+      const elementTypeText = isArray 
+        ? propTypeText.replace(/\s*\[\]\s*$/, '').trim()
+        : propTypeText;
+      
+      const baseType = this.inferTypeFromText(elementTypeText);
 
       const factorType: FactorType = {
         baseType,
         nullable: false, // Can't determine from text alone
-        array: propTypeText.includes('[]'),
+        array: isArray,
       };
+
+      // Extract properties for object types, including array element types
+      if (baseType === "object") {
+        // Try to parse properties from the element type text
+        const nestedProps = this.parsePropertiesFromTypeText(elementTypeText);
+        if (nestedProps.length > 0) {
+          factorType.properties = nestedProps;
+        }
+      }
 
       properties.push({
         key,

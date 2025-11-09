@@ -167,7 +167,45 @@
               "factorType": {
                 "baseType": "object",
                 "nullable": false,
-                "array": true
+                "array": true,
+                "properties": [
+                  {
+                    "key": "position_qty",
+                    "type": "number",
+                    "factorType": {
+                      "baseType": "number",
+                      "nullable": false,
+                      "array": false
+                    }
+                  },
+                  {
+                    "key": "mark_price",
+                    "type": "number",
+                    "factorType": {
+                      "baseType": "number",
+                      "nullable": false,
+                      "array": false
+                    }
+                  },
+                  {
+                    "key": "symbol",
+                    "type": "string",
+                    "factorType": {
+                      "baseType": "string",
+                      "nullable": false,
+                      "array": false
+                    }
+                  },
+                  {
+                    "key": "mmr",
+                    "type": "number",
+                    "factorType": {
+                      "baseType": "number",
+                      "nullable": false,
+                      "array": false
+                    }
+                  }
+                ]
               }
             },
             {
