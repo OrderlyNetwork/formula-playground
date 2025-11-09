@@ -179,6 +179,13 @@ export class CanvasSnapshotManager {
   }
 
   /**
+   * Update a canvas snapshot's name by ID
+   */
+  async updateSnapshotName(id: string, name: string): Promise<void> {
+    await db.canvasSnapshots.update(id, { name });
+  }
+
+  /**
    * Delete a canvas snapshot by ID
    */
   async deleteSnapshot(id: string): Promise<void> {

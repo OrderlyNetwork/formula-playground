@@ -24,10 +24,14 @@ export const ObjectNode = memo(function ObjectNode({
 }: ObjectNodeProps) {
   // Collapse/expand state management
   const [isCollapsed, setIsCollapsed] = useState(false);
-  
+
   // Access graph store to manage connected nodes and edges visibility
-  const { nodes: storeNodes, edges: storeEdges, setNodes, setEdges } =
-    useGraphStore();
+  const {
+    nodes: storeNodes,
+    edges: storeEdges,
+    setNodes,
+    setEdges,
+  } = useGraphStore();
 
   const inputs = data.inputs ?? [];
   const handleCount = inputs.length;
@@ -81,7 +85,7 @@ export const ObjectNode = memo(function ObjectNode({
       setNodes,
     ]
   );
-  
+
   // Dynamic height calculation based on collapse state
   const containerMinHeight = isCollapsed
     ? HEADER_HEIGHT + BOTTOM_PADDING

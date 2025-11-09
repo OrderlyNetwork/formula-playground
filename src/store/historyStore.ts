@@ -27,6 +27,7 @@ interface HistoryStore {
   ) => Promise<string>;
   loadCanvasSnapshots: () => Promise<void>;
   replayCanvasSnapshot: (snapshotId: string) => Promise<void>;
+  updateCanvasSnapshotName: (snapshotId: string, name: string) => Promise<void>;
   deleteCanvasSnapshot: (snapshotId: string) => Promise<void>;
   clearCanvasSnapshots: () => Promise<void>;
 }
@@ -191,6 +192,17 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
       });
     } catch (error) {
       console.error("Failed to replay canvas snapshot:", error);
+    }
+  },
+
+  // Update a canvas snapshot's name
+  updateCanvasSnapshotName: async (snapshotId: string, name: string) => {
+    try {
+      await canvasSnapshotManager.updateSnapshotName(snapshotId, name);
+      // Reload snapshots to update UI
+      await get().loadCanvasSnapshots();
+    } catch (error) {
+      console.error("Failed to update canvas snapshot name:", error);
     }
   },
 
