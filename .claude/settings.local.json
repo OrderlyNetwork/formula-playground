@@ -13,7 +13,10 @@
       "Bash(npx tsc:*)",
       "mcp__context7__resolve-library-id",
       "mcp__context7__get-library-docs",
-      "Bash(pnpm generate:formulas:*)"
+      "Bash(pnpm generate:formulas:*)",
+      "Bash(npm run lint:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm remove:*)"
     ],
     "deny": [],
     "ask": []
