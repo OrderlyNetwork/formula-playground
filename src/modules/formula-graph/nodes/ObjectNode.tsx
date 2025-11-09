@@ -41,13 +41,39 @@ export const ObjectNode = memo(function ObjectNode({
     return storeEdges.filter((edge) => edge.target === id);
   }, [storeEdges, id]);
 
-  // Find all source nodes connected to this ObjectNode
-  const connectedSourceNodeIds = useMemo(() => {
-    return new Set(connectedEdges.map((edge) => edge.source));
-  }, [connectedEdges]);
+  
+  /**
+   * Recursively find all child nodes connected to a given set of node IDs
+   */
+  const findAllChildNodes = useCallback(
+    (nodeIds: Set<string>, visited: Set<string> = new Set()): Set<string> => {
+      const allChildIds = new Set<string>(nodeIds);
+
+      nodeIds.forEach((nodeId) => {
+        if (visited.has(nodeId)) return;
+        visited.add(nodeId);
+
+        // Find all edges where this node is the target (incoming edges)
+        const incomingEdges = storeEdges.filter((edge) => edge.target === nodeId);
+
+        incomingEdges.forEach((edge) => {
+          const sourceNodeId = edge.source;
+          if (!visited.has(sourceNodeId)) {
+            allChildIds.add(sourceNodeId);
+            // Recursively find children of this source node
+            const childIds = findAllChildNodes(new Set([sourceNodeId]), visited);
+            childIds.forEach((childId) => allChildIds.add(childId));
+          }
+        });
+      });
+
+      return allChildIds;
+    },
+    [storeEdges]
+  );
 
   /**
-   * Handle collapse/expand toggle and update visibility of connected nodes and edges
+   * Handle collapse/expand toggle and update visibility of connected nodes and edges recursively
    */
   const handleToggleCollapse = useCallback(
     (newCollapsedState: boolean) => {
@@ -56,17 +82,22 @@ export const ObjectNode = memo(function ObjectNode({
       // Update visibility of connected nodes and edges
       if (connectedEdges.length === 0) return;
 
-      // Update edges: set hidden property based on collapse state
+      // Find all child nodes recursively
+      const allChildNodeIds = findAllChildNodes(new Set([id]));
+
+      // Update edges: set hidden property based on collapse state for input edges only
       const updatedEdges = storeEdges.map((edge) => {
-        if (edge.target === id) {
+        // Hide only input edges to this node and to child nodes
+        // Keep output edges visible so that connections to downstream nodes remain
+        if ((edge.target === id || allChildNodeIds.has(edge.target)) && !allChildNodeIds.has(edge.source)) {
           return { ...edge, hidden: newCollapsedState };
         }
         return edge;
       });
 
-      // Update nodes: set hidden property for connected source nodes
+      // Update nodes: set hidden property for all child nodes recursively
       const updatedNodes = storeNodes.map((node) => {
-        if (connectedSourceNodeIds.has(node.id)) {
+        if (allChildNodeIds.has(node.id) && node.id !== id) {
           return { ...node, hidden: newCollapsedState };
         }
         return node;
@@ -78,11 +109,11 @@ export const ObjectNode = memo(function ObjectNode({
     [
       id,
       connectedEdges,
-      connectedSourceNodeIds,
       storeEdges,
       storeNodes,
       setEdges,
       setNodes,
+      findAllChildNodes,
     ]
   );
 
