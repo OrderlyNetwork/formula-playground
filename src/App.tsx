@@ -1,7 +1,13 @@
+import { Toaster } from "./components/ui/sonner";
 import { PlaygroundPage } from "./pages/playground";
 
 function App() {
-  return <PlaygroundPage />;
+  return (
+    <>
+      <PlaygroundPage />
+      <Toaster />
+    </>
+  );
 }
 
 export default App;

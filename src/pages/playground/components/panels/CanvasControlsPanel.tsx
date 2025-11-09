@@ -5,7 +5,7 @@ import { useGraphStore } from "@/store/graphStore";
 import { useHistoryStore } from "@/store/historyStore";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/common/Button";
-import { Camera, Save } from "lucide-react";
+import { Camera, Link, Share2 } from "lucide-react";
 import {
   Tooltip,
   TooltipArrow,
@@ -13,6 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { toast } from "sonner";
 
 /**
  * Canvas controls panel component
@@ -40,11 +41,30 @@ export function CanvasControlsPanel() {
     }
   }, [storeNodes, storeEdges, formulaParams, canvasMode, saveCanvasSnapshot]);
 
+  /**
+   * Handle share button click
+   * Copies the current window URL to the clipboard for sharing
+   */
+  const handleShare = useCallback(async () => {
+    try {
+      if (!navigator?.clipboard) {
+        console.error("Clipboard API unavailable: cannot copy share link");
+        return;
+      }
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success("Share link copied to clipboard", {
+        description: "You can now share this link with others",
+      });
+    } catch (error) {
+      console.error("Failed to copy share link:", error);
+    }
+  }, []);
+
   return (
     <Panel position="top-right">
       <div className="flex gap-2">
         {/* Canvas mode toggle */}
-        <TooltipProvider>
+        {/* <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center gap-2">
@@ -67,7 +87,7 @@ export function CanvasControlsPanel() {
               <TooltipArrow />
             </TooltipContent>
           </Tooltip>
-        </TooltipProvider>
+        </TooltipProvider> */}
 
         {/* Save snapshot button */}
         <TooltipProvider>
@@ -80,7 +100,7 @@ export function CanvasControlsPanel() {
                 className="flex items-center gap-1.5"
               >
                 <Camera size={16} />
-                <span className="text-xs">Save</span>
+                <span className="text-xs">Snapshot</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent className="max-w-[200px]">
@@ -88,6 +108,25 @@ export function CanvasControlsPanel() {
                 Save current canvas state (nodes, edges, and formula parameters)
                 to history
               </p>
+              <TooltipArrow />
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleShare}
+                className="flex items-center gap-1.5"
+              >
+                <Link size={16} />
+                <span className="text-xs">Share</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[200px]">
+              <p className="text-xs">Copy a shareable link to your clipboard</p>
               <TooltipArrow />
             </TooltipContent>
           </Tooltip>
