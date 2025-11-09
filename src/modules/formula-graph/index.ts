@@ -134,8 +134,100 @@ export async function generateFormulaGraph(
             targetHandle: p.key,
             animated: false,
           });
+        } else if (p.type === "object" || p.factorType?.baseType === "object") {
+          // Object property: create an ObjectNode and recursively handle its properties
+          const nestedProps = p.factorType?.properties ?? [];
+          nodes.push({
+            id: `object-${input.key}.${p.key}`,
+            type: "object",
+            position: { x: 0, y: 0 },
+            data: {
+              id: `${input.key}.${p.key}`,
+              type: "object",
+              label: p.key,
+              description: p.description,
+              inputs: nestedProps.map((np) => ({
+                key: np.key,
+                type: np.type,
+                factorType: np.factorType,
+                unit: np.unit,
+                default: np.default as unknown as FormulaScalar,
+                description: np.description,
+              })),
+            },
+          });
+
+          // Recursively create child nodes for nested object properties
+          for (const np of nestedProps) {
+            // Check if nested property is an array type
+            if (np.factorType?.array === true) {
+              const defaultArrayValue = Array.isArray(np.default)
+                ? np.default
+                : np.default !== undefined && np.default !== null
+                ? [np.default]
+                : [];
+
+              nodes.push({
+                id: `array-${input.key}.${p.key}.${np.key}`,
+                type: "array",
+                position: { x: 0, y: 0 },
+                data: {
+                  id: `${input.key}.${p.key}.${np.key}`,
+                  type: "array",
+                  label: np.key,
+                  value: defaultArrayValue,
+                  inputType: np.type,
+                  unit: np.unit,
+                  description: np.description,
+                  factorType: np.factorType,
+                },
+              });
+
+              edges.push({
+                id: `e-array-${input.key}.${p.key}.${np.key}-object-${input.key}.${p.key}`,
+                source: `array-${input.key}.${p.key}.${np.key}`,
+                target: `object-${input.key}.${p.key}`,
+                targetHandle: np.key,
+                animated: false,
+              });
+            } else {
+              // Non-array nested property: create a regular InputNode
+              nodes.push({
+                id: `input-${input.key}.${p.key}.${np.key}`,
+                type: "input",
+                position: { x: 0, y: 0 },
+                data: {
+                  id: `${input.key}.${p.key}.${np.key}`,
+                  type: "input",
+                  label: np.key,
+                  value: np.default as unknown as FormulaScalar,
+                  inputType: np.type,
+                  unit: np.unit,
+                  description: np.description,
+                  factorType: np.factorType,
+                },
+              });
+
+              edges.push({
+                id: `e-input-${input.key}.${p.key}.${np.key}-object-${input.key}.${p.key}`,
+                source: `input-${input.key}.${p.key}.${np.key}`,
+                target: `object-${input.key}.${p.key}`,
+                targetHandle: np.key,
+                animated: false,
+              });
+            }
+          }
+
+          // Create edge from nested object to parent object node
+          edges.push({
+            id: `e-object-${input.key}.${p.key}-object-${input.key}`,
+            source: `object-${input.key}.${p.key}`,
+            target: `object-${input.key}`,
+            targetHandle: p.key,
+            animated: false,
+          });
         } else {
-          // Non-array property: create a regular InputNode
+          // Non-array, non-object property: create a regular InputNode
           nodes.push({
             id: `input-${input.key}.${p.key}`,
             type: "input",
