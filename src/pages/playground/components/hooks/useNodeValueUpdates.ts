@@ -119,6 +119,136 @@ export function useNodeValueUpdates(
           (edge) => edge.target === node.id
         );
 
+        /**
+         * Normalize array value: filter out empty strings and invalid items
+         * Ensure proper type conversion based on factorType
+         */
+        const normalizeArrayValue = (value: unknown[]): unknown[] => {
+          if (!Array.isArray(value)) {
+            return [];
+          }
+
+          const factorType = node.data?.factorType;
+          const isObjectArray = factorType?.properties && factorType.properties.length > 0;
+          const properties = factorType?.properties ?? [];
+          const baseElementType = node.data?.inputType || factorType?.baseType || "string";
+
+          const normalized: unknown[] = [];
+
+          for (const item of value) {
+            // Skip empty strings and null values for non-nullable types
+            if (item === "" || (item === null && !factorType?.nullable)) {
+              continue;
+            }
+
+            if (isObjectArray) {
+              // For object arrays, validate and normalize each property
+              if (typeof item !== "object" || item === null || Array.isArray(item)) {
+                continue;
+              }
+
+              const normalizedObj: Record<string, unknown> = {};
+              let hasValidProperties = false;
+
+              for (const prop of properties) {
+                const propValue = (item as Record<string, unknown>)[prop.key];
+                
+                // Normalize property value based on its type
+                let normalizedPropValue: unknown;
+                if (propValue === undefined || propValue === null) {
+                  if (prop.default !== undefined) {
+                    normalizedPropValue = prop.default;
+                  } else {
+                    switch (prop.factorType.baseType) {
+                      case "number":
+                        normalizedPropValue = prop.factorType.nullable ? null : 0;
+                        break;
+                      case "boolean":
+                        normalizedPropValue = false;
+                        break;
+                      case "string":
+                        normalizedPropValue = prop.factorType.nullable ? null : "";
+                        break;
+                      default:
+                        normalizedPropValue = prop.factorType.nullable ? null : "";
+                    }
+                  }
+                } else {
+                  // Convert to proper type
+                  switch (prop.factorType.baseType) {
+                    case "number":
+                      if (typeof propValue === "string" && propValue === "") {
+                        normalizedPropValue = prop.factorType.nullable ? null : 0;
+                      } else {
+                        const num = Number(propValue);
+                        normalizedPropValue = isNaN(num) ? (prop.factorType.nullable ? null : 0) : num;
+                      }
+                      break;
+                    case "boolean":
+                      normalizedPropValue = Boolean(propValue);
+                      break;
+                    case "string":
+                      normalizedPropValue = String(propValue);
+                      break;
+                    default:
+                      normalizedPropValue = propValue;
+                  }
+                }
+
+                // Skip if property is empty string and not nullable
+                if (normalizedPropValue === "" && !prop.factorType.nullable) {
+                  continue;
+                }
+
+                normalizedObj[prop.key] = normalizedPropValue;
+                if (normalizedPropValue !== null && normalizedPropValue !== "") {
+                  hasValidProperties = true;
+                }
+              }
+
+              // Only add object if it has at least one valid property
+              if (hasValidProperties || Object.keys(normalizedObj).length > 0) {
+                normalized.push(normalizedObj);
+              }
+            } else {
+              // For primitive arrays, normalize based on baseElementType
+              let normalizedItem: unknown;
+              
+              if (item === null && !factorType?.nullable) {
+                continue;
+              }
+
+              switch (baseElementType) {
+                case "number":
+                  if (typeof item === "string" && item === "") {
+                    normalizedItem = factorType?.nullable ? null : 0;
+                  } else {
+                    const num = Number(item);
+                    normalizedItem = isNaN(num) ? (factorType?.nullable ? null : 0) : num;
+                  }
+                  break;
+                case "boolean":
+                  normalizedItem = Boolean(item);
+                  break;
+                case "string":
+                  normalizedItem = String(item);
+                  break;
+                default:
+                  normalizedItem = item;
+              }
+
+              // Skip empty strings for non-nullable types
+              if (normalizedItem === "" && !factorType?.nullable) {
+                continue;
+              }
+
+              normalized.push(normalizedItem);
+            }
+          }
+
+          return normalized;
+        };
+
         if (incomingEdges.length > 0) {
           // Merge values from all connected sources
           const mergedArray: unknown[] = [];
@@ -151,59 +281,78 @@ export function useNodeValueUpdates(
             }
           }
 
-          // Only update if the merged array is different
+          // Normalize the merged array
+          const normalizedArray = normalizeArrayValue(mergedArray);
+
+          // Only update if the normalized array is different
           const currentArray = Array.isArray(node.data?.value)
             ? node.data.value
             : [];
           
           // Simple comparison: check if arrays have different lengths or values
           const arraysEqual = 
-            currentArray.length === mergedArray.length &&
-            currentArray.every((val, idx) => val === mergedArray[idx]);
+            currentArray.length === normalizedArray.length &&
+            currentArray.every((val, idx) => {
+              const normalizedVal = normalizedArray[idx];
+              // Deep comparison for objects
+              if (typeof val === "object" && typeof normalizedVal === "object" && val !== null && normalizedVal !== null) {
+                return JSON.stringify(val) === JSON.stringify(normalizedVal);
+              }
+              return val === normalizedVal;
+            });
 
           if (!arraysEqual) {
             hasChange = true;
             // Also update the store to keep it in sync
             const arrayKey = node.id.replace("array-", "");
-            updateInput(arrayKey, mergedArray);
+            updateInput(arrayKey, normalizedArray);
             return {
               ...node,
               data: {
                 ...node.data,
-                value: mergedArray,
+                value: normalizedArray,
               },
             };
           }
         } else {
-          // No incoming connections, clear the array or update from currentInputs (manual edits)
+          // No incoming connections, update from currentInputs (manual edits)
           const arrayKey = node.id.replace("array-", "");
           const newValue = getByPathMemoized(currentInputs, arrayKey);
           
-          // Ensure newValue is an array
-          const newArrayValue = Array.isArray(newValue)
+          // Ensure newValue is an array and normalize it
+          const rawArrayValue = Array.isArray(newValue)
             ? newValue
             : newValue !== undefined && newValue !== null
             ? [newValue]
             : [];
 
-          // If there are no connections and currentInputs is empty/undefined, clear the array
-          const shouldClear = 
-            (newValue === undefined || newValue === null || 
-             (Array.isArray(newValue) && newValue.length === 0)) &&
-            Array.isArray(node.data?.value) && 
-            node.data.value.length > 0;
+          // Normalize the array value
+          const normalizedArray = normalizeArrayValue(rawArrayValue);
 
-          if (shouldClear || JSON.stringify(node.data?.value) !== JSON.stringify(newArrayValue)) {
-            hasChange = true;
-            // Update store if clearing
-            if (shouldClear) {
+          // If there are no connections and currentInputs is empty/undefined, ensure empty array
+          if ((newValue === undefined || newValue === null || 
+               (Array.isArray(newValue) && newValue.length === 0)) &&
+              normalizedArray.length === 0) {
+            // Ensure we have an empty array (not ["", ...])
+            if (JSON.stringify(node.data?.value) !== JSON.stringify([])) {
+              hasChange = true;
               updateInput(arrayKey, []);
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  value: [],
+                },
+              };
             }
+          } else if (JSON.stringify(node.data?.value) !== JSON.stringify(normalizedArray)) {
+            hasChange = true;
+            updateInput(arrayKey, normalizedArray);
             return {
               ...node,
               data: {
                 ...node.data,
-                value: shouldClear ? [] : newArrayValue,
+                value: normalizedArray,
               },
             };
           }

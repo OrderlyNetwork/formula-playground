@@ -42,13 +42,11 @@ export class BaseFormulaStore {
       // Check if this is an array type input
       if (input.factorType?.array === true) {
         // Array input: initialize as array
-        if (Array.isArray(input.default)) {
+        // For array types, only use array defaults, otherwise use empty array
+        if (Array.isArray(input.default) && input.default.length > 0) {
           inputs[input.key] = input.default;
-        } else if (input.default !== undefined && input.default !== null) {
-          // If default is a single value, wrap it in an array
-          inputs[input.key] = [input.default];
         } else {
-          // Empty array as default
+          // Empty array as default for all array types
           inputs[input.key] = [];
         }
       } else if (input.type === "object") {
@@ -56,14 +54,30 @@ export class BaseFormulaStore {
         const obj: Record<string, any> = {};
 
         for (const p of props) {
-          obj[p.key] =
-            p.default ??
-            (p.type === "number" ? 0 : p.type === "boolean" ? false : "");
+          // Check if this property is an array type
+          if (p.factorType?.array === true) {
+            // Array property: initialize as empty array unless valid array default provided
+            if (Array.isArray(p.default) && p.default.length > 0) {
+              obj[p.key] = p.default;
+            } else {
+              obj[p.key] = [];
+            }
+          } else {
+            // Non-array property: use regular default logic
+            obj[p.key] =
+              p.default ??
+              (p.type === "number" ? 0 : p.type === "boolean" ? false : (p.factorType?.nullable ? null : ""));
+          }
         }
 
         inputs[input.key] = obj;
       } else {
-        inputs[input.key] = input.default ?? "";
+        // Non-array input: use default or empty string/null based on nullable
+        if (input.default !== undefined) {
+          inputs[input.key] = input.default;
+        } else {
+          inputs[input.key] = input.factorType?.nullable ? null : "";
+        }
       }
     });
 

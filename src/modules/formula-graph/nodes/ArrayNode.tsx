@@ -1,4 +1,4 @@
-import { Handle, Position, NodeResizer } from "reactflow";
+import { Handle, Position } from "reactflow";
 import { memo, useMemo, useCallback } from "react";
 import type { FormulaNodeData } from "@/types/formula";
 import type { Node } from "reactflow";
@@ -70,115 +70,432 @@ export const ArrayNode = memo(function ArrayNode({
       );
   }, [incomingConnections, storeNodes]);
 
-  // Get current array value, ensuring it's always an array
+  /**
+   * Normalize array value according to factorType configuration
+   * Filters out invalid items (empty strings, null values for non-nullable types)
+   * and ensures proper type conversion
+   */
+  const normalizeArrayValue = useCallback(
+    (value: unknown): unknown[] => {
+      if (!Array.isArray(value)) {
+        // For array types with factorType, be more strict about initialization
+        if (data.factorType?.array === true) {
+          return [];
+        }
+        // For legacy/untyped arrays, handle non-array values
+        if (value !== undefined && value !== null && value !== "") {
+          return [value];
+        }
+        return [];
+      }
+
+      // Filter and normalize array items based on factorType
+      const normalized: unknown[] = [];
+      const isObjectArray =
+        data.factorType?.properties && data.factorType.properties.length > 0;
+      const properties = data.factorType?.properties ?? [];
+      const baseElementType =
+        data.inputType || data.factorType?.baseType || "string";
+
+      for (const item of value) {
+        // Skip empty strings and null values for non-nullable types
+        if (item === "" || (item === null && !data.factorType?.nullable)) {
+          continue;
+        }
+
+        if (isObjectArray) {
+          // For object arrays, validate and normalize each property
+          if (
+            typeof item !== "object" ||
+            item === null ||
+            Array.isArray(item)
+          ) {
+            // Skip invalid object items
+            continue;
+          }
+
+          const normalizedObj: Record<string, unknown> = {};
+          let hasValidProperties = false;
+
+          for (const prop of properties) {
+            const propValue = (item as Record<string, unknown>)[prop.key];
+
+            // Normalize property value based on its type
+            let normalizedPropValue: unknown;
+            if (propValue === undefined || propValue === null) {
+              // Use default value or type-specific default
+              if (prop.default !== undefined) {
+                normalizedPropValue = prop.default;
+              } else {
+                switch (prop.factorType.baseType) {
+                  case "number":
+                    normalizedPropValue = prop.factorType.nullable ? null : 0;
+                    break;
+                  case "boolean":
+                    normalizedPropValue = false;
+                    break;
+                  case "string":
+                    normalizedPropValue = prop.factorType.nullable ? null : "";
+                    break;
+                  default:
+                    normalizedPropValue = prop.factorType.nullable ? null : "";
+                }
+              }
+            } else {
+              // Convert to proper type
+              switch (prop.factorType.baseType) {
+                case "number":
+                  if (typeof propValue === "string" && propValue === "") {
+                    normalizedPropValue = prop.factorType.nullable ? null : 0;
+                  } else {
+                    const num = Number(propValue);
+                    normalizedPropValue = isNaN(num)
+                      ? prop.factorType.nullable
+                        ? null
+                        : 0
+                      : num;
+                  }
+                  break;
+                case "boolean":
+                  normalizedPropValue = Boolean(propValue);
+                  break;
+                case "string":
+                  normalizedPropValue = String(propValue);
+                  break;
+                default:
+                  normalizedPropValue = propValue;
+              }
+            }
+
+            // Skip if property is empty string and not nullable
+            if (normalizedPropValue === "" && !prop.factorType.nullable) {
+              continue;
+            }
+
+            normalizedObj[prop.key] = normalizedPropValue;
+            if (normalizedPropValue !== null && normalizedPropValue !== "") {
+              hasValidProperties = true;
+            }
+          }
+
+          // Only add object if it has at least one valid property
+          if (hasValidProperties || Object.keys(normalizedObj).length > 0) {
+            normalized.push(normalizedObj);
+          }
+        } else {
+          // For primitive arrays, normalize based on baseElementType
+          let normalizedItem: unknown;
+
+          if (item === null && !data.factorType?.nullable) {
+            continue;
+          }
+
+          switch (baseElementType) {
+            case "number":
+              if (typeof item === "string" && item === "") {
+                normalizedItem = data.factorType?.nullable ? null : 0;
+              } else {
+                const num = Number(item);
+                normalizedItem = isNaN(num)
+                  ? data.factorType?.nullable
+                    ? null
+                    : 0
+                  : num;
+              }
+              break;
+            case "boolean":
+              normalizedItem = Boolean(item);
+              break;
+            case "string":
+              normalizedItem = String(item);
+              break;
+            default:
+              normalizedItem = item;
+          }
+
+          // Skip empty strings for non-nullable types
+          if (normalizedItem === "" && !data.factorType?.nullable) {
+            continue;
+          }
+
+          normalized.push(normalizedItem);
+        }
+      }
+
+      return normalized;
+    },
+    [data.factorType, data.inputType]
+  );
+
+  // Get current array value, ensuring it's always an array and normalized
   const arrayValue = useMemo(() => {
-    const value = data.value;
-    if (Array.isArray(value)) {
-      return value;
-    }
-    // If value is not an array, return empty array or single-item array
-    if (value !== undefined && value !== null) {
-      return [value];
-    }
-    return [];
-  }, [data.value]);
+    return normalizeArrayValue(data.value);
+  }, [data.value, normalizeArrayValue]);
 
   // Determine if this is an object array based on factorType
   const isObjectArray = useMemo(() => {
     return data.factorType?.properties && data.factorType.properties.length > 0;
   }, [data.factorType]);
 
-  const properties = data.factorType?.properties ?? [];
+  // Memoize properties to prevent unnecessary re-renders
+  const properties = useMemo(() => {
+    return data.factorType?.properties ?? [];
+  }, [data.factorType?.properties]);
+
   const baseElementType =
     data.inputType || data.factorType?.baseType || `string`;
 
   /**
    * Handle adding a new element to the array
+   * Creates a new element with proper default values based on factorType
    */
   const handleAddElement = useCallback(() => {
     const currentArray = Array.isArray(data.value) ? [...data.value] : [];
 
     if (isObjectArray) {
-      // Create a new object with default values from properties
+      // Create a new object with default values from properties based on factorType
       const newObj: Record<string, unknown> = {};
       properties.forEach((prop) => {
-        newObj[prop.key] =
-          prop.default ??
-          (prop.type === "number" ? 0 : prop.type === "boolean" ? false : "");
+        // Use the property's factorType to determine the default value
+        const propFactorType = prop.factorType;
+        let defaultValue: unknown;
+
+        if (prop.default !== undefined) {
+          defaultValue = prop.default;
+        } else {
+          // Generate default value based on factorType.baseType
+          switch (propFactorType.baseType) {
+            case "number":
+              defaultValue = propFactorType.constraints?.min ?? 0;
+              break;
+            case "boolean":
+              defaultValue = false;
+              break;
+            case "string":
+              defaultValue = propFactorType.nullable ? null : "";
+              break;
+            case "object":
+              // For nested objects, create empty object with its properties
+              if (
+                propFactorType.properties &&
+                propFactorType.properties.length > 0
+              ) {
+                const nestedObj: Record<string, unknown> = {};
+                propFactorType.properties.forEach((nestedProp) => {
+                  nestedObj[nestedProp.key] =
+                    nestedProp.default ??
+                    (nestedProp.type === "number"
+                      ? nestedProp.factorType.constraints?.min ?? 0
+                      : nestedProp.type === "boolean"
+                      ? false
+                      : nestedProp.factorType.nullable
+                      ? null
+                      : "");
+                });
+                defaultValue = nestedObj;
+              } else {
+                defaultValue = {};
+              }
+              break;
+            default:
+              defaultValue = null;
+          }
+        }
+
+        newObj[prop.key] = defaultValue;
       });
       currentArray.push(newObj);
     } else {
-      // Add default value based on base type
-      const defaultValue =
-        baseElementType === "number"
-          ? 0
-          : baseElementType === "boolean"
-          ? false
-          : "";
+      // Add default value based on factorType
+      let defaultValue: unknown;
+
+      if (data.factorType) {
+        // Use the node's factorType to determine default value
+        switch (baseElementType) {
+          case "number":
+            defaultValue = data.factorType.constraints?.min ?? 0;
+            break;
+          case "boolean":
+            defaultValue = false;
+            break;
+          case "string":
+            defaultValue = data.factorType.nullable ? null : "";
+            break;
+          case "object":
+            // For array of objects, this shouldn't happen as it would be handled by isObjectArray
+            defaultValue = {};
+            break;
+          default:
+            defaultValue = null;
+        }
+      } else {
+        // Fallback to basic type defaults
+        defaultValue =
+          baseElementType === "number"
+            ? 0
+            : baseElementType === "boolean"
+            ? false
+            : null;
+      }
+
       currentArray.push(defaultValue);
     }
 
+    // Normalize the entire array before saving
+    const normalizedArray = normalizeArrayValue(currentArray);
+
     const fn = data.id.includes(".") ? updateInputAt : updateInput;
-    fn(data.id, currentArray);
+    fn(data.id, normalizedArray);
   }, [
     data.value,
     data.id,
+    data.factorType,
     isObjectArray,
     properties,
     baseElementType,
     updateInput,
     updateInputAt,
+    normalizeArrayValue,
   ]);
 
   /**
    * Handle removing an element from the array
+   * Normalizes the array after removal to ensure consistency
    */
   const handleRemoveElement = useCallback(
     (index: number) => {
       const currentArray = Array.isArray(data.value) ? [...data.value] : [];
       currentArray.splice(index, 1);
 
+      // Normalize the array after removal
+      const normalizedArray = normalizeArrayValue(currentArray);
+
       const fn = data.id.includes(".") ? updateInputAt : updateInput;
-      fn(data.id, currentArray);
+      fn(data.id, normalizedArray);
     },
-    [data.value, data.id, updateInput, updateInputAt]
+    [data.value, data.id, updateInput, updateInputAt, normalizeArrayValue]
   );
 
   /**
    * Handle updating an element value (for primitive arrays)
+   * Normalizes the value according to factorType before updating
    */
   const handleElementChange = useCallback(
-    (index: number, newValue: string | number | boolean) => {
+    (index: number, newValue: string | number | boolean | null) => {
       const currentArray = Array.isArray(data.value) ? [...data.value] : [];
-      currentArray[index] = newValue;
+
+      // Normalize the new value based on baseElementType
+      const baseElementType =
+        data.inputType || data.factorType?.baseType || "string";
+      let normalizedValue: unknown = newValue;
+
+      switch (baseElementType) {
+        case "number":
+          if (typeof newValue === "string" && newValue === "") {
+            normalizedValue = data.factorType?.nullable ? null : 0;
+          } else {
+            const num = Number(newValue);
+            normalizedValue = isNaN(num)
+              ? data.factorType?.nullable
+                ? null
+                : 0
+              : num;
+          }
+          break;
+        case "boolean":
+          normalizedValue = Boolean(newValue);
+          break;
+        case "string":
+          normalizedValue = String(newValue);
+          break;
+        default:
+          normalizedValue = newValue;
+      }
+
+      currentArray[index] = normalizedValue;
+
+      // Normalize the entire array before saving
+      const normalizedArray = normalizeArrayValue(currentArray);
 
       const fn = data.id.includes(".") ? updateInputAt : updateInput;
-      fn(data.id, currentArray);
+      fn(data.id, normalizedArray);
     },
-    [data.value, data.id, updateInput, updateInputAt]
+    [
+      data.value,
+      data.id,
+      data.factorType,
+      data.inputType,
+      updateInput,
+      updateInputAt,
+      normalizeArrayValue,
+    ]
   );
 
   /**
    * Handle updating a property of an object element (for object arrays)
+   * Normalizes the property value according to its factorType before updating
    */
   const handleObjectPropertyChange = useCallback(
     (
       index: number,
       propertyKey: string,
-      newValue: string | number | boolean
+      newValue: string | number | boolean | null
     ) => {
       const currentArray = Array.isArray(data.value) ? [...data.value] : [];
       if (!currentArray[index]) {
         currentArray[index] = {};
       }
       const obj = currentArray[index] as Record<string, unknown>;
-      obj[propertyKey] = newValue;
+
+      // Find the property definition to get its factorType
+      const prop = properties.find((p) => p.key === propertyKey);
+      if (prop) {
+        // Normalize the value based on property's factorType
+        let normalizedValue: unknown = newValue;
+
+        switch (prop.factorType.baseType) {
+          case "number":
+            if (typeof newValue === "string" && newValue === "") {
+              normalizedValue = prop.factorType.nullable ? null : 0;
+            } else {
+              const num = Number(newValue);
+              normalizedValue = isNaN(num)
+                ? prop.factorType.nullable
+                  ? null
+                  : 0
+                : num;
+            }
+            break;
+          case "boolean":
+            normalizedValue = Boolean(newValue);
+            break;
+          case "string":
+            normalizedValue = String(newValue);
+            break;
+          default:
+            normalizedValue = newValue;
+        }
+
+        obj[propertyKey] = normalizedValue;
+      } else {
+        obj[propertyKey] = newValue;
+      }
+
+      // Normalize the entire array before saving
+      const normalizedArray = normalizeArrayValue(currentArray);
 
       const fn = data.id.includes(".") ? updateInputAt : updateInput;
       // Always update the entire array to ensure re-rendering
-      fn(data.id, currentArray);
+      fn(data.id, normalizedArray);
     },
-    [data.value, data.id, updateInput, updateInputAt]
+    [
+      data.value,
+      data.id,
+      properties,
+      updateInput,
+      updateInputAt,
+      normalizeArrayValue,
+    ]
   );
 
   /**
@@ -274,7 +591,10 @@ export const ArrayNode = memo(function ArrayNode({
                         {properties.map((prop) => {
                           const obj = element as Record<string, unknown>;
                           const propValue = obj[prop.key];
-                          const displayValue = propValue !== undefined ? propValue : (prop.default ?? "");
+                          const displayValue =
+                            propValue !== undefined
+                              ? propValue
+                              : prop.default ?? null;
 
                           return (
                             <TableCell key={prop.key} className="p-1">
@@ -307,18 +627,38 @@ export const ArrayNode = memo(function ArrayNode({
                                     prop.type === "number"
                                       ? typeof displayValue === "number"
                                         ? displayValue
-                                        : typeof displayValue === "string" && displayValue !== ""
+                                        : typeof displayValue === "string" &&
+                                          displayValue !== ""
                                         ? parseFloat(displayValue) || 0
-                                        : displayValue === "" ? "" : 0
+                                        : displayValue === "" ||
+                                          displayValue === null
+                                        ? ""
+                                        : 0
+                                      : displayValue === null
+                                      ? ""
                                       : String(displayValue ?? "")
                                   }
                                   onChange={(e) => {
                                     let newValue;
                                     if (prop.type === "number") {
-                                      const parsedValue = parseFloat(e.target.value);
-                                      newValue = e.target.value === "" ? "" : (isNaN(parsedValue) ? 0 : parsedValue);
+                                      const parsedValue = parseFloat(
+                                        e.target.value
+                                      );
+                                      newValue =
+                                        e.target.value === ""
+                                          ? prop.factorType.nullable
+                                            ? null
+                                            : 0
+                                          : isNaN(parsedValue)
+                                          ? 0
+                                          : parsedValue;
                                     } else {
-                                      newValue = e.target.value;
+                                      newValue =
+                                        e.target.value === ""
+                                          ? prop.factorType.nullable
+                                            ? null
+                                            : ""
+                                          : e.target.value;
                                     }
                                     handleObjectPropertyChange(
                                       index,
@@ -362,16 +702,32 @@ export const ArrayNode = memo(function ArrayNode({
                               baseElementType === "number"
                                 ? typeof element === "number"
                                   ? element
-                                  : element === "" ? "" : 0
+                                  : element === "" || element === null
+                                  ? ""
+                                  : 0
+                                : element === null
+                                ? ""
                                 : String(element ?? "")
                             }
                             onChange={(e) => {
                               let newValue;
                               if (baseElementType === "number") {
                                 const parsedValue = parseFloat(e.target.value);
-                                newValue = e.target.value === "" ? "" : (isNaN(parsedValue) ? 0 : parsedValue);
+                                newValue =
+                                  e.target.value === ""
+                                    ? data.factorType?.nullable
+                                      ? null
+                                      : 0
+                                    : isNaN(parsedValue)
+                                    ? 0
+                                    : parsedValue;
                               } else {
-                                newValue = e.target.value;
+                                newValue =
+                                  e.target.value === ""
+                                    ? data.factorType?.nullable
+                                      ? null
+                                      : ""
+                                    : e.target.value;
                               }
                               handleElementChange(index, newValue);
                             }}

@@ -16,7 +16,8 @@
       "Bash(pnpm generate:formulas:*)",
       "Bash(npm run lint:*)",
       "Bash(pnpm add:*)",
-      "Bash(pnpm remove:*)"
+      "Bash(pnpm remove:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
