@@ -113,9 +113,6 @@ export class TSAdapter implements SDKAdapter {
             formula.id,
             formula.jsdelivrInfo.version
           );
-          console.log(
-            `✓ Loaded from jsDelivr: ${formula.id}@${formula.jsdelivrInfo.version}`
-          );
         } catch (error) {
           console.warn(
             `Failed to load from jsDelivr, falling back to hardcoded:`,

@@ -32,8 +32,8 @@ export class TypeAnalyzer {
     };
 
     // For object-like parameters, extract structural properties
-    // Skip property extraction for Decimal and other numeric wrapper types
-    if (baseType === "object" && !this.isNumericWrapperType(type)) {
+    // Skip property extraction for Decimal, other numeric wrapper types, and enums
+    if (baseType === "object" && !this.isNumericWrapperType(type) && !this.isEnumType(type)) {
       const typeToAnalyze = array ? type.getArrayElementType() : type;
       if (typeToAnalyze) {
         const props = this.extractObjectProperties(typeToAnalyze);
@@ -66,6 +66,58 @@ export class TypeAnalyzer {
     }
 
     const typeText = tsType.getText();
+
+    // Check if it's an enum type first (before primitive type checks and numeric wrapper detection)
+    if (this.isEnumType(tsType)) {
+      // For enums, check if they are string or number enums
+      const properties = tsType.getProperties();
+      if (properties.length > 0) {
+        // Filter out prototype properties to get actual enum members
+        const enumMembers = properties.filter(prop => {
+          const name = prop.getName();
+          const decl = prop.getValueDeclaration() ?? prop.getDeclarations()?.[0];
+
+          // Only include properties that have declarations (actual enum members)
+          if (!decl) return false;
+
+          // Skip common Object.prototype properties and common JavaScript object properties
+          const prototypeProperties = [
+            'toString', 'toLocaleString', 'valueOf', 'hasOwnProperty',
+            'isPrototypeOf', 'propertyIsEnumerable', 'constructor',
+            '__defineGetter__', '__defineSetter__', '__lookupGetter__',
+            '__lookupSetter__', '__proto__', 'length', 'name', 'prototype',
+            'apply', 'call', 'bind', 'arguments', 'caller', 'charAt',
+            'charCodeAt', 'concat', 'indexOf', 'lastIndexOf', 'localeCompare',
+            'match', 'replace', 'search', 'slice', 'split', 'substring',
+            'toLowerCase', 'toLocaleLowerCase', 'toUpperCase', 'toLocaleUpperCase',
+            'trim', 'substr', 'codePointAt', 'includes', 'endsWith', 'normalize',
+            'repeat', 'startsWith', 'anchor', 'big', 'blink', 'bold', 'fixed',
+            'fontcolor', 'fontsize', 'italics', 'link', 'small', 'strike',
+            'sub', 'sup', 'padStart', 'padEnd', 'trimEnd', 'trimStart',
+            'trimLeft', 'trimRight', 'matchAll'
+          ];
+
+          return !prototypeProperties.includes(name) && decl !== undefined;
+        });
+
+        if (enumMembers.length > 0) {
+          const firstEnumMember = enumMembers[0];
+          const propType = firstEnumMember.getTypeAtLocation(
+            firstEnumMember.getValueDeclaration() || firstEnumMember.getDeclarations()?.[0]
+          );
+          const typeText = propType.getText();
+
+          // String enums have quoted values, number enums have numeric values
+          if (typeText.startsWith('"') || typeText.startsWith("'")) {
+            return "string";
+          } else if (/^\d+(\.\d+)?$/.test(typeText)) {
+            return "number";
+          }
+        }
+      }
+      // Default to string for enums if we can't determine
+      return "string";
+    }
 
     // Map common numeric wrapper types to number
     // Decimal and other numeric wrapper types should be treated as primitive numbers
@@ -114,6 +166,52 @@ export class TypeAnalyzer {
   }
 
   /**
+   * Check if the type is an enum type
+   * Enum types should have their enum members extracted, not Object.prototype properties
+   */
+  private isEnumType(tsType: Type): boolean {
+    const typeText = tsType.getText();
+
+    // Check if this looks like an enum by its declaration
+    const symbol = tsType.getSymbol();
+    if (symbol) {
+      const declarations = symbol.getDeclarations();
+      if (declarations.length > 0) {
+        const declaration = declarations[0];
+        // Check if the declaration is an enum declaration
+        // ts.SyntaxKind.EnumDeclaration = 267
+        if (declaration.getKind() === 267) {
+          return true;
+        }
+      }
+    }
+
+    // Fallback: check if the properties suggest this is an enum
+    // String enums typically have uppercase property names with string values
+    const properties = tsType.getProperties();
+    if (properties.length > 0) {
+      const enumLikeProperties = properties.filter(prop => {
+        const name = prop.getName();
+        const propType = prop.getTypeAtLocation(prop.getValueDeclaration() || prop.getDeclarations()?.[0]);
+        const typeText = propType.getText();
+
+        // Enum members are typically uppercase and have string literal types
+        return /^[A-Z][A-Z0-9_]*$/.test(name) &&
+               (typeText.startsWith('"') && typeText.endsWith('"') ||
+                typeText.startsWith("'") && typeText.endsWith("'"));
+      });
+
+      // If we have multiple enum-like properties, this is likely an enum
+      return enumLikeProperties.length >= 2;
+    }
+
+    // Additional fallback: check if type text suggests an enum pattern
+    // e.g., "OrderSide" or "typeof OrderSide"
+    return /^[A-Z][a-zA-Z0-9]*$/.test(typeText) ||
+           /^typeof\s+[A-Z][a-zA-Z0-9]*$/.test(typeText);
+  }
+
+  /**
    * Extract object type properties (one-level deep, arrays handled)
    */
   private extractObjectProperties(
@@ -132,7 +230,47 @@ export class TypeAnalyzer {
       }
     }
 
-    for (const symbol of symbols) {
+    // For enum types, we want to be more selective about which properties we include
+    let filteredSymbols = symbols;
+    if (this.isEnumType(tsType)) {
+      // For enums, only include actual enum members, not Object.prototype properties
+      filteredSymbols = symbols.filter(symbol => {
+        const name = symbol.getName();
+        const decl = symbol.getValueDeclaration() ?? symbol.getDeclarations()?.[0];
+
+        // Only include properties that have declarations (actual enum members)
+        if (!decl) return false;
+
+        // Skip all Object.prototype properties and common JavaScript object properties
+        const prototypeProperties = [
+          'toString', 'toLocaleString', 'valueOf', 'hasOwnProperty',
+          'isPrototypeOf', 'propertyIsEnumerable', 'constructor',
+          '__defineGetter__', '__defineSetter__', '__lookupGetter__',
+          '__lookupSetter__', '__proto__', 'length', 'name', 'prototype',
+          'apply', 'call', 'bind', 'arguments', 'caller'
+        ];
+
+        // Include if it's not a prototype property and has a proper declaration
+        return !prototypeProperties.includes(name) && decl !== undefined;
+      });
+    } else {
+      // For non-enum types, just filter out obvious prototype properties
+      filteredSymbols = symbols.filter(symbol => {
+        const name = symbol.getName();
+
+        // Skip common Object.prototype properties that might be enumerated
+        const prototypeProperties = [
+          'toString', 'toLocaleString', 'valueOf', 'hasOwnProperty',
+          'isPrototypeOf', 'propertyIsEnumerable', 'constructor',
+          '__defineGetter__', '__defineSetter__', '__lookupGetter__',
+          '__lookupSetter__', '__proto__'
+        ];
+
+        return !prototypeProperties.includes(name);
+      });
+    }
+
+    for (const symbol of filteredSymbols) {
       const key = symbol.getName();
       const decl =
         symbol.getValueDeclaration() ?? symbol.getDeclarations()?.[0];
@@ -161,16 +299,18 @@ export class TypeAnalyzer {
 
       // Extract JSDoc comments from property declaration
       let description: string | undefined;
-      const jsDocs = decl.getJsDocs();
-      if (jsDocs.length > 0) {
-        // Get description from JSDoc comment
-        const jsDoc = jsDocs[0];
-        description = jsDoc.getDescription()?.toString() || undefined;
-        // If no description, try to get comment text
-        if (!description) {
-          const comment = jsDoc.getComment();
-          if (comment) {
-            description = comment.toString().trim() || undefined;
+      if (decl && 'getJsDocs' in decl && typeof decl.getJsDocs === 'function') {
+        const jsDocs = (decl as any).getJsDocs();
+        if (jsDocs && jsDocs.length > 0) {
+          // Get description from JSDoc comment
+          const jsDoc = jsDocs[0];
+          description = jsDoc.getDescription?.()?.toString() || undefined;
+          // If no description, try to get comment text
+          if (!description) {
+            const comment = jsDoc.getComment?.();
+            if (comment) {
+              description = comment.toString().trim() || undefined;
+            }
           }
         }
       }
@@ -408,9 +548,9 @@ export class TypeAnalyzer {
     };
 
     // For object return types, extract structural properties
-    // Skip property extraction for Decimal and other numeric wrapper types
+    // Skip property extraction for Decimal, other numeric wrapper types, and enums
     // If it's an array of objects, extract properties from the array element type
-    if (baseType === "object" && !this.isNumericWrapperType(returnType)) {
+    if (baseType === "object" && !this.isNumericWrapperType(returnType) && !this.isEnumType(returnType)) {
       const typeToAnalyze = array
         ? returnType.getArrayElementType()
         : returnType;

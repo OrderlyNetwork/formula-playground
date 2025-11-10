@@ -81,7 +81,6 @@ export class LocalNpmAdapter implements SDKAdapter {
     // Only use pre-imported if no importPath is specified (root package)
     if (!importPath && this.preImportedPackages.has(packageName)) {
       const preImported = this.preImportedPackages.get(packageName);
-      console.log(`✓ Using pre-imported package: ${packageName}`);
       return preImported;
     }
 
@@ -94,7 +93,6 @@ export class LocalNpmAdapter implements SDKAdapter {
     try {
       const module = await import(/* @vite-ignore */ fullPath);
       this.moduleCache.set(fullPath, module);
-      console.log(`✓ Dynamically imported package: ${fullPath}`);
       return module;
     } catch (error) {
       throw new Error(
@@ -234,12 +232,6 @@ export class LocalNpmAdapter implements SDKAdapter {
       }
 
       const durationMs = performance.now() - startTime;
-
-      console.log(
-        `✓ Executed from local npm: ${formula.id} using ${packageName}${
-          importPath || ""
-        }::${functionName}`
-      );
 
       return {
         success: true,

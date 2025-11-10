@@ -100,16 +100,7 @@ export function useFormulaUrlSync() {
    */
   const updateUrl = useCallback(
     (formulaId: string | null, inputs: Record<string, unknown>) => {
-      console.log("[useFormulaUrlSync] updateUrl called", {
-        formulaId,
-        inputs,
-        canvasMode,
-        canvasFormulaIds,
-        isSyncing: isSyncingFromUrlRef.current,
-      });
-
       if (isSyncingFromUrlRef.current) {
-        console.log("[useFormulaUrlSync] Blocked: currently syncing from URL");
         // Don't update URL if we're currently syncing from URL
         return;
       }
@@ -123,18 +114,20 @@ export function useFormulaUrlSync() {
             params: formulaParams[id] || {},
           })),
         };
-        
-        const encodedFormulas = encodeParams(multiFormulaData as Record<string, unknown>);
-        
+
+        const encodedFormulas = encodeParams(
+          multiFormulaData as Record<string, unknown>
+        );
+
         // Use the first formula ID as the main path (or current selectedFormulaId if available)
         const mainFormulaId = formulaId || canvasFormulaIds[0] || params.id;
-        
+
         if (mainFormulaId) {
           const newSearchParams: Record<string, string> = {};
           if (encodedFormulas) {
             newSearchParams.formulas = encodedFormulas;
           }
-          
+
           // If we have a selected formula with inputs, also include single params for backward compatibility
           if (formulaId && Object.keys(inputs).length > 0) {
             const encoded = encodeParams(inputs);
@@ -142,11 +135,16 @@ export function useFormulaUrlSync() {
               newSearchParams.params = encoded;
             }
           }
-          
+
           const queryString = new URLSearchParams(newSearchParams).toString();
-          const newUrl = `/formula/${mainFormulaId}${queryString ? `?${queryString}` : ""}`;
-          
-          if (mainFormulaId !== params.id || queryString !== new URLSearchParams(searchParams).toString()) {
+          const newUrl = `/formula/${mainFormulaId}${
+            queryString ? `?${queryString}` : ""
+          }`;
+
+          if (
+            mainFormulaId !== params.id ||
+            queryString !== new URLSearchParams(searchParams).toString()
+          ) {
             navigate(newUrl, { replace: true });
           }
         }
@@ -199,7 +197,15 @@ export function useFormulaUrlSync() {
         }
       }
     },
-    [navigate, params.id, searchParams, setSearchParams, canvasMode, canvasFormulaIds, formulaParams]
+    [
+      navigate,
+      params.id,
+      searchParams,
+      setSearchParams,
+      canvasMode,
+      canvasFormulaIds,
+      formulaParams,
+    ]
   );
 
   /**
@@ -217,33 +223,17 @@ export function useFormulaUrlSync() {
       ? formulaDefinitions.some((f) => f.id === urlFormulaId)
       : false;
 
-    console.log("[useFormulaUrlSync] FORMULA SYNC EFFECT RUNNING", {
-      urlFormulaId,
-      formulaExists,
-      selectedFormulaId,
-      loading,
-      formulaDefinitionsCount: formulaDefinitions.length,
-      isInitialMount: isInitialMountRef.current,
-      hasFormulasParam: Boolean(encodedFormulas),
-      hasParamsParam: Boolean(encodedParams),
-    });
-
     // CRITICAL: Wait for formulas to load before proceeding
     if (loading) {
-      console.log(
-        "[useFormulaUrlSync] Formula sync: Formulas still loading, skipping"
-      );
       return;
     }
 
     // Handle multi-formula mode URL restoration
     if (encodedFormulas) {
-      const decodedFormulas = decodeParams(encodedFormulas) as MultiFormulaUrlData | null;
+      const decodedFormulas = decodeParams(
+        encodedFormulas
+      ) as MultiFormulaUrlData | null;
       if (decodedFormulas && Array.isArray(decodedFormulas.formulas)) {
-        console.log("[useFormulaUrlSync] Restoring multi-formula mode from URL", {
-          formulasCount: decodedFormulas.formulas.length,
-        });
-
         isSyncingFromUrlRef.current = true;
         try {
           // Switch to multi mode if not already
@@ -257,19 +247,23 @@ export function useFormulaUrlSync() {
           // Restore each formula with its params
           for (const formulaData of decodedFormulas.formulas) {
             const { id, params: formulaParams } = formulaData;
-            
+
             // Check if formula exists
             if (formulaDefinitions.some((f) => f.id === id)) {
               // Add formula to canvas
               useCanvasStore.getState().addFormulaToCanvas(id);
-              
+
               // Store formula params
               if (formulaParams && Object.keys(formulaParams).length > 0) {
                 useCanvasStore.getState().setFormulaParams(id, formulaParams);
               }
-              
+
               // Select the first formula (or URL formula ID if it matches)
-              if (!selectedFormulaId || selectedFormulaId === id || decodedFormulas.formulas[0]?.id === id) {
+              if (
+                !selectedFormulaId ||
+                selectedFormulaId === id ||
+                decodedFormulas.formulas[0]?.id === id
+              ) {
                 selectFormula(id);
                 if (formulaParams && Object.keys(formulaParams).length > 0) {
                   // Restore params for the selected formula
@@ -286,7 +280,10 @@ export function useFormulaUrlSync() {
             isSyncingFromUrlRef.current = false;
           }, 100);
         } catch (error) {
-          console.error("Failed to restore multi-formula mode from URL:", error);
+          console.error(
+            "Failed to restore multi-formula mode from URL:",
+            error
+          );
           isSyncingFromUrlRef.current = false;
         }
         return;
@@ -319,60 +316,27 @@ export function useFormulaUrlSync() {
           urlFormulaId !== lastSyncedFormulaIdRef.current) ||
         hasUnappliedParams;
 
-      console.log("[useFormulaUrlSync] Should sync decision", {
-        shouldSync,
-        urlFormulaId,
-        selectedFormulaId,
-        hasUrlParams,
-        hasUnappliedParams,
-        isInitialMount: isInitialMountRef.current,
-      });
-
       if (shouldSync) {
-        console.log("[useFormulaUrlSync] Starting formula sync from URL", {
-          urlFormulaId,
-          selectedFormulaId,
-          isInitialMount: isInitialMountRef.current,
-        });
-
         isSyncingFromUrlRef.current = true;
         try {
           // Check if URL has params - if so, we need to restore them after selecting formula
           const encodedParams = searchParams.get("params");
           const hasParams = Boolean(encodedParams);
 
-          console.log("[useFormulaUrlSync] URL params check", {
-            hasParams,
-            encodedParams: encodedParams
-              ? encodedParams.substring(0, 50) + "..."
-              : null,
-          });
-
           // If URL has params, decode them BEFORE selecting formula
           let decodedParams: Record<string, unknown> | null = null;
           if (hasParams) {
             decodedParams = encodedParams ? decodeParams(encodedParams) : null;
-            console.log("[useFormulaUrlSync] Decoded params", {
-              success: !!decodedParams,
-              paramsCount: decodedParams
-                ? Object.keys(decodedParams).length
-                : 0,
-              params: decodedParams,
-            });
 
             if (decodedParams && Object.keys(decodedParams).length > 0) {
               // Mark these params as already synced to prevent URL updates
               lastSyncedInputsRef.current = decodedParams;
               pendingParamsRestoreRef.current = decodedParams;
-              console.log("[useFormulaUrlSync] Marked params as synced");
             } else {
               // Decoding failed, treat as no params
               decodedParams = null;
               pendingParamsRestoreRef.current = null;
               lastSyncedInputsRef.current = {};
-              console.log(
-                "[useFormulaUrlSync] Decoding failed, treating as no params"
-              );
             }
           } else {
             pendingParamsRestoreRef.current = null;
@@ -380,10 +344,6 @@ export function useFormulaUrlSync() {
           }
 
           // Select formula (this will reset inputs to defaults and trigger graph generation)
-          console.log(
-            "[useFormulaUrlSync] Calling selectFormula",
-            urlFormulaId
-          );
           selectFormula(urlFormulaId);
           lastSyncedFormulaIdRef.current = urlFormulaId;
 
@@ -391,16 +351,9 @@ export function useFormulaUrlSync() {
           // This minimizes the time window where default values exist
           // Nodes will be updated via useNodeValueUpdates when they're generated
           if (decodedParams && Object.keys(decodedParams).length > 0) {
-            console.log(
-              "[useFormulaUrlSync] Scheduling params restoration via queueMicrotask"
-            );
             // Use queueMicrotask to restore params in next microtask
             // This ensures selectFormula's state updates are applied first
             queueMicrotask(() => {
-              console.log(
-                "[useFormulaUrlSync] Restoring params now",
-                decodedParams
-              );
               setInputs(decodedParams as Record<string, unknown>);
               lastSyncedInputsRef.current = decodedParams as Record<
                 string,
@@ -410,16 +363,10 @@ export function useFormulaUrlSync() {
 
               // Reset sync flag after a brief delay
               setTimeout(() => {
-                console.log(
-                  "[useFormulaUrlSync] Resetting isSyncingFromUrlRef to false"
-                );
                 isSyncingFromUrlRef.current = false;
               }, 50);
             });
           } else {
-            console.log(
-              "[useFormulaUrlSync] No params to restore, resetting sync flag"
-            );
             // No params, reset sync flag immediately
             setTimeout(() => {
               isSyncingFromUrlRef.current = false;
@@ -609,25 +556,21 @@ export function useFormulaUrlSync() {
         }
       }
     }
-  }, [canvasMode, selectedFormulaId, currentInputs, setFormulaParams, searchParams, setSearchParams, updateUrl]);
+  }, [
+    canvasMode,
+    selectedFormulaId,
+    currentInputs,
+    setFormulaParams,
+    searchParams,
+    setSearchParams,
+    updateUrl,
+  ]);
 
   /**
    * Sync formula ID and parameters to URL when they change
    * This effect runs when store state changes (e.g., user selects formula or changes inputs)
    */
   useEffect(() => {
-    console.log("[useFormulaUrlSync] URL sync effect triggered", {
-      selectedFormulaId,
-      currentInputs,
-      canvasMode,
-      canvasFormulaIds,
-      isSyncing: isSyncingFromUrlRef.current,
-      isInitialMount: isInitialMountRef.current,
-      hasPendingParams: !!pendingParamsRestoreRef.current,
-      loading,
-      urlId: params.id,
-    });
-
     // Don't update URL if:
     // 1. We're currently syncing from URL (isSyncingFromUrlRef.current = true)
     // 2. This is the initial mount (isInitialMountRef.current = true)
@@ -638,11 +581,6 @@ export function useFormulaUrlSync() {
       isInitialMountRef.current ||
       pendingParamsRestoreRef.current
     ) {
-      console.log("[useFormulaUrlSync] Blocked by basic guards", {
-        isSyncing: isSyncingFromUrlRef.current,
-        isInitialMount: isInitialMountRef.current,
-        hasPendingParams: !!pendingParamsRestoreRef.current,
-      });
       // Skip URL update - we're syncing from URL or waiting for param restoration
       return;
     }
@@ -651,27 +589,20 @@ export function useFormulaUrlSync() {
     // do not update the URL (avoid resetting shared link during initial data load)
     const urlId = params.id;
     if (loading) {
-      console.log("[useFormulaUrlSync] Blocked: still loading");
       return;
     }
     if (urlId && urlId !== selectedFormulaId && canvasMode === "single") {
-      console.log(
-        "[useFormulaUrlSync] Blocked: URL id doesn't match selection",
-        {
-          urlId,
-          selectedFormulaId,
-        }
-      );
       return;
     }
 
     // In multi mode, update URL when canvasFormulaIds or formulaParams change
     if (canvasMode === "multi") {
       // Use current formula params or get from canvasStore
-      const paramsToUse = selectedFormulaId && formulaParams[selectedFormulaId]
-        ? formulaParams[selectedFormulaId]
-        : currentInputs;
-      
+      const paramsToUse =
+        selectedFormulaId && formulaParams[selectedFormulaId]
+          ? formulaParams[selectedFormulaId]
+          : currentInputs;
+
       updateUrl(selectedFormulaId, paramsToUse);
       return;
     }
@@ -682,12 +613,6 @@ export function useFormulaUrlSync() {
     const inputsStr = JSON.stringify(currentInputs);
     const lastSyncedStr = JSON.stringify(lastSyncedInputsRef.current);
 
-    console.log("[useFormulaUrlSync] Comparing inputs", {
-      currentInputs,
-      lastSyncedInputs: lastSyncedInputsRef.current,
-      areEqual: inputsStr === lastSyncedStr,
-    });
-
     if (inputsStr !== lastSyncedStr) {
       // Extra safety: check if URL already has params that match what we're about to restore
       // This prevents overwriting URL params during the restoration process
@@ -696,24 +621,15 @@ export function useFormulaUrlSync() {
         const decodedUrlParams = decodeParams(currentUrlParams);
         if (decodedUrlParams) {
           const urlParamsStr = JSON.stringify(decodedUrlParams);
-          console.log("[useFormulaUrlSync] Checking URL params match", {
-            urlParamsStr,
-            inputsStr,
-            match: urlParamsStr === inputsStr,
-          });
           // If current inputs match URL params, don't update
           // This handles the case where params are being restored
           if (urlParamsStr === inputsStr) {
-            console.log(
-              "[useFormulaUrlSync] Inputs match URL params, marking as synced"
-            );
             lastSyncedInputsRef.current = currentInputs;
             return;
           }
         }
       }
 
-      console.log("[useFormulaUrlSync] Proceeding to update URL");
       updateUrl(selectedFormulaId, currentInputs);
       if (selectedFormulaId) {
         lastSyncedFormulaIdRef.current = selectedFormulaId;

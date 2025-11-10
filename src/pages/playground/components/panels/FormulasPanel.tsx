@@ -64,25 +64,25 @@ export function FormulasPanel({
       <Card
         title="Formulas"
         className="flex flex-col h-full"
-        headerRight={
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label="Settings"
-                  title="Settings"
-                  className="p-0 h-4 w-4"
-                  onClick={handleImport}
-                >
-                  <Settings2 strokeWidth={1.5} size={14} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Settings</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        }
+        // headerRight={
+        //   <TooltipProvider>
+        //     <Tooltip>
+        //       <TooltipTrigger asChild>
+        //         <Button
+        //           variant="ghost"
+        //           size="sm"
+        //           aria-label="Settings"
+        //           title="Settings"
+        //           className="p-0 h-4 w-4"
+        //           onClick={handleImport}
+        //         >
+        //           <Settings2 strokeWidth={1.5} size={14} />
+        //         </Button>
+        //       </TooltipTrigger>
+        //       <TooltipContent>Settings</TooltipContent>
+        //     </Tooltip>
+        //   </TooltipProvider>
+        // }
       >
         {/* Search box */}
         <div className="px-2.5 py-2 border-b border-gray-200 shrink-0">
@@ -186,10 +186,10 @@ export function FormulasPanel({
       </Card>
 
       {/* Source Code Dialog */}
-      <SourceCodeDialog
+      {/* <SourceCodeDialog
         open={sourceCodeDialogOpen}
         onOpenChange={setSourceCodeDialogOpen}
-      />
+      /> */}
     </>
   );
 }

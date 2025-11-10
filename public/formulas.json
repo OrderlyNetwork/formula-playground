@@ -1,5 +1,90 @@
 [
   {
+    "id": "total_value",
+    "name": "totalValue",
+    "version": "1.0.0",
+    "description": "User's total asset value (denominated in USDC), including assets that cannot be used as collateral.",
+    "inputs": [
+      {
+        "key": "inputs",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": false,
+          "properties": [
+            {
+              "key": "totalUnsettlementPnL",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "USDCHolding",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "nonUSDCHolding",
+              "type": "object",
+              "factorType": {
+                "baseType": "object",
+                "nullable": false,
+                "array": true,
+                "properties": [
+                  {
+                    "key": "holding",
+                    "type": "number",
+                    "factorType": {
+                      "baseType": "number",
+                      "nullable": false,
+                      "array": false
+                    }
+                  },
+                  {
+                    "key": "indexPrice",
+                    "type": "number",
+                    "factorType": {
+                      "baseType": "number",
+                      "nullable": false,
+                      "array": false
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number",
+          "nullable": false,
+          "array": false
+        }
+      }
+    ],
+    "formulaText": "{\n  const { totalUnsettlementPnL, USDCHolding, nonUSDCHolding } = inputs;\n  const nonUSDCHoldingValue = nonUSDCHolding.reduce((acc, cur) => {\n    return new Decimal(cur.holding).mul(cur.indexPrice).add(acc);\n  }, zero);\n  return nonUSDCHoldingValue.add(USDCHolding).add(totalUnsettlementPnL);\n}",
+    "sourceCode": "export function totalValue(inputs: TotalValueInputs): Decimal {\n  const { totalUnsettlementPnL, USDCHolding, nonUSDCHolding } = inputs;\n  const nonUSDCHoldingValue = nonUSDCHolding.reduce((acc, cur) => {\n    return new Decimal(cur.holding).mul(cur.indexPrice).add(acc);\n  }, zero);\n  return nonUSDCHoldingValue.add(USDCHolding).add(totalUnsettlementPnL);\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "totalValue",
+      "enabled": true
+    }
+  },
+  {
     "id": "imr",
     "name": "IMR",
     "version": "1.0.0",
@@ -89,6 +174,184 @@
     "localNpmInfo": {
       "packageName": "@orderly.network/perp",
       "functionName": "IMR",
+      "enabled": true
+    }
+  },
+  {
+    "id": "maxQty",
+    "name": "maxQty",
+    "version": "1.0.0",
+    "description": "Maximum order quantity.",
+    "inputs": [
+      {
+        "key": "side",
+        "type": "string",
+        "factorType": {
+          "baseType": "string",
+          "constraints": {},
+          "nullable": false,
+          "array": false
+        }
+      },
+      {
+        "key": "inputs",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": false,
+          "properties": [
+            {
+              "key": "symbol",
+              "type": "string",
+              "factorType": {
+                "baseType": "string",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "baseMaxQty",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "totalCollateral",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              },
+              "description": "\nTotal collateral of the user (denominated in USDC), can be calculated from totalCollateral."
+            },
+            {
+              "key": "maxLeverage",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "baseIMR",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "otherIMs",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "markPrice",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "positionQty",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "buyOrdersQty",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "sellOrdersQty",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "IMR_Factor",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "takerFeeRate",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            }
+          ]
+        }
+      },
+      {
+        "key": "options",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": false,
+          "properties": [
+            {
+              "key": "dp",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number",
+          "nullable": false,
+          "array": false
+        }
+      }
+    ],
+    "formulaText": "{\n  if (side === OrderSide.BUY) {\n    return maxQtyByLong(inputs);\n  }\n  return maxQtyByShort(inputs);\n}",
+    "sourceCode": "export function maxQty(\n  side: OrderSide,\n  inputs: MaxQtyInputs,\n  options?: ResultOptions,\n): number {\n  if (side === OrderSide.BUY) {\n    return maxQtyByLong(inputs);\n  }\n  return maxQtyByShort(inputs);\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "maxQty",
       "enabled": true
     }
   },

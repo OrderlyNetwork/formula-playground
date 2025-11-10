@@ -153,7 +153,6 @@ class WebSocketManager {
     onMessage: MessageCallback,
     onStatusChange?: (status: ConnectionStatus) => void
   ): UnsubscribeFn {
-    console.log(`[WebSocketManager] subscribe() called - topic: ${topic}, nodeId: ${nodeId}`);
     // Store node subscription info
     this.nodeSubscriptions.set(nodeId, topic);
 
@@ -202,11 +201,11 @@ class WebSocketManager {
               });
             }
           },
-          onError: (error: any) => {
-            console.error(`WebSocket error for topic ${topic}:`, error);
+          onError: () => {
+            /** Intentionally left blank; upstream layers handle error reporting to avoid noisy console output. */
           },
-          onClose: (event: any) => {
-            console.log(`WebSocket closed for topic ${topic}:`, event);
+          onClose: () => {
+            /** Intentionally left blank; upstream layers handle lifecycle awareness without console logging. */
           },
           onUnsubscribe: () => ({
             event: "unsubscribe",
@@ -224,12 +223,6 @@ class WebSocketManager {
 
     // Store node subscription with callback
     const nodeUnsubscribeFn = () => {
-      console.log(`[WebSocketManager] nodeUnsubscribeFn() called - topic: ${topic}, nodeId: ${nodeId}`);
-      console.log(`[WebSocketManager] Before cleanup - topicSubscriptions.size: ${topicSubscriptions.size}`);
-      console.log(`[WebSocketManager] Before cleanup - wsSubscriptions.size: ${this.wsSubscriptions.size}`);
-      console.log(`[WebSocketManager] Before cleanup - nodeSubscriptions.size: ${this.nodeSubscriptions.size}`);
-      console.log(`[WebSocketManager] Before cleanup - nodeStatusCallbacks.size: ${this.nodeStatusCallbacks.size}`);
-
       // Remove node from topic subscriptions
       topicSubscriptions.delete(nodeId);
 
@@ -239,22 +232,13 @@ class WebSocketManager {
 
       // If no more subscriptions for this topic, unsubscribe from WS
       if (topicSubscriptions.size === 0) {
-        console.log(`[WebSocketManager] No more subscriptions for topic: ${topic}, unsubscribing from WS`);
         const wsUnsubscribeFn = this.wsSubscriptions.get(topic);
         if (wsUnsubscribeFn) {
-          console.log(`[WebSocketManager] Calling wsUnsubscribeFn for topic: ${topic}`);
           wsUnsubscribeFn();
           this.wsSubscriptions.delete(topic);
-          console.log(`[WebSocketManager] WS unsubscribed and removed from wsSubscriptions`);
         }
         this.subscriptions.delete(topic);
-        console.log(`[WebSocketManager] Topic removed from subscriptions`);
       }
-
-      console.log(`[WebSocketManager] After cleanup - topicSubscriptions.size: ${topicSubscriptions.size}`);
-      console.log(`[WebSocketManager] After cleanup - wsSubscriptions.size: ${this.wsSubscriptions.size}`);
-      console.log(`[WebSocketManager] After cleanup - nodeSubscriptions.size: ${this.nodeSubscriptions.size}`);
-      console.log(`[WebSocketManager] After cleanup - nodeStatusCallbacks.size: ${this.nodeStatusCallbacks.size}`);
     };
 
     topicSubscriptions.set(nodeId, {
@@ -271,57 +255,36 @@ class WebSocketManager {
    * Unsubscribe from a topic for a specific node
    */
   unsubscribe(topic: string, nodeId: string): void {
-    console.log(`[WebSocketManager] unsubscribe() called - topic: ${topic}, nodeId: ${nodeId}`);
-    console.log(`[WebSocketManager] Current subscriptions:`, Array.from(this.subscriptions.keys()));
-    console.log(`[WebSocketManager] Current nodeSubscriptions:`, Array.from(this.nodeSubscriptions.entries()));
-
     const topicSubscriptions = this.subscriptions.get(topic);
 
     // If topic subscriptions exist, remove the node's subscription
     if (topicSubscriptions) {
-      console.log(`[WebSocketManager] Found topicSubscriptions for topic: ${topic}, size: ${topicSubscriptions.size}`);
-      console.log(`[WebSocketManager] Nodes in topic:`, Array.from(topicSubscriptions.keys()));
-
       const subscription = topicSubscriptions.get(nodeId);
       if (subscription) {
-        console.log(`[WebSocketManager] Found subscription for nodeId: ${nodeId}, calling unsubscribeFn`);
         subscription.unsubscribeFn();
         // The nodeUnsubscribeFn already handles all cleanup including:
         // - Removing node from topicSubscriptions
         // - Cleaning up nodeSubscriptions and nodeStatusCallbacks
         // - Unsubscribing from WS if this was the last subscription
-        console.log(`[WebSocketManager] unsubscribeFn completed`);
         return;
-      } else {
-        console.log(`[WebSocketManager] No subscription found for nodeId: ${nodeId} in topic: ${topic}`);
       }
-    } else {
-      console.log(`[WebSocketManager] No topicSubscriptions found for topic: ${topic}`);
     }
 
     // If we get here, the subscription wasn't found, but we should still clean up
-    console.log(`[WebSocketManager] Performing fallback cleanup for nodeId: ${nodeId}`);
     this.nodeSubscriptions.delete(nodeId);
     this.nodeStatusCallbacks.delete(nodeId);
-    console.log(`[WebSocketManager] Fallback cleanup completed`);
   }
 
   /**
    * Remove all subscriptions for a node
    */
   removeNode(nodeId: string): void {
-    console.log(`[WebSocketManager] removeNode() called - nodeId: ${nodeId}`);
-    console.log(`[WebSocketManager] Current nodeSubscriptions before remove:`, Array.from(this.nodeSubscriptions.entries()));
-
     const topic = this.nodeSubscriptions.get(nodeId);
     if (!topic) {
-      console.log(`[WebSocketManager] No topic found for nodeId: ${nodeId}, nothing to remove`);
       return;
     }
 
-    console.log(`[WebSocketManager] Found topic: ${topic} for nodeId: ${nodeId}, calling unsubscribe`);
     this.unsubscribe(topic, nodeId);
-    console.log(`[WebSocketManager] removeNode completed for nodeId: ${nodeId}`);
   }
 
   /**

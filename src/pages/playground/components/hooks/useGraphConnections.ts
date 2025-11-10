@@ -39,7 +39,7 @@ export function useGraphConnections() {
     sourceValue: unknown
   ): unknown[] {
     const newArray = [...currentArray];
-    
+
     if (Array.isArray(sourceValue)) {
       // If source is array, concatenate
       return [...newArray, ...sourceValue];
@@ -47,7 +47,7 @@ export function useGraphConnections() {
       // Otherwise, append the value
       return [...newArray, sourceValue];
     }
-    
+
     return newArray;
   }
 
@@ -71,7 +71,9 @@ export function useGraphConnections() {
       };
     } else if (targetNode.type === "object" && targetHandle) {
       // For ObjectNode with specific handle, find the property factor type
-      const property = targetNode.data?.inputs?.find((input: any) => input.key === targetHandle);
+      const property = targetNode.data?.inputs?.find(
+        (input: any) => input.key === targetHandle
+      );
       targetFactorType = property?.factorType || {
         baseType: property?.type || "string",
         nullable: true,
@@ -103,11 +105,14 @@ export function useGraphConnections() {
     }
 
     // For non-array targets, validate the actual value
-    const validation = validateValueForFactorType(sourceValue, targetFactorType);
+    const validation = validateValueForFactorType(
+      sourceValue,
+      targetFactorType
+    );
     if (!validation.isValid) {
       return {
         isValid: false,
-        reason: `Type mismatch: ${validation.error}`
+        reason: `Type mismatch: ${validation.error}`,
       };
     }
 
@@ -141,7 +146,9 @@ export function useGraphConnections() {
       );
 
       if (!compatibilityValidation.isValid) {
-        console.warn(`Connection validation failed: ${compatibilityValidation.reason}`);
+        console.warn(
+          `Connection validation failed: ${compatibilityValidation.reason}`
+        );
         // Optionally show user feedback about the validation failure
         return;
       }
@@ -206,7 +213,10 @@ export function useGraphConnections() {
             : [];
 
           // Merge the new value into the array
-          const mergedArray = mergeValueIntoArray(currentArrayValue, sourceValue);
+          const mergedArray = mergeValueIntoArray(
+            currentArrayValue,
+            sourceValue
+          );
           updateInput(arrayKey, mergedArray);
         }
 
@@ -228,9 +238,6 @@ export function useGraphConnections() {
         // Remove existing connections to this InputNode (enforce single connection rule)
         if (existingConnections.length > 0) {
           updatedEdges = storeEdges.filter((edge) => edge.target !== target);
-          console.log(
-            `Removed ${existingConnections.length} existing connection(s) from InputNode ${target}`
-          );
         }
 
         // Find the formula node that this InputNode connects to
@@ -308,15 +315,17 @@ export function useGraphConnections() {
         if (change.type === "remove") {
           const removedEdge = current.find((e) => e.id === change.id);
           if (removedEdge) {
-            const targetNode = currentNodes.find((n) => n.id === removedEdge.target);
-            
+            const targetNode = currentNodes.find(
+              (n) => n.id === removedEdge.target
+            );
+
             // 如果删除的是连接到 ArrayNode 的边
             if (targetNode?.type === "array") {
               // 检查是否还有其他连接到这个 ArrayNode 的边
               const remainingEdges = next.filter(
                 (edge) => edge.target === removedEdge.target
               );
-              
+
               // 如果没有其他连接了，清除 ArrayNode 的数据
               if (remainingEdges.length === 0) {
                 const arrayKey = targetNode.id.replace("array-", "");

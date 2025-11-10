@@ -3,10 +3,10 @@
  * 提供便捷的 FormulaNode 执行管理功能
  */
 
-import { useEffect, useCallback } from 'react';
-import { runnerManager } from '../services/runnerManager';
-import { useGraphStore } from '@/store/graphStore';
-import { useFormulaStore } from '@/store/formulaStore';
+import { useEffect, useCallback } from "react";
+import { runnerManager } from "../services/runnerManager";
+import { useGraphStore } from "@/store/graphStore";
+import { useFormulaStore } from "@/store/formulaStore";
 
 export interface UseFormulaRunnerOptions {
   autoInitialize?: boolean;
@@ -16,7 +16,6 @@ export const useFormulaRunner = (
   nodeId: string,
   options: UseFormulaRunnerOptions = {}
 ) => {
-  console.log(`[useFormulaRunner] Hook called for ${nodeId}`);
   const { autoInitialize = true } = options;
   const { getFormulaDefinition } = useFormulaStore();
 
@@ -35,35 +34,31 @@ export const useFormulaRunner = (
 
   // 初始化节点 runner
   const initializeRunner = useCallback(() => {
-    console.log(`[useFormulaRunner] initializeRunner called for ${nodeId}`);
-    
     // 检查是否有 formula ID
     if (!formulaId) {
-      console.log(`[useFormulaRunner] No formula ID found for node ${nodeId}`);
       // 如果没有 formulaId，清理旧状态
       runnerManager.disposeNode(nodeId);
       return;
     }
 
-    console.log(`[useFormulaRunner] Formula ID: ${formulaId}`);
-    
     const formulaDefinition = getFormulaDefinition(formulaId);
-    console.log(`[useFormulaRunner] Formula definition:`, formulaDefinition);
-    
+
     if (formulaDefinition) {
       // createNodeContext 内部会处理公式切换时的状态清理
       runnerManager.createNodeContext(nodeId, formulaDefinition);
     } else {
-      console.log(`[useFormulaRunner] No formula definition found for formula ID: ${formulaId}`);
       // 如果找不到公式定义，清理旧状态
       runnerManager.disposeNode(nodeId);
     }
   }, [nodeId, formulaId, getFormulaDefinition]);
 
   // 更新输入值
-  const updateInputs = useCallback((inputValues: Record<string, any>) => {
-    runnerManager.updateNodeInputs(nodeId, inputValues);
-  }, [nodeId]);
+  const updateInputs = useCallback(
+    (inputValues: Record<string, unknown>) => {
+      runnerManager.updateNodeInputs(nodeId, inputValues);
+    },
+    [nodeId]
+  );
 
   // 开始自动运行
   const startAutoRun = useCallback(() => {
@@ -82,52 +77,29 @@ export const useFormulaRunner = (
 
   // 初始化：当 nodeId 或 autoInitialize 变化时
   useEffect(() => {
-    console.log(`[useFormulaRunner] useEffect running for ${nodeId}`);
-
-    // 调试：确保函数被定义
-    console.log(`[useFormulaRunner] Hook initialized for ${nodeId}`, {
-      hasStartAutoRun: !!startAutoRun,
-      hasStopAutoRun: !!stopAutoRun,
-      hasExecute: !!execute
-    });
-
     if (autoInitialize) {
-      console.log(`[useFormulaRunner] Auto-initializing for ${nodeId}`);
       runnerManager.initialize();
       initializeRunner();
-    } else {
-      console.log(`[useFormulaRunner] Auto-initialization disabled for ${nodeId}`);
     }
 
     return () => {
-      console.log(`[useFormulaRunner] Cleanup for ${nodeId}`);
       runnerManager.disposeNode(nodeId);
     };
-  }, [nodeId, autoInitialize]); // 只在 nodeId 或 autoInitialize 变化时重新初始化
+  }, [nodeId, autoInitialize, initializeRunner]); // 只在 nodeId 或 autoInitialize 变化时重新初始化
 
   // 监听 formulaId 变化：当公式切换时重新初始化
   useEffect(() => {
-    console.log(`[useFormulaRunner] Formula ID changed for ${nodeId}: ${formulaId}`);
-    
     if (autoInitialize && formulaId) {
       // 公式切换时，initializeRunner 会处理状态清理
       initializeRunner();
     }
   }, [formulaId, nodeId, autoInitialize, initializeRunner]);
 
-  // 监听状态变化
-  useEffect(() => {
-    console.log(`[useFormulaRunner] State changed for ${nodeId}:`, {
-      isAutoRunning: executionState?.isAutoRunning,
-      status: executionState?.status
-    });
-  }, [executionState]);
-
   return {
     // 状态
     isInitialized: !!executionState,
     isAutoRunning: executionState?.isAutoRunning ?? false,
-    status: executionState?.status ?? 'idle',
+    status: executionState?.status ?? "idle",
     lastResult: executionState?.lastResult,
     lastExecutionTime: executionState?.lastExecutionTime,
     errorMessage: executionState?.errorMessage,
@@ -138,6 +110,6 @@ export const useFormulaRunner = (
     updateInputs,
     startAutoRun,
     stopAutoRun,
-    execute
+    execute,
   };
 };

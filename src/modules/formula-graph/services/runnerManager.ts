@@ -37,27 +37,25 @@ class RunnerManager {
     nodeId: string,
     formulaDefinition: FormulaDefinition
   ): void {
-    console.log(`[RunnerManager] createNodeContext called for ${nodeId}`, {
-      formulaDefinition: formulaDefinition.name,
-    });
-
     // 检查是否是公式切换（context 已存在但 formulaId 不同）
     const existingContext = this.runnerService.getContext(nodeId);
-    const isFormulaSwitching = existingContext && 
+    const isFormulaSwitching =
+      existingContext &&
       existingContext.config.formulaId !== formulaDefinition.id;
-    
+
     if (isFormulaSwitching) {
-      console.log(`[RunnerManager] Formula switching detected for ${nodeId}: ${existingContext.config.formulaId} -> ${formulaDefinition.id}`);
-      
       // 先清理旧状态：停止自动运行、清除状态
-      if (existingContext.config.autoRun || existingContext.state.isAutoRunning) {
+      if (
+        existingContext.config.autoRun ||
+        existingContext.state.isAutoRunning
+      ) {
         this.stopNodeAutoRun(nodeId);
       }
-      
+
       // 清除 graph store 中的执行状态
       const store = useGraphStore.getState();
       store.updateNodeExecutionState(nodeId, {
-        status: 'idle',
+        status: "idle",
         isAutoRunning: false,
         lastResult: undefined,
         errorMessage: undefined,
@@ -84,8 +82,6 @@ class RunnerManager {
     if (context?.updateCallback) {
       context.updateCallback({ ...context.state });
     }
-
-    console.log(`[RunnerManager] createNodeContext completed for ${nodeId}`);
   }
 
   /**
@@ -222,11 +218,6 @@ class RunnerManager {
   }
 
   private handleNodeStateUpdate(nodeId: string, state: any): void {
-    console.log(`[RunnerManager] Updating state for ${nodeId}:`, {
-      isAutoRunning: state.isAutoRunning,
-      status: state.status,
-    });
-
     const store = useGraphStore.getState();
 
     // 更新 graph store 中的节点执行状态
@@ -282,7 +273,7 @@ class RunnerManager {
       if (edge.target === nodeId) {
         return { ...edge, animated };
       }
-      
+
       // Update outgoing edges (edges that connect from this formula node to OutputNodes)
       if (edge.source === nodeId) {
         const targetNode = nodes.find((n) => n.id === edge.target);
@@ -291,19 +282,14 @@ class RunnerManager {
           return { ...edge, animated };
         }
       }
-      
+
       return edge;
     });
 
     // Update the edges in the store
     store.setEdges(updatedEdges);
-
-    console.log(
-      `[RunnerManager] Updated edge animations for ${nodeId}: animated=${animated}`
-    );
   }
 }
 
 // 创建全局单例
 export const runnerManager = new RunnerManager();
-

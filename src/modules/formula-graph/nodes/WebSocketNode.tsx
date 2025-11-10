@@ -284,18 +284,11 @@ export const WebSocketNode = memo(function WebSocketNode({
       currentSubscriptionRef.current.nodeId !== id;
 
     if (needsNewSubscription) {
-      console.log(
-        `[WebSocketNode] Need new subscription - old topic: ${currentSubscriptionRef.current?.topic}, new topic: ${resolvedTopic}`
-      );
-
       // Unsubscribe from previous topic if different
       if (
         unsubscribeRef.current &&
         currentSubscriptionRef.current?.topic !== resolvedTopic
       ) {
-        console.log(
-          `[WebSocketNode] Unsubscribing from previous topic: ${currentSubscriptionRef.current?.topic}`
-        );
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
@@ -343,9 +336,6 @@ export const WebSocketNode = memo(function WebSocketNode({
         topic: resolvedTopic,
         nodeId: id,
       };
-      console.log(
-        `[WebSocketNode] New subscription created for topic: ${resolvedTopic}`
-      );
     } else {
       console.log(
         `[WebSocketNode] Subscription already exists for topic: ${resolvedTopic}, skipping`
@@ -356,18 +346,12 @@ export const WebSocketNode = memo(function WebSocketNode({
 
     // Cleanup on unmount or when dependencies change
     return () => {
-      console.log(
-        `[WebSocketNode] useEffect cleanup called - nodeId: ${id}, topic: ${resolvedTopic}`
-      );
       if (unsubscribeRef.current) {
-        console.log(`[WebSocketNode] Calling unsubscribeRef.current()`);
         unsubscribeRef.current();
         unsubscribeRef.current = null;
-        console.log(`[WebSocketNode] unsubscribeRef.current() completed`);
       }
       currentSubscriptionRef.current = null;
       previousTopicRef.current = "";
-      console.log(`[WebSocketNode] useEffect cleanup completed`);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -389,15 +373,11 @@ export const WebSocketNode = memo(function WebSocketNode({
    */
   useEffect(() => {
     return () => {
-      console.log(`[WebSocketNode] unmount cleanup called - nodeId: ${id}`);
       // Clean up directly from WebSocketManager - this handles all cleanup
       websocketManager.removeNode(id);
       // Clear local refs
       unsubscribeRef.current = null;
       currentSubscriptionRef.current = null;
-      console.log(
-        `[WebSocketNode] unmount cleanup completed for nodeId: ${id}`
-      );
     };
   }, [id]);
 

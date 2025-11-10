@@ -3,16 +3,10 @@ import type { Connection } from "reactflow";
 import { useCallback, useMemo, Fragment, memo } from "react";
 import type { FormulaNodeData } from "@/types/formula";
 import { cn } from "@/lib/utils";
-import { Calculator, AlertCircle } from "lucide-react";
+import { Calculator } from "lucide-react";
 import { ControlButton } from "../components/ControlButton";
+import { ErrorDisplay } from "../components/ErrorDisplay";
 import { useFormulaRunner } from "../hooks/useFormulaRunner";
-import {
-  Tooltip,
-  TooltipArrow,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface FormulaNodeProps {
   id: string;
@@ -41,18 +35,11 @@ export const FormulaNode = memo(function FormulaNode({
     isAutoRunning,
     status: executionStatus,
     errorMessage,
+    inputValues,
     startAutoRun,
     stopAutoRun,
     execute: handleManualExecute,
   } = useFormulaRunner(id);
-
-  console.log(`[FormulaNode] Render for ${id}:`, {
-    isAutoRunning,
-    executionStatus,
-    errorMessage,
-    hasStartAutoRun: !!startAutoRun,
-    hasStopAutoRun: !!stopAutoRun,
-  });
 
   // Note: runnerManager initialization is handled in useFormulaRunner hook
 
@@ -113,29 +100,10 @@ export const FormulaNode = memo(function FormulaNode({
 
         {/* 错误信息显示 - 标题下方 */}
         {executionStatus === "error" && errorMessage && (
-          <div>
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-start gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1.5 cursor-help">
-                    <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
-                    <span className="line-clamp-2 flex-1">{errorMessage}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  align="start"
-                  className="bg-red-600 text-white border-red-700 max-w-[320px]"
-                >
-                  <p className="text-xs font-medium mb-1">执行错误</p>
-                  <p className="text-xs whitespace-pre-wrap break-words">
-                    {errorMessage}
-                  </p>
-                  <TooltipArrow className="fill-red-600" />
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
+          <ErrorDisplay
+            errorMessage={errorMessage}
+            inputValues={inputValues}
+          />
         )}
 
         {/* 控制按钮 - 右上角 */}

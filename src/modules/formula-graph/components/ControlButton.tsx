@@ -84,17 +84,11 @@ export const ControlButton: React.FC<ControlButtonProps> = ({
     e.stopPropagation(); // 防止触发节点选择
     e.preventDefault();
 
-    console.log(
-      `[ControlButton] Clicked, isAutoRunning: ${isAutoRunning}, disabled: ${disabled}`
-    );
-
     if (disabled) return;
 
     if (isAutoRunning) {
-      console.log(`[ControlButton] Calling onStopAutoRun`);
       onStopAutoRun();
     } else {
-      console.log(`[ControlButton] Calling onStartAutoRun`);
       onStartAutoRun();
     }
   };

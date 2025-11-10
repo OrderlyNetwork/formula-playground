@@ -39,15 +39,9 @@ export class RunnerService {
     dependencies: RunnerDependencies,
     config?: Partial<RunnerConfig>
   ): RunnerContext {
-    console.log(`[RunnerService] createContext called for ${nodeId}`);
-
     // 如果 context 已存在，先清理旧状态
     const existingContext = this.contexts.get(nodeId);
     if (existingContext) {
-      console.log(
-        `[RunnerService] Existing context found for ${nodeId}, cleaning up old state`
-      );
-
       // 如果正在自动运行，先停止
       if (
         existingContext.config.autoRun ||
@@ -97,9 +91,6 @@ export class RunnerService {
 
     this.contexts.set(nodeId, context);
 
-    console.log(
-      `[RunnerService] createContext completed for ${nodeId}, total contexts: ${this.contexts.size}`
-    );
     return context;
   }
 
@@ -133,18 +124,13 @@ export class RunnerService {
    * 开始自动运行
    */
   startAutoRun(nodeId: string): void {
-    console.log(`[RunnerService] startAutoRun called for ${nodeId}`);
     const context = this.contexts.get(nodeId);
     if (!context) {
-      console.log(`[RunnerService] No context found for ${nodeId}`);
       return;
     }
 
     context.config.autoRun = true;
     context.state.isAutoRunning = true;
-    console.log(
-      `[RunnerService] Set isAutoRunning to true for ${nodeId}, has callback: !!${context.updateCallback}`
-    );
 
     // 立即更新状态并触发回调
     this.notifyStateUpdate(nodeId);
@@ -403,23 +389,15 @@ export class RunnerService {
    * 通知状态更新（不改变状态，仅触发回调）
    */
   private notifyStateUpdate(nodeId: string): void {
-    console.log(`[RunnerService] notifyStateUpdate called for ${nodeId}`);
     const context = this.contexts.get(nodeId);
     if (!context) {
-      console.log(
-        `[RunnerService] No context found in notifyStateUpdate for ${nodeId}`
-      );
       return;
     }
 
     if (!context.updateCallback) {
-      console.log(`[RunnerService] No updateCallback found for ${nodeId}`);
       return;
     }
 
-    console.log(
-      `[RunnerService] Calling updateCallback for ${nodeId}, isAutoRunning: ${context.state.isAutoRunning}`
-    );
     context.updateCallback({ ...context.state });
   }
 
@@ -681,10 +659,6 @@ export class RunnerService {
           (outputValue !== undefined && currentValue === undefined);
 
         if (shouldUpdate) {
-          console.log(
-            `[RunnerService] Updating OutputNode ${downstreamNodeId} with value from key "${outputKey}":`,
-            outputValue
-          );
           graphStore.updateNodeData(downstreamNodeId, {
             value: outputValue,
           });

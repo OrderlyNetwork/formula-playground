@@ -233,13 +233,6 @@ export function useGraphGeneration(
 
     // Generate graphs for all formulas that don't have nodes yet
     if (formulasToGenerate.length > 0) {
-      console.log(
-        "[useGraphGeneration] Batch generating graphs for formulas from canvas",
-        {
-          formulasToGenerate: formulasToGenerate.map((f) => f.id),
-        }
-      );
-
       // Batch generate all formulas and calculate layout only once
       const generateBatch = async () => {
         // Get current nodes and edges from store

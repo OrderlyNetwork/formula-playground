@@ -1,4 +1,4 @@
-import { Handle, Position } from "reactflow";
+import { Handle, Position, NodeResizer } from "reactflow";
 import { memo, useMemo, useCallback } from "react";
 import type { FormulaNodeData } from "@/types/formula";
 import type { Node } from "reactflow";
@@ -205,6 +205,12 @@ export const ArrayNode = memo(function ArrayNode({
         selected && "border-purple-600 shadow-lg ring-2 ring-purple-200"
       )}
     >
+      {/* <NodeResizer
+        minWidth={300}
+        minHeight={60}
+        isVisible={selected}
+        // lineClassName="border-purple-600"
+      /> */}
       {/* Input Handle - allows receiving data from multiple nodes */}
       <Handle
         type="target"
@@ -235,162 +241,172 @@ export const ArrayNode = memo(function ArrayNode({
         )}
 
         {/* Table for array editing */}
-        <div className="w-full mt-2 border rounded-md overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {isObjectArray ? (
-                  <>
-                    {properties.map((prop) => (
-                      <TableHead key={prop.key} className="text-xs">
-                        {prop.key}
-                      </TableHead>
-                    ))}
-                    <TableHead className="w-[60px] text-xs">Actions</TableHead>
-                  </>
-                ) : (
-                  <>
-                    <TableHead className="text-xs">Value</TableHead>
-                    <TableHead className="w-[60px] text-xs">Actions</TableHead>
-                  </>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {arrayValue.map((element, index) => (
-                <TableRow key={index}>
+        <div className="w-full mt-2">
+          {/**
+           * Allows horizontal scrolling when table content exceeds the node width,
+           * ensuring all columns remain accessible without breaking layout constraints.
+           */}
+          <div className="overflow-x-auto border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
                   {isObjectArray ? (
                     <>
-                      {properties.map((prop) => {
-                        const obj = element as Record<string, unknown>;
-                        const propValue = obj[prop.key];
-                        const displayValue = propValue ?? prop.default ?? "";
-
-                        return (
-                          <TableCell key={prop.key} className="p-1">
-                            {prop.type === "boolean" ? (
-                              <Select
-                                value={String(Boolean(displayValue))}
-                                onValueChange={(val) => {
-                                  handleObjectPropertyChange(
-                                    index,
-                                    prop.key,
-                                    val === "true"
-                                  );
-                                }}
-                                disabled={hasIncomingConnections}
-                              >
-                                <SelectTrigger className="h-7 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="true">true</SelectItem>
-                                  <SelectItem value="false">false</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <Input
-                                type={
-                                  prop.type === "number" ? "number" : "text"
-                                }
-                                value={
-                                  prop.type === "number"
-                                    ? typeof displayValue === "number"
-                                      ? displayValue
-                                      : 0
-                                    : String(displayValue ?? "")
-                                }
-                                onChange={(e) => {
-                                  const newValue =
-                                    prop.type === "number"
-                                      ? parseFloat(e.target.value) || 0
-                                      : e.target.value;
-                                  handleObjectPropertyChange(
-                                    index,
-                                    prop.key,
-                                    newValue
-                                  );
-                                }}
-                                onMouseDown={handleInputMouseDown}
-                                className="h-7 px-2 text-xs nodrag select-text"
-                                disabled={hasIncomingConnections}
-                              />
-                            )}
-                          </TableCell>
-                        );
-                      })}
+                      {properties.map((prop) => (
+                        <TableHead key={prop.key} className="text-xs">
+                          {prop.key}
+                        </TableHead>
+                      ))}
+                      <TableHead className="w-[60px] text-xs">
+                        Actions
+                      </TableHead>
                     </>
                   ) : (
-                    <TableCell className="p-1">
-                      {baseElementType === "boolean" ? (
-                        <Select
-                          value={String(Boolean(element))}
-                          onValueChange={(val) => {
-                            handleElementChange(index, val === "true");
-                          }}
-                          disabled={hasIncomingConnections}
-                        >
-                          <SelectTrigger className="h-7 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="true">true</SelectItem>
-                            <SelectItem value="false">false</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Input
-                          type={
-                            baseElementType === "number" ? "number" : "text"
-                          }
-                          value={
-                            baseElementType === "number"
-                              ? typeof element === "number"
-                                ? element
-                                : 0
-                              : String(element ?? "")
-                          }
-                          onChange={(e) => {
-                            const newValue =
-                              baseElementType === "number"
-                                ? parseFloat(e.target.value) || 0
-                                : e.target.value;
-                            handleElementChange(index, newValue);
-                          }}
-                          onMouseDown={handleInputMouseDown}
-                          className="h-7 px-2 text-xs nodrag select-text"
-                          disabled={hasIncomingConnections}
-                        />
-                      )}
-                    </TableCell>
+                    <>
+                      <TableHead className="text-xs">Value</TableHead>
+                      <TableHead className="w-[60px] text-xs">
+                        Actions
+                      </TableHead>
+                    </>
                   )}
-                  <TableCell className="p-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      onClick={() => handleRemoveElement(index)}
-                      disabled={hasIncomingConnections}
-                      title="Remove item"
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {arrayValue.map((element, index) => (
+                  <TableRow key={index}>
+                    {isObjectArray ? (
+                      <>
+                        {properties.map((prop) => {
+                          const obj = element as Record<string, unknown>;
+                          const propValue = obj[prop.key];
+                          const displayValue = propValue ?? prop.default ?? "";
+
+                          return (
+                            <TableCell key={prop.key} className="p-1">
+                              {prop.type === "boolean" ? (
+                                <Select
+                                  value={String(Boolean(displayValue))}
+                                  onValueChange={(val) => {
+                                    handleObjectPropertyChange(
+                                      index,
+                                      prop.key,
+                                      val === "true"
+                                    );
+                                  }}
+                                  disabled={hasIncomingConnections}
+                                >
+                                  <SelectTrigger className="h-7 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="true">true</SelectItem>
+                                    <SelectItem value="false">false</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Input
+                                  type={
+                                    prop.type === "number" ? "number" : "text"
+                                  }
+                                  value={
+                                    prop.type === "number"
+                                      ? typeof displayValue === "number"
+                                        ? displayValue
+                                        : 0
+                                      : String(displayValue ?? "")
+                                  }
+                                  onChange={(e) => {
+                                    const newValue =
+                                      prop.type === "number"
+                                        ? parseFloat(e.target.value) || 0
+                                        : e.target.value;
+                                    handleObjectPropertyChange(
+                                      index,
+                                      prop.key,
+                                      newValue
+                                    );
+                                  }}
+                                  onMouseDown={handleInputMouseDown}
+                                  className="h-7 px-2 text-xs nodrag select-text"
+                                  disabled={hasIncomingConnections}
+                                />
+                              )}
+                            </TableCell>
+                          );
+                        })}
+                      </>
+                    ) : (
+                      <TableCell className="p-1">
+                        {baseElementType === "boolean" ? (
+                          <Select
+                            value={String(Boolean(element))}
+                            onValueChange={(val) => {
+                              handleElementChange(index, val === "true");
+                            }}
+                            disabled={hasIncomingConnections}
+                          >
+                            <SelectTrigger className="h-7 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="true">true</SelectItem>
+                              <SelectItem value="false">false</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            type={
+                              baseElementType === "number" ? "number" : "text"
+                            }
+                            value={
+                              baseElementType === "number"
+                                ? typeof element === "number"
+                                  ? element
+                                  : 0
+                                : String(element ?? "")
+                            }
+                            onChange={(e) => {
+                              const newValue =
+                                baseElementType === "number"
+                                  ? parseFloat(e.target.value) || 0
+                                  : e.target.value;
+                              handleElementChange(index, newValue);
+                            }}
+                            onMouseDown={handleInputMouseDown}
+                            className="h-7 px-2 text-xs nodrag select-text"
+                            disabled={hasIncomingConnections}
+                          />
+                        )}
+                      </TableCell>
+                    )}
+                    <TableCell className="p-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => handleRemoveElement(index)}
+                        disabled={hasIncomingConnections}
+                        title="Remove item"
+                      >
+                        <Trash2 size={12} />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {arrayValue.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={isObjectArray ? properties.length + 1 : 2}
+                      className="text-center text-xs text-gray-500 py-4"
                     >
-                      <Trash2 size={12} />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {arrayValue.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={isObjectArray ? properties.length + 1 : 2}
-                    className="text-center text-xs text-gray-500 py-4"
-                  >
-                    No items. Click "Add Item" to add elements or connect
-                    InputNode/ObjectNode/ArrayNode.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                      No items. Click "Add Item" to add elements or connect
+                      InputNode/ObjectNode/ArrayNode.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
 
         {/* Add Item button */}
