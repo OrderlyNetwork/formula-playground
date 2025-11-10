@@ -201,7 +201,10 @@ export interface FormulaNodeData {
     url?: string;
     status?: "disconnected" | "connecting" | "connected" | "error";
     protocols?: string[];
-    topic?: string; // WebSocket subscription topic
+    topic?: string; // WebSocket subscription topic (may contain placeholders like {symbol})
+    placeholderValues?: Record<string, string>; // Values for topic placeholders
+    responseFields?: string[]; // Extracted field paths from WebSocket data (e.g., ["data", "data.price"])
+    isSubscribed?: boolean; // Whether the node is currently subscribed to the WebSocket topic
   };
   // For formula nodes: execution state and runner control
   executionState?: {

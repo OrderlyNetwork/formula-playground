@@ -12,6 +12,31 @@ interface OutputNodeProps {
 }
 
 /**
+ * Check if a value is a Decimal instance and convert it to a number
+ * Uses duck typing to detect Decimal instances by checking for toNumber method
+ * @param value - The value to check and potentially convert
+ * @returns The converted number if it's a Decimal instance, otherwise the original value
+ */
+function convertDecimalToNumber(value: unknown): unknown {
+  // Check if value is an object and has a toNumber method (duck typing for Decimal)
+  if (
+    value !== null &&
+    typeof value === "object" &&
+    "toNumber" in value &&
+    typeof (value as { toNumber: unknown }).toNumber === "function"
+  ) {
+    try {
+      return (value as { toNumber: () => number }).toNumber();
+    } catch (error) {
+      // If toNumber fails, return original value
+      console.warn("Failed to convert Decimal to number:", error);
+      return value;
+    }
+  }
+  return value;
+}
+
+/**
  * OutputNode - Custom React Flow node for formula outputs
  * Reactively listens to upstream node data changes and automatically updates
  */
@@ -32,6 +57,17 @@ export const OutputNode = memo(function OutputNode({
     if (!incomingEdge || !nodes || !Array.isArray(nodes)) return null;
     return nodes.find((n) => n.id === incomingEdge.source);
   }, [nodes, incomingEdge]);
+
+  // Convert Decimal instances in data.value to numbers automatically
+  useEffect(() => {
+    if (data.value !== undefined) {
+      const convertedValue = convertDecimalToNumber(data.value);
+      // Only update if conversion actually changed the value (Decimal -> number)
+      if (convertedValue !== data.value) {
+        updateNodeData(id, { value: convertedValue });
+      }
+    }
+  }, [data.value, id, updateNodeData]);
 
   // Reactively listen to upstream node value changes
   useEffect(() => {
@@ -57,6 +93,9 @@ export const OutputNode = memo(function OutputNode({
         const key = incomingEdge.sourceHandle;
         valueToUse = (sourceValue as Record<string, unknown>)[key];
       }
+
+      // Convert Decimal instances to numbers
+      valueToUse = convertDecimalToNumber(valueToUse);
 
       if (data.value !== valueToUse) {
         updateNodeData(id, { value: valueToUse });
@@ -84,16 +123,23 @@ export const OutputNode = memo(function OutputNode({
       />
       <div className="flex flex-col gap-1">
         <div className="font-medium text-gray-900">{data.label}</div>
-        {data.value !== undefined && (
-          <div className="text-sm text-gray-700 font-mono">
-            {typeof data.value === "number"
-              ? data.value.toFixed(8)
-              : String(data.value)}
-            {data.unit && (
-              <span className="ml-1 text-xs text-gray-500">{data.unit}</span>
-            )}
-          </div>
-        )}
+        {data.value !== undefined &&
+          (() => {
+            // Convert Decimal instances to numbers for display
+            const displayValue = convertDecimalToNumber(data.value);
+            return (
+              <div className="text-sm text-gray-700 font-mono">
+                {typeof displayValue === "number"
+                  ? displayValue.toFixed(8)
+                  : String(displayValue)}
+                {data.unit && (
+                  <span className="ml-1 text-xs text-gray-500">
+                    {data.unit}
+                  </span>
+                )}
+              </div>
+            );
+          })()}
         {data.diff !== undefined && data.diff > 0 && (
           <div className="text-xs text-orange-600 font-medium mt-1">
             Diff: {data.diff.toExponential(2)}
@@ -106,14 +152,19 @@ export const OutputNode = memo(function OutputNode({
         )}
 
         {/* Save to DataSource section */}
-        {data.value !== undefined && (
-          <SaveToDataSourceForm
-            value={data.value}
-            unit={data.unit}
-            description={data.description}
-            nodeId={id}
-          />
-        )}
+        {data.value !== undefined &&
+          (() => {
+            // Convert Decimal instances to numbers before saving
+            const valueToSave = convertDecimalToNumber(data.value);
+            return (
+              <SaveToDataSourceForm
+                value={valueToSave}
+                unit={data.unit}
+                description={data.description}
+                nodeId={id}
+              />
+            );
+          })()}
       </div>
     </div>
   );

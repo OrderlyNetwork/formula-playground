@@ -528,29 +528,32 @@ export const ApiNode = memo(function ApiNode({
 
         {/* Path Parameters Input Fields */}
         {pathParams.length > 0 && (
-          <div className="space-y-2">
-            <div className="text-xs text-gray-600 mb-1">Path Parameters:</div>
-            {pathParams.map((param) => (
-              <div key={param}>
-                <label className="block text-xs text-gray-600 mb-1">
-                  {param}:
-                </label>
-                <input
-                  type="text"
-                  className="w-full text-xs font-mono bg-gray-50 text-gray-700 px-2 py-1.5 rounded border border-gray-200 focus:outline-none focus:ring-1 focus:ring-orange-500"
-                  placeholder={`Enter ${param}`}
-                  value={pathParamValues[param] || ""}
-                  onChange={(e) =>
-                    setPathParamValues((prev) => ({
-                      ...prev,
-                      [param]: e.target.value,
-                    }))
-                  }
-                  disabled={loading}
-                />
-              </div>
-            ))}
-          </div>
+          <>
+            <hr className="mt-2" />
+            <div className="space-y-2">
+              <div className="text-xs text-gray-600 mb-1">Path Parameters:</div>
+              {pathParams.map((param) => (
+                <div key={param}>
+                  <label className="block text-xs text-gray-600 mb-1">
+                    {param}:
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full text-xs font-mono bg-gray-50 text-gray-700 px-2 py-1.5 rounded border border-gray-200 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                    placeholder={`Enter ${param}`}
+                    value={pathParamValues[param] || ""}
+                    onChange={(e) =>
+                      setPathParamValues((prev) => ({
+                        ...prev,
+                        [param]: e.target.value,
+                      }))
+                    }
+                    disabled={loading}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
         )}
 
         {/* Other Request Parameters Input (for body, etc.) */}

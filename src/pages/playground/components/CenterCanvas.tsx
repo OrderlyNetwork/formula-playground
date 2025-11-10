@@ -25,6 +25,7 @@ import { useGraphGeneration } from "./hooks/useGraphGeneration";
 import { useNodeDimensions } from "./hooks/useNodeDimensions";
 import { useNodeValueUpdates } from "./hooks/useNodeValueUpdates";
 import { useGraphConnections } from "./hooks/useGraphConnections";
+import { websocketManager } from "@/modules/formula-graph/services/websocketManager";
 
 const nodeTypes = {
   input: InputNode,
@@ -158,6 +159,9 @@ export function CenterCanvas() {
               ? node.id.split("-")[0]
               : node.data?.id;
             deletedFormulaNodes.push({ nodeId: node.id, formulaId });
+          } else if (node?.type === "websocket") {
+            // Clean up WebSocket subscription when WebSocket node is deleted
+            websocketManager.removeNode(change.id);
           }
         }
       });
@@ -195,6 +199,12 @@ export function CenterCanvas() {
         // Create new changes array that includes deletion of all related nodes
         const enhancedChanges: NodeChange[] = [...changes];
         nodesToDelete.forEach((nodeId) => {
+          // Clean up WebSocket subscription if it's a WebSocket node
+          const nodeToDelete = currentNodes.find((n) => n.id === nodeId);
+          if (nodeToDelete?.type === "websocket") {
+            websocketManager.removeNode(nodeId);
+          }
+
           // Only add if not already in changes
           if (!changes.some((c) => c.type === "remove" && c.id === nodeId)) {
             enhancedChanges.push({ type: "remove", id: nodeId });
@@ -212,6 +222,16 @@ export function CenterCanvas() {
         setEdges(nextEdges);
       } else {
         // Normal node changes (no FormulaNode deletion)
+        // Clean up WebSocket subscriptions for any deleted WebSocket nodes
+        changes.forEach((change) => {
+          if (change.type === "remove") {
+            const node = currentNodes.find((n) => n.id === change.id);
+            if (node?.type === "websocket") {
+              websocketManager.removeNode(change.id);
+            }
+          }
+        });
+
         const next = applyNodeChanges(changes, currentNodes);
         setNodes(next);
       }
