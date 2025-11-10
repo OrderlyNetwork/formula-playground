@@ -109,6 +109,11 @@ export function validateValueForFactorType(
   // Handle primitive types
   switch (factorType.baseType) {
     case "number": {
+      // Allow empty strings for number fields (user input clearing)
+      if (value === "") {
+        return { isValid: true };
+      }
+
       const num = Number(value);
       if (isNaN(num)) {
         return { isValid: false, error: "Value must be a valid number" };

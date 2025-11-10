@@ -175,13 +175,8 @@ export const ArrayNode = memo(function ArrayNode({
       obj[propertyKey] = newValue;
 
       const fn = data.id.includes(".") ? updateInputAt : updateInput;
-      if (data.id.includes(".")) {
-        // Use nested path for object arrays
-        fn(`${data.id}[${index}].${propertyKey}`, newValue);
-      } else {
-        // Update the entire array
-        fn(data.id, currentArray);
-      }
+      // Always update the entire array to ensure re-rendering
+      fn(data.id, currentArray);
     },
     [data.value, data.id, updateInput, updateInputAt]
   );
@@ -279,7 +274,7 @@ export const ArrayNode = memo(function ArrayNode({
                         {properties.map((prop) => {
                           const obj = element as Record<string, unknown>;
                           const propValue = obj[prop.key];
-                          const displayValue = propValue ?? prop.default ?? "";
+                          const displayValue = propValue !== undefined ? propValue : (prop.default ?? "");
 
                           return (
                             <TableCell key={prop.key} className="p-1">
@@ -312,14 +307,19 @@ export const ArrayNode = memo(function ArrayNode({
                                     prop.type === "number"
                                       ? typeof displayValue === "number"
                                         ? displayValue
-                                        : 0
+                                        : typeof displayValue === "string" && displayValue !== ""
+                                        ? parseFloat(displayValue) || 0
+                                        : displayValue === "" ? "" : 0
                                       : String(displayValue ?? "")
                                   }
                                   onChange={(e) => {
-                                    const newValue =
-                                      prop.type === "number"
-                                        ? parseFloat(e.target.value) || 0
-                                        : e.target.value;
+                                    let newValue;
+                                    if (prop.type === "number") {
+                                      const parsedValue = parseFloat(e.target.value);
+                                      newValue = e.target.value === "" ? "" : (isNaN(parsedValue) ? 0 : parsedValue);
+                                    } else {
+                                      newValue = e.target.value;
+                                    }
                                     handleObjectPropertyChange(
                                       index,
                                       prop.key,
@@ -362,14 +362,17 @@ export const ArrayNode = memo(function ArrayNode({
                               baseElementType === "number"
                                 ? typeof element === "number"
                                   ? element
-                                  : 0
+                                  : element === "" ? "" : 0
                                 : String(element ?? "")
                             }
                             onChange={(e) => {
-                              const newValue =
-                                baseElementType === "number"
-                                  ? parseFloat(e.target.value) || 0
-                                  : e.target.value;
+                              let newValue;
+                              if (baseElementType === "number") {
+                                const parsedValue = parseFloat(e.target.value);
+                                newValue = e.target.value === "" ? "" : (isNaN(parsedValue) ? 0 : parsedValue);
+                              } else {
+                                newValue = e.target.value;
+                              }
                               handleElementChange(index, newValue);
                             }}
                             onMouseDown={handleInputMouseDown}

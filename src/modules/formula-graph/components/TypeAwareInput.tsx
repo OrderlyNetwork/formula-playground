@@ -42,8 +42,13 @@ export const TypeAwareInput = memo(function TypeAwareInput({
     // Parse based on base type
     switch (factorType.baseType) {
       case "number": {
-        const parsed = parseFloat(newValue);
-        parsedValue = isNaN(parsed) ? 0 : parsed;
+        // Allow empty input for number fields
+        if (newValue.trim() === "") {
+          parsedValue = "";
+        } else {
+          const parsed = parseFloat(newValue);
+          parsedValue = isNaN(parsed) ? 0 : parsed;
+        }
         break;
       }
       case "boolean": {
