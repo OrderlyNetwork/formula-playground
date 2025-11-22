@@ -4,17 +4,39 @@ import { useEffect } from "react";
 
 export type AppMode = "normal" | "developer";
 
+// Playground Left Panel Categories
+export type PlaygroundPanelType = "formulas" | "datasource" | "history" | "settings";
+
+// Datasheet Sidebar Panel Types
+export type DatasheetPanelType = "tables" | "favorites" | "history";
+
 export interface AppState {
-  // State
+  // Existing state
   mode: AppMode;
   showCodeInput: boolean;
 
-  // Actions
+  // Sidebar state for datasheet
+  datasheetSidebarOpen: boolean;
+
+  // Panel state for playground
+  playgroundActivePanel: PlaygroundPanelType;
+
+  // Panel state for datasheet
+  datasheetActivePanel: DatasheetPanelType;
+
+  // Existing actions
   setMode: (mode: AppMode) => void;
   toggleMode: () => void;
   openCodeInput: () => void;
   closeCodeInput: () => void;
 
+  // New sidebar and panel actions
+  toggleDatasheetSidebar: () => void;
+  setDatasheetSidebarOpen: (open: boolean) => void;
+
+  setPlaygroundActivePanel: (panel: PlaygroundPanelType) => void;
+
+  setDatasheetActivePanel: (panel: DatasheetPanelType) => void;
   }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -22,12 +44,28 @@ export const useAppStore = create<AppState>((set) => ({
   mode: "normal",
   showCodeInput: false,
 
-  // Actions
+  // New initial states
+  datasheetSidebarOpen: true,
+  playgroundActivePanel: "formulas",
+  datasheetActivePanel: "tables",
+
+  // Existing actions
   setMode: (mode: AppMode) => set({ mode }),
   toggleMode: () =>
     set((s) => ({ mode: s.mode === "normal" ? "developer" : "normal" })),
   openCodeInput: () => set({ showCodeInput: true }),
   closeCodeInput: () => set({ showCodeInput: false }),
+
+  // New sidebar and panel actions
+  toggleDatasheetSidebar: () =>
+    set((s) => ({ datasheetSidebarOpen: !s.datasheetSidebarOpen })),
+  setDatasheetSidebarOpen: (open: boolean) => set({ datasheetSidebarOpen: open }),
+
+  setPlaygroundActivePanel: (panel: PlaygroundPanelType) =>
+    set({ playgroundActivePanel: panel }),
+
+  setDatasheetActivePanel: (panel: DatasheetPanelType) =>
+    set({ datasheetActivePanel: panel }),
 }));
 
 /**

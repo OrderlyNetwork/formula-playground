@@ -18,7 +18,10 @@
       "Bash(pnpm add:*)",
       "Bash(pnpm remove:*)",
       "Bash(cat:*)",
-      "Skill(mock-server)"
+      "Skill(mock-server)",
+      "Bash(timeout:*)",
+      "Bash(pnpm run build:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

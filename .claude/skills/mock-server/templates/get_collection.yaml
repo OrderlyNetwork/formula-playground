@@ -1,0 +1,36 @@
+name: Get {{RESOURCE_NAME}} List
+description: Get {{RESOURCE_NAME}} list
+method: GET
+endpoint: /api/{{RESOURCE_PATH}}
+rules:
+  - name: Normal Return
+    status: 200
+    headers:
+      Content-Type: application/json
+    body: {{COLLECTION_ITEMS}}
+    delay: 0
+
+  - name: Empty List
+    status: 200
+    headers:
+      Content-Type: application/json
+    body: []
+    delay: 0
+
+  - name: Unauthorized
+    status: 401
+    headers:
+      Content-Type: application/json
+    body:
+      error: Unauthorized
+      message: Authentication required
+    delay: 0
+
+  - name: Server Error
+    status: 500
+    headers:
+      Content-Type: application/json
+    body:
+      error: Internal server error
+      message: Database connection failed
+    delay: 0

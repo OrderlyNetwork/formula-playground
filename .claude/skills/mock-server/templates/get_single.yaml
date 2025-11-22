@@ -1,0 +1,48 @@
+name: Get {{RESOURCE_NAME}} by ID
+description: Get {{RESOURCE_NAME}} details by ID
+method: GET
+endpoint: /api/{{RESOURCE_PATH}}/:id
+rules:
+  - name: Resource Exists
+    status: 200
+    headers:
+      Content-Type: application/json
+    body: {{RESOURCE_BODY}}
+    delay: 0
+
+  - name: Resource Not Found
+    status: 404
+    headers:
+      Content-Type: application/json
+    body:
+      error: Not found
+      message: "{{RESOURCE_NAME}} not found"
+      code: 404
+    delay: 0
+
+  - name: Invalid ID Format
+    status: 400
+    headers:
+      Content-Type: application/json
+    body:
+      error: Bad request
+      message: Invalid ID format
+    delay: 0
+
+  - name: Unauthorized Access
+    status: 403
+    headers:
+      Content-Type: application/json
+    body:
+      error: Forbidden
+      message: You don't have permission to access this resource
+    delay: 0
+
+  - name: Server Error
+    status: 500
+    headers:
+      Content-Type: application/json
+    body:
+      error: Internal server error
+      message: An unexpected error occurred
+    delay: 0

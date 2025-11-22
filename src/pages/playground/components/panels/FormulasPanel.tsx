@@ -1,14 +1,14 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { Card } from "@/components/common/Card";
-import { Button } from "@/components/common/Button";
 import { useFormulaStore } from "@/store/formulaStore";
 import {
   Code2,
   Download,
   SquareFunction,
-  Settings2,
   Search,
+  Star,
+  Table2,
 } from "lucide-react";
 import {
   Tooltip,
@@ -17,28 +17,137 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
-import { SourceCodeDialog } from "../SourceCodeDialog";
+import { cn } from "@/lib/utils";
+import type { Table } from "@/pages/datasheet/types";
+import type { FormulaDefinition } from "@/types/formula";
 
-interface FormulasPanelProps {
-  sourceCodeDialogOpen: boolean;
-  setSourceCodeDialogOpen: (open: boolean) => void;
+// Custom EntityItem for formulas with navigation and creation type indicators
+function FormulaEntityItem({
+  table,
+  formula,
+  onClick
+}: {
+  table: Table;
+  formula: FormulaDefinition;
+  onClick: () => void;
+}) {
+  // Determine the creation type icon
+  const CreationIcon =
+    formula.creationType === "parsed"
+      ? Code2
+      : formula.creationType === "imported"
+      ? Download
+      : SquareFunction;
+
+  const creationTooltip =
+    formula.creationType === "parsed"
+      ? "Developer mode parsed"
+      : formula.creationType === "imported"
+      ? "Imported from GitHub"
+      : "Built-in formula";
+
+  return (
+    <div
+      className={cn(
+        "group flex items-center justify-between px-2 py-1 rounded cursor-pointer text-sm",
+        table.active
+          ? "bg-[#37373d] text-white"
+          : "text-zinc-400 hover:bg-[#2a2d2e] hover:text-zinc-200"
+      )}
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-2 overflow-hidden">
+        <Table2 className="h-3.5 w-3.5 shrink-0 text-yellow-500" />
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                className={`shrink-0 ${
+                  formula.creationType === "parsed"
+                    ? "text-purple-600"
+                    : formula.creationType === "imported"
+                    ? "text-blue-600"
+                    : "text-gray-600"
+                }`}
+              >
+                <CreationIcon strokeWidth={1.5} size={12} />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              {creationTooltip}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <span className="truncate">{table.name}</span>
+      </div>
+      <div className="opacity-0 group-hover:opacity-100 flex items-center">
+        {table.active && <Star className="h-3 w-3 text-yellow-500" />}
+        {!table.active && table.pinned && <Star className="h-3 w-3 text-yellow-500" />}
+      </div>
+    </div>
+  );
 }
 
-export function FormulasPanel({
-  sourceCodeDialogOpen,
-  setSourceCodeDialogOpen,
-}: FormulasPanelProps) {
+// Custom EntitySection for formulas with navigation
+function FormulaEntitySection({
+  title,
+  tables,
+  count,
+  formulas,
+  onFormulaClick
+}: {
+  title: string;
+  tables: Table[];
+  count: number;
+  formulas: FormulaDefinition[];
+  onFormulaClick: (formula: FormulaDefinition) => void;
+}) {
+  if (tables.length === 0 && title === "Pinned") return null;
+
+  return (
+    <div className={cn("mb-4", title === "Formulas" && "mb-0")}>
+      <div className="flex items-center justify-between px-2 py-1 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+        <span>{title}</span>
+        <span className="bg-zinc-800 text-zinc-400 px-1.5 rounded-full">
+          {count}
+        </span>
+      </div>
+      {tables.length > 0 && (
+        <div className="mt-1 space-y-0.5">
+          {tables.map((table, index) => (
+            <FormulaEntityItem
+              key={`${title}-${table.name}`}
+              table={table}
+              formula={formulas[index]}
+              onClick={() => onFormulaClick(formulas[index])}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Adapter function to convert FormulaDefinition to Table format for EntitySection
+function formulaToTable(formula: FormulaDefinition, selectedFormulaId?: string): Table {
+  return {
+    name: formula.name,
+    type: "table" as const, // All formulas shown as table type for consistent icon
+    pinned: formula.tags?.includes("pinned") || false,
+    active: formula.id === selectedFormulaId,
+  };
+}
+
+export function FormulasPanel() {
   const { formulaDefinitions, selectedFormulaId } = useFormulaStore();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
 
   /**
-   * Open source code dialog for managing GitHub imports and jsDelivr execution
-   * GitHub source is for metadata and visualization only
-   * Execution code should be configured separately via jsDelivr
+   * Handle formula navigation
    */
-  const handleImport = () => {
-    setSourceCodeDialogOpen(true);
+  const handleFormulaClick = (formula: FormulaDefinition) => {
+    navigate(`/formula/${formula.id}`);
   };
 
   /**
@@ -58,6 +167,30 @@ export function FormulasPanel({
       return nameMatch || tagsMatch;
     });
   }, [formulaDefinitions, searchQuery]);
+
+  /**
+   * Convert filtered formulas to Table format and separate into pinned/unpinned
+   */
+  const { pinnedTables, unpinnedTables, pinnedFormulas, unpinnedFormulas } = useMemo(() => {
+    const pinned: { table: Table; formula: FormulaDefinition }[] = [];
+    const unpinned: { table: Table; formula: FormulaDefinition }[] = [];
+
+    filteredFormulas.forEach(formula => {
+      const table = formulaToTable(formula, selectedFormulaId);
+      if (table.pinned) {
+        pinned.push({ table, formula });
+      } else {
+        unpinned.push({ table, formula });
+      }
+    });
+
+    return {
+      pinnedTables: pinned.map(p => p.table),
+      unpinnedTables: unpinned.map(p => p.table),
+      pinnedFormulas: pinned.map(p => p.formula),
+      unpinnedFormulas: unpinned.map(p => p.formula),
+    };
+  }, [filteredFormulas, selectedFormulaId]);
 
   return (
     <>
@@ -102,7 +235,7 @@ export function FormulasPanel({
           </div>
         </div>
 
-        {/* Formula list with scrollable area */}
+        {/* Formula list with EntitySection components */}
         <div className="flex-1 overflow-y-auto min-h-0">
           {formulaDefinitions.length === 0 ? (
             <p className="text-xs text-gray-500 px-2.5 py-4">
@@ -113,62 +246,22 @@ export function FormulasPanel({
               No matching formulas found
             </p>
           ) : (
-            filteredFormulas.map((formula) => {
-              // Determine the creation type icon
-              const CreationIcon =
-                formula.creationType === "parsed"
-                  ? Code2
-                  : formula.creationType === "imported"
-                  ? Download
-                  : SquareFunction;
-
-              const creationTooltip =
-                formula.creationType === "parsed"
-                  ? "Developer mode parsed"
-                  : formula.creationType === "imported"
-                  ? "Imported from GitHub"
-                  : "Built-in formula";
-
-              return (
-                <button
-                  key={formula.id}
-                  onClick={() => navigate(`/formula/${formula.id}`)}
-                  className={`w-full text-left px-2.5 py-1.5 text-xs transition-colors ${
-                    selectedFormulaId === formula.id
-                      ? "bg-blue-100 text-blue-900 "
-                      : " hover:bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div
-                            className={`shrink-0 ${
-                              formula.creationType === "parsed"
-                                ? "text-purple-600"
-                                : formula.creationType === "imported"
-                                ? "text-blue-600"
-                                : "text-gray-600"
-                            }`}
-                          >
-                            <CreationIcon strokeWidth={1.5} size={16} />
-                          </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          {creationTooltip}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    <div className="truncate">{formula.name}</div>
-                  </div>
-
-                  <div className="text-[11px] text-gray-500 mt-0.5 truncate">
-                    {formula.tags?.join(", ")}
-                  </div>
-                </button>
-              );
-            })
+            <div className="p-2">
+              <FormulaEntitySection
+                title="Pinned"
+                tables={pinnedTables}
+                count={pinnedTables.length}
+                formulas={pinnedFormulas}
+                onFormulaClick={handleFormulaClick}
+              />
+              <FormulaEntitySection
+                title="Formulas"
+                tables={unpinnedTables}
+                count={unpinnedTables.length}
+                formulas={unpinnedFormulas}
+                onFormulaClick={handleFormulaClick}
+              />
+            </div>
           )}
         </div>
 
@@ -184,12 +277,6 @@ export function FormulasPanel({
           )}
         </div>
       </Card>
-
-      {/* Source Code Dialog */}
-      {/* <SourceCodeDialog
-        open={sourceCodeDialogOpen}
-        onOpenChange={setSourceCodeDialogOpen}
-      /> */}
     </>
   );
 }
