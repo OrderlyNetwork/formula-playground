@@ -21,6 +21,7 @@ import { db } from "../../lib/dexie";
 import { formulaRepository } from "@/modules/formulaRepository";
 import { parseUrlList } from "@/lib/urls";
 import { useFormulaUrlSync } from "./hooks/useFormulaUrlSync";
+import { FormulaDataSheet } from "@/modules/formula-datasheet/formulaDataSheet";
 
 /**
  * PlaygroundPage
@@ -219,7 +220,8 @@ function DeveloperLayout() {
     <ResizablePanelGroup direction="horizontal" className="h-full">
       <ResizablePanel defaultSize={60} minSize={30}>
         <div className="h-full">
-          <CenterCanvas />
+          {/* <CenterCanvas /> */}
+          <FormulaDataSheet />
         </div>
       </ResizablePanel>
       <ResizableHandle />
@@ -258,7 +260,8 @@ function UserLayout() {
         <ResizablePanelGroup direction="vertical" className="h-full">
           <ResizablePanel defaultSize={70} minSize={40}>
             <div className="h-full">
-              <CenterCanvas />
+              <FormulaDataSheet />
+              {/* <CenterCanvas /> */}
             </div>
           </ResizablePanel>
           <ResizableHandle />

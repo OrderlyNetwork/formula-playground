@@ -1,0 +1,68 @@
+name: Create {{RESOURCE_NAME}}
+description: Create new {{RESOURCE_NAME}}
+method: POST
+endpoint: /api/{{RESOURCE_PATH}}
+rules:
+  - name: Create Success
+    status: 201
+    headers:
+      Content-Type: application/json
+      Location: /api/{{RESOURCE_PATH}}/{{CREATED_ID}}
+    body: {{CREATED_RESOURCE_BODY}}
+    delay: 0
+
+  - name: Validation Failed
+    status: 400
+    headers:
+      Content-Type: application/json
+    body:
+      error: Validation failed
+      message: Invalid input data
+      fields: {{VALIDATION_ERRORS}}
+    delay: 0
+
+  - name: Resource Already Exists
+    status: 409
+    headers:
+      Content-Type: application/json
+    body:
+      error: Conflict
+      message: "{{RESOURCE_NAME}} already exists"
+      code: DUPLICATE_RESOURCE
+    delay: 0
+
+  - name: Unauthorized
+    status: 401
+    headers:
+      Content-Type: application/json
+    body:
+      error: Unauthorized
+      message: Authentication required
+    delay: 0
+
+  - name: Insufficient Permissions
+    status: 403
+    headers:
+      Content-Type: application/json
+    body:
+      error: Forbidden
+      message: You don't have permission to create {{RESOURCE_NAME}}
+    delay: 0
+
+  - name: Business Rule Violation
+    status: 422
+    headers:
+      Content-Type: application/json
+    body:
+      error: Unprocessable entity
+      message: {{BUSINESS_RULE_ERROR}}
+    delay: 0
+
+  - name: Server Error
+    status: 500
+    headers:
+      Content-Type: application/json
+    body:
+      error: Internal server error
+      message: An unexpected error occurred
+    delay: 0

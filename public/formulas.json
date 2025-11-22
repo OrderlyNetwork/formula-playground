@@ -4,6 +4,7 @@
     "name": "totalValue",
     "version": "1.0.0",
     "description": "User's total asset value (denominated in USDC), including assets that cannot be used as collateral.",
+    "formula": "Total Value = total_holding + total unsettlement PNL, total_holding = usdc balance.holding + SUM(non-usdc balance.holding * mark price)",
     "inputs": [
       {
         "key": "inputs",

@@ -20,9 +20,10 @@ export async function generateFormulaGraph(
     if (input.factorType?.array === true) {
       // Array input: create an ArrayNode
       // For array types, always use empty array as default unless explicitly provided as array
-      const defaultArrayValue = Array.isArray(input.default) && input.default.length > 0
-        ? input.default
-        : [];
+      const defaultArrayValue =
+        Array.isArray(input.default) && input.default.length > 0
+          ? input.default
+          : [];
 
       nodes.push({
         id: `array-${input.key}`,
@@ -104,9 +105,8 @@ export async function generateFormulaGraph(
         if (p.factorType?.array === true) {
           // Array property: create an ArrayNode
           // For array types, always use empty array as default unless explicitly provided as array
-          const defaultArrayValue = Array.isArray(p.default) && p.default.length > 0
-            ? p.default
-            : [];
+          const defaultArrayValue =
+            Array.isArray(p.default) && p.default.length > 0 ? p.default : [];
 
           nodes.push({
             id: `array-${input.key}.${p.key}`,
@@ -160,9 +160,10 @@ export async function generateFormulaGraph(
             // Check if nested property is an array type
             if (np.factorType?.array === true) {
               // For array types, always use empty array as default unless explicitly provided as array
-              const defaultArrayValue = Array.isArray(np.default) && np.default.length > 0
-                ? np.default
-                : [];
+              const defaultArrayValue =
+                Array.isArray(np.default) && np.default.length > 0
+                  ? np.default
+                  : [];
 
               nodes.push({
                 id: `array-${input.key}.${p.key}.${np.key}`,

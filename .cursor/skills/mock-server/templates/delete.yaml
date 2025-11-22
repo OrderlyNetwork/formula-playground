@@ -1,0 +1,66 @@
+name: Delete {{RESOURCE_NAME}}
+description: Delete {{RESOURCE_NAME}}
+method: DELETE
+endpoint: /api/{{RESOURCE_PATH}}/:id
+rules:
+  - name: Delete Success
+    status: 204
+    headers:
+      Content-Type: application/json
+    body: {}
+    delay: 0
+
+  - name: Delete Success (With Content)
+    status: 200
+    headers:
+      Content-Type: application/json
+    body:
+      message: "{{RESOURCE_NAME}} deleted successfully"
+      id: {{DELETED_ID}}
+    delay: 0
+
+  - name: Resource Not Found
+    status: 404
+    headers:
+      Content-Type: application/json
+    body:
+      error: Not found
+      message: "{{RESOURCE_NAME}} not found"
+    delay: 0
+
+  - name: Resource In Use
+    status: 409
+    headers:
+      Content-Type: application/json
+    body:
+      error: Conflict
+      message: Cannot delete {{RESOURCE_NAME}} because it is being used
+      dependencies: {{DEPENDENCIES}}
+    delay: 0
+
+  - name: Unauthorized
+    status: 401
+    headers:
+      Content-Type: application/json
+    body:
+      error: Unauthorized
+      message: Authentication required
+    delay: 0
+
+  - name: Insufficient Permissions
+    status: 403
+    headers:
+      Content-Type: application/json
+    body:
+      error: Forbidden
+      message: You don't have permission to delete this resource
+    delay: 0
+
+  - name: Server Error
+    status: 500
+    headers:
+      Content-Type: application/json
+    body:
+      error: Internal server error
+      message: An unexpected error occurred
+    delay: 0

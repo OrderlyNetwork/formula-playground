@@ -29,19 +29,6 @@
   width: auto !important;
 }
 
-.react-flow__node-resizer {
-  border-radius: 0;
-  border: none;
-}
-
-.react-flow__resize-control.handle {
-  /* background-color: #ffffff; */
-  border-color: #9e86ed;
-  border-radius: 0;
-  width: 5px !important;
-  height: 5px !important;
-}
-
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -156,4 +143,14 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Custom utility classes for React Flow node interaction */
+/* .nodrag {
+  cursor: auto !important;
+} */
+
+.select-text {
+  cursor: text !important;
+  user-select: text !important;
 }

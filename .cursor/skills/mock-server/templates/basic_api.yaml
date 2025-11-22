@@ -1,0 +1,29 @@
+name: {{API_NAME}}
+description: {{API_DESCRIPTION}}
+method: {{HTTP_METHOD}}
+endpoint: {{ENDPOINT_PATH}}
+rules:
+  - name: Normal Return
+    status: 200
+    headers:
+      Content-Type: application/json
+    body: {{SUCCESS_BODY}}
+    delay: 0
+
+  - name: Resource Not Found
+    status: 404
+    headers:
+      Content-Type: application/json
+    body:
+      error: Not found
+      message: "{{RESOURCE_NAME}} not found"
+    delay: 0
+
+  - name: Server Error
+    status: 500
+    headers:
+      Content-Type: application/json
+    body:
+      error: Internal server error
+      message: An unexpected error occurred
+    delay: 0

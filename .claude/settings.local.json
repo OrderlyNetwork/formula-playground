@@ -17,7 +17,8 @@
       "Bash(npm run lint:*)",
       "Bash(pnpm add:*)",
       "Bash(pnpm remove:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Skill(mock-server)"
     ],
     "deny": [],
     "ask": []

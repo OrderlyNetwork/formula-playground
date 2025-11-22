@@ -1,0 +1,88 @@
+name: User Login
+description: User login authentication
+method: POST
+endpoint: /api/auth/login
+rules:
+  - name: Login Success
+    status: 200
+    headers:
+      Content-Type: application/json
+    body:
+      token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      user:
+        id: {{USER_ID}}
+        email: {{USER_EMAIL}}
+        username: {{USERNAME}}
+      expiresIn: 3600
+    delay: 0
+
+  - name: Incorrect Password
+    status: 401
+    headers:
+      Content-Type: application/json
+    body:
+      error: Invalid credentials
+      message: Email or password is incorrect
+    delay: 0
+
+  - name: User Not Found
+    status: 404
+    headers:
+      Content-Type: application/json
+    body:
+      error: User not found
+      message: No account found with this email
+    delay: 0
+
+  - name: Account Locked
+    status: 403
+    headers:
+      Content-Type: application/json
+    body:
+      error: Account locked
+      message: Too many failed login attempts
+      retryAfter: 1800
+    delay: 0
+
+  - name: Account Not Activated
+    status: 403
+    headers:
+      Content-Type: application/json
+    body:
+      error: Account not activated
+      message: Please verify your email before logging in
+    delay: 0
+
+  - name: Missing Required Fields
+    status: 400
+    headers:
+      Content-Type: application/json
+    body:
+      error: Bad request
+      message: Missing required fields
+      fields:
+        - email
+        - password
+    delay: 0
+
+  - name: Server Error
+    status: 500
+    headers:
+      Content-Type: application/json
+    body:
+      error: Internal server error
+      message: Authentication service unavailable
+    delay: 0
+
+  - name: Slow Response
+    status: 200
+    headers:
+      Content-Type: application/json
+    body:
+      token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      user:
+        id: {{USER_ID}}
+        email: {{USER_EMAIL}}
+        username: {{USERNAME}}
+      expiresIn: 3600
+    delay: 2000
