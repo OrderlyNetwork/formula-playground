@@ -2,7 +2,6 @@ import React, { useEffect, useCallback, useMemo } from "react";
 import {
   useReactTable,
   getCoreRowModel,
-  getPaginationRowModel,
   flexRender,
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
@@ -233,12 +232,6 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
     data: rows,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: {
-      pagination: {
-        pageSize: 10,
-      },
-    },
     meta: {
       updateRowData,
       deleteRow,
@@ -330,38 +323,6 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
           </table>
         </div>
       </div>
-
-      {/* Pagination */}
-      {rows.length > 10 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">
-            Showing {table.getState().pagination.pageIndex * 10 + 1} to{" "}
-            {Math.min(
-              (table.getState().pagination.pageIndex + 1) * 10,
-              rows.length
-            )}{" "}
-            of {rows.length} rows
-          </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-              variant="outline"
-              size="sm"
-            >
-              Previous
-            </Button>
-            <Button
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-              variant="outline"
-              size="sm"
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Empty state */}
       {rows.length === 0 && (

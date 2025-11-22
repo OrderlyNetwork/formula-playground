@@ -7,10 +7,13 @@ import { TabBar } from "../datasheet/components/TabBar";
 import { FormulaDataSheet } from "@/modules/formula-datasheet/formulaDataSheet";
 import { ResultsTable } from "../datasheet/components/ResultsTable";
 import { StatusBar } from "../datasheet/components/StatusBar";
-import type { TabItem } from "../datasheet/types";
+import type { TabItem, QueryResult } from "../datasheet/types";
 import { useFormulaStore } from "@/store/formulaStore";
-import { useParams } from "react-router";
-import { useEffect } from "react";
+import { useFormulaTabStore } from "@/store/formulaTabStore";
+import { useParams, useNavigate } from "react-router";
+import { useEffect, useMemo } from "react";
+import { FormulaDocs } from "../playground/components/FormulaDocs";
+import { FormulaCode } from "../playground/components/FormulaCode";
 
 // Mock Data
 const results: QueryResult[] = [
@@ -85,81 +88,156 @@ const results: QueryResult[] = [
 export const FormulaDetails = () => {
   // Get formula ID from URL params
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
   // Access formula store
-  const { selectedFormulaId, getFormulaDefinition, loadFormulasFromAllSources, selectFormula } = useFormulaStore();
+  const { getFormulaDefinition, loadFormulasFromAllSources } =
+    useFormulaStore();
 
-  // Get current formula definition
-  const currentFormula = selectedFormulaId
-    ? getFormulaDefinition(selectedFormulaId)
-    : undefined;
+  // Access tab store
+  const { tabs, activeTabId, addTab, closeTab, setActiveTab } =
+    useFormulaTabStore();
 
-  // Load formulas and select the one from URL
+  // Load formulas and manage tabs
   useEffect(() => {
     const initializeFormula = async () => {
-      // Load all formulas
+      // Load all formulas first
       await loadFormulasFromAllSources();
-
-      // If we have an ID in the URL, select that formula
-      if (id) {
-        selectFormula(id);
-      }
     };
 
     initializeFormula();
-  }, [id, loadFormulasFromAllSources, selectFormula]);
+  }, [loadFormulasFromAllSources]);
 
-  
+  // Add tab when URL changes and formulas are loaded
+  useEffect(() => {
+    if (id) {
+      const formula = getFormulaDefinition(id);
+      if (formula) {
+        addTab(id, formula.name || id, "code");
+      }
+    }
+  }, [id, getFormulaDefinition, addTab]);
+
+  // Sync active tab with URL - only if the tab exists
+  useEffect(() => {
+    if (id) {
+      const tabExists = tabs.some((tab) => tab.id === id);
+      if (tabExists && id !== activeTabId) {
+        setActiveTab(id);
+      }
+    }
+  }, [id, activeTabId, setActiveTab, tabs]);
+
+  // Get current formula definition based on active tab
+  const currentFormula = useMemo(() => {
+    return activeTabId ? getFormulaDefinition(activeTabId) : undefined;
+  }, [activeTabId, getFormulaDefinition]);
+
   const handleDownloadResults = () => {
     console.log("Downloading results...");
   };
 
-  const handleAddTab = () => {
-    console.log("Adding new tab...");
-  };
-
   const handleCloseTab = (label: string) => {
-    console.log(`Closing tab: ${label}`);
+    // Find tab by label
+    const tab = tabs.find((t) => t.label === label);
+    if (!tab) return;
+
+    const tabIndex = tabs.findIndex((t) => t.id === tab.id);
+    const newTabs = tabs.filter((t) => t.id !== tab.id);
+
+    // 关闭标签页
+    closeTab(tab.id);
+
+    // 如果关闭的是当前 URL 对应的标签
+    if (tab.id === id) {
+      if (newTabs.length === 0) {
+        // 没有其他标签页了，导航回数据表页面
+        navigate("/datasheet");
+      } else {
+        // 确定下一个要激活的标签页
+        let nextTab;
+        if (tabIndex < newTabs.length) {
+          nextTab = newTabs[tabIndex];
+        } else {
+          nextTab = newTabs[tabIndex - 1];
+        }
+        navigate(`/formula/${nextTab.id}`);
+      }
+    }
   };
 
-  const tabs: TabItem[] = [
-    { label: "homepage_example", type: "code", active: true },
-    { label: "film_list", type: "grid" },
-    { label: "inventory", type: "grid" },
-  ];
+  const handleTabClick = (label: string) => {
+    // Find tab by label
+    const tab = tabs.find((t) => t.label === label);
+    if (tab) {
+      setActiveTab(tab.id);
+      navigate(`/formula/${tab.id}`);
+    }
+  };
+
+  // Convert tabs to TabItem format for TabBar component
+  const tabItems: TabItem[] = useMemo(() => {
+    return tabs.map((tab) => ({
+      label: tab.label,
+      type: tab.type,
+      active: tab.id === activeTabId,
+    }));
+  }, [tabs, activeTabId]);
 
   console.log("Formula ID from URL:", id);
-  console.log("Selected formula ID:", selectedFormulaId);
+  console.log("Active tab ID:", activeTabId);
   console.log("Current formula:", currentFormula);
+  console.log("All tabs:", tabs);
 
-  // const currentFormula = getFormulaDefinition(id);
+  // 判断是否应该显示内容：有活动标签且公式数据已加载
+  const shouldShowContent = tabs.length > 0 && activeTabId && currentFormula;
 
   return (
     <div className="flex flex-1 flex-col min-w-0 bg-[#1e1e1e]">
       {/* Tabs */}
-      <TabBar tabs={tabs} onAddTab={handleAddTab} onCloseTab={handleCloseTab} />
+      <TabBar
+        tabs={tabItems}
+        onCloseTab={handleCloseTab}
+        onTabClick={handleTabClick}
+      />
 
-      {/* Split View: Editor & Results */}
-      <ResizablePanelGroup direction="vertical" className="flex-1">
-        {/* SQL Editor */}
-        <ResizablePanel defaultSize={40} minSize={20}>
-          {/* <SqlEditor
-                onRun={handleRunQuery}
-                onSave={handleSaveQuery}
-              /> */}
-          <FormulaDataSheet formula={currentFormula} />
-        </ResizablePanel>
+      {/* Content */}
+      {!shouldShowContent ? (
+        <div className="flex-1 flex items-center justify-center text-zinc-400">
+          <p>
+            Select a formula to view and edit its parameters in a tabular
+            format.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Split View: Editor & Results */}
+          <ResizablePanelGroup direction="vertical" className="flex-1">
+            {/* SQL Editor */}
+            <ResizablePanel defaultSize={40} minSize={20}>
+              <FormulaDataSheet formula={currentFormula} />
+            </ResizablePanel>
 
-        <ResizableHandle className="bg-zinc-800" />
+            <ResizableHandle className="bg-zinc-800" />
 
-        {/* Results Table */}
-        <ResizablePanel defaultSize={60}>
-          <ResultsTable results={results} />
-        </ResizablePanel>
-      </ResizablePanelGroup>
+            {/* Results Table */}
+            <ResizablePanel defaultSize={60}>
+              <ResizablePanelGroup direction="horizontal" className="h-full">
+                <ResizablePanel defaultSize={50} minSize={20}>
+                  <FormulaDocs formula={currentFormula} />
+                </ResizablePanel>
+                <ResizableHandle />
+                <ResizablePanel defaultSize={50} minSize={20}>
+                  <FormulaCode formula={currentFormula} />
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            </ResizablePanel>
+          </ResizablePanelGroup>
 
-      {/* Status Bar */}
-      <StatusBar onDownload={handleDownloadResults} />
+          {/* Status Bar */}
+          <StatusBar onDownload={handleDownloadResults} />
+        </>
+      )}
     </div>
   );
 };

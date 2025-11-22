@@ -2,6 +2,11 @@ import { useMemo } from "react";
 import Editor from "@monaco-editor/react";
 import type { EditorProps } from "@monaco-editor/react";
 import { useFormulaStore } from "../../../store/formulaStore";
+import type { FormulaDefinition } from "@/types/formula";
+
+interface FormulaCodeProps {
+  formula?: FormulaDefinition;
+}
 
 /**
  * Read-only code viewer for the selected formula using Monaco Editor.
@@ -11,13 +16,13 @@ import { useFormulaStore } from "../../../store/formulaStore";
  * - Configured as read-only and auto-sized for this panel
  * - Using @monaco-editor/react for automatic lifecycle management
  */
-export function FormulaCode() {
+export function FormulaCode({ formula: propFormula }: FormulaCodeProps) {
   const { formulaDefinitions, selectedFormulaId, activeEngine } =
     useFormulaStore();
 
   const selectedFormula = useMemo(
-    () => formulaDefinitions.find((f) => f.id === selectedFormulaId),
-    [formulaDefinitions, selectedFormulaId]
+    () => propFormula || formulaDefinitions.find((f) => f.id === selectedFormulaId),
+    [propFormula, formulaDefinitions, selectedFormulaId]
   );
 
   const code =

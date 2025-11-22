@@ -1,16 +1,15 @@
 "use client";
 import { LayoutGrid, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import type { TabItem as TabItemType } from "../types";
 
 interface TabBarProps {
   tabs: TabItemType[];
-  onAddTab?: () => void;
   onCloseTab?: (label: string) => void;
+  onTabClick?: (label: string) => void;
 }
 
-export function TabBar({ tabs, onAddTab, onCloseTab }: TabBarProps) {
+export function TabBar({ tabs, onCloseTab, onTabClick }: TabBarProps) {
   return (
     <div className="flex items-center bg-[#181818] border-b border-zinc-800">
       {tabs.map((tab) => (
@@ -20,16 +19,9 @@ export function TabBar({ tabs, onAddTab, onCloseTab }: TabBarProps) {
           active={tab.active}
           type={tab.type}
           onClose={() => onCloseTab?.(tab.label)}
+          onClick={() => onTabClick?.(tab.label)}
         />
       ))}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-9 w-9 rounded-none text-zinc-400 hover:text-white hover:bg-zinc-800"
-        onClick={onAddTab}
-      >
-        <X className="h-4 w-4" />
-      </Button>
     </div>
   );
 }
@@ -39,6 +31,7 @@ interface TabComponentProps {
   active?: boolean;
   type: "code" | "grid";
   onClose?: () => void;
+  onClick?: () => void;
 }
 
 function TabComponent({
@@ -46,6 +39,7 @@ function TabComponent({
   active,
   type,
   onClose,
+  onClick,
 }: TabComponentProps) {
   return (
     <div
@@ -55,6 +49,7 @@ function TabComponent({
           ? "bg-[#1e1e1e] text-white border-t-2 border-t-[#f1c40f]"
           : "bg-[#2d2d2d] text-zinc-400 hover:bg-[#1e1e1e]"
       )}
+      onClick={onClick}
     >
       {type === "code" ? (
         <span className="text-purple-400 font-mono text-[10px]">&lt;&gt;</span>

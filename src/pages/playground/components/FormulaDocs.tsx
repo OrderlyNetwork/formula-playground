@@ -1,11 +1,17 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFormulaStore } from "@/store/formulaStore";
 import { Markdown } from "@/components/common/Markdown";
+import type { FormulaDefinition } from "@/types/formula";
 
-export function FormulaDocs() {
+interface FormulaDocsProps {
+  formula?: FormulaDefinition;
+}
+
+export function FormulaDocs({ formula: propFormula }: FormulaDocsProps) {
   const { formulaDefinitions, selectedFormulaId } = useFormulaStore();
 
-  const selectedFormula = formulaDefinitions.find(
+  // Use prop formula if provided, otherwise fall back to store selection
+  const selectedFormula = propFormula || formulaDefinitions.find(
     (f) => f.id === selectedFormulaId
   );
 

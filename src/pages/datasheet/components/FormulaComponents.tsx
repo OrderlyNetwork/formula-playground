@@ -3,6 +3,7 @@ import { SquareFunction, Code2, Download, X, Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePinnedStore } from "@/store/usePinnedStore";
 import { useNavigate } from "react-router";
+import { useFormulaTabStore } from "@/store/formulaTabStore";
 
 export interface Formula {
   id: string;
@@ -13,7 +14,15 @@ export interface Formula {
 }
 
 // Formula section component for grouping formulas
-export function FormulaSection({ title, formulas, count }: { title: string; formulas: Formula[]; count: number }) {
+export function FormulaSection({
+  title,
+  formulas,
+  count,
+}: {
+  title: string;
+  formulas: Formula[];
+  count: number;
+}) {
   if (formulas.length === 0 && title === "Pinned") return null;
 
   return (
@@ -38,6 +47,7 @@ export function FormulaSection({ title, formulas, count }: { title: string; form
 // Formula item component
 export function FormulaItem({ formula }: { formula: Formula }) {
   const { isPinned, togglePin } = usePinnedStore();
+  const { addTab } = useFormulaTabStore();
   const navigate = useNavigate();
   const pinned = isPinned(formula.id);
 
@@ -61,6 +71,8 @@ export function FormulaItem({ formula }: { formula: Formula }) {
 
   const handleFormulaClick = () => {
     console.log("FormulaItem: Clicked formula:", formula);
+    // Add formula to tab store and navigate
+    addTab(formula.id, formula.name, "code");
     navigate(`/formula/${formula.id}`);
   };
 
