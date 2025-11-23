@@ -1,5 +1,5 @@
 "use client";
-import { LayoutGrid, X } from "lucide-react";
+import { LayoutGrid, SquareFunction, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TabItem as TabItemType } from "../types";
 
@@ -11,7 +11,7 @@ interface TabBarProps {
 
 export function TabBar({ tabs, onCloseTab, onTabClick }: TabBarProps) {
   return (
-    <div className="flex items-center bg-white border-b border-gray-200">
+    <div className="flex items-center bg-gray-100 border-b border-gray-200">
       {tabs.map((tab) => (
         <TabComponent
           key={tab.label}
@@ -44,17 +44,19 @@ function TabComponent({
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 px-3 py-2 text-xs border-r border-gray-200 cursor-pointer min-w-[120px] max-w-[200px]",
+        "group flex items-center gap-2 px-3 py-2 text-xs border-r border-gray-300 cursor-pointer min-w-[120px] max-w-[200px]",
         active
-          ? "bg-gray-50 text-gray-900 border-t-2 border-t-blue-500"
-          : "bg-white text-gray-600 hover:bg-gray-50"
+          ? "bg-white text-gray-900 "
+          : "bg-gray-100 text-gray-600 hover:bg-gray-100"
       )}
       onClick={onClick}
     >
       {type === "code" ? (
-        <span className="text-purple-600 font-mono text-[10px]">&lt;&gt;</span>
+        <span className="text-purple-600">
+          <SquareFunction size={18} />
+        </span>
       ) : (
-        <LayoutGrid className="h-3 w-3 text-blue-600" />
+        <LayoutGrid className="h-3 w-3 text-purple-600" />
       )}
       <span className="truncate flex-1">{label}</span>
       <X

@@ -15,6 +15,7 @@ export interface FlattenedPath {
   depth: number; // Nesting depth for column grouping
   isArray: boolean; // Whether this path is part of an array
   arrayIndex?: number; // Array index if applicable
+  description?: string; // Optional description from formula input definition
 }
 
 /**
@@ -107,6 +108,7 @@ export function flattenFormulaInputs(
         factorType: input.factorType,
         depth: parentPath.split(".").length - 1,
         isArray: false,
+        description: input.description,
       });
     }
   }
@@ -185,11 +187,28 @@ export function generateTableColumns(
       (path): ColumnDef<TableRow> => ({
         id: path.path,
         header: () => {
-          return path.header;
+          return (
+            <div className="flex items-center gap-1">
+              <span>{path.header}</span>
+              {path.description && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="cursor-help">
+                      <Info className="w-3 h-3" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs break-words">
+                    {path.description}
+                    <TooltipArrow />
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          );
         },
         accessorKey: `data.${path.path}`,
         size: path.factorType.baseType === "number" ? 120 : 200,
-        cell: ({ row, getValue, column, table }) => {
+        cell: ({ row, getValue, table }) => {
           const value = getValue() as FormulaScalar;
           const meta = table.options.meta as any;
 
@@ -265,6 +284,14 @@ export function generateTableColumns(
  */
 import React from "react";
 import { TypeAwareInput } from "@/modules/formula-graph/components/TypeAwareInput";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+  TooltipArrow,
+} from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 
 interface DefaultCellRendererProps {
   value: FormulaScalar;

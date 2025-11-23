@@ -7,6 +7,7 @@ import { Sidebar } from "./pages/datasheet/components/Sidebar";
 import { useState } from "react";
 import type { Table } from "./pages/datasheet/types";
 import { FormulaDetails } from "./pages/formula/details";
+import { TooltipProvider } from "./components/ui/tooltip";
 
 // Mock Data - move from DatabaseDashboard to here
 const tables: Table[] = [
@@ -63,24 +64,26 @@ function RootLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="flex h-screen w-full flex-col bg-[#1e1e1e] text-zinc-300 font-sans overflow-hidden">
-        {/* Main Layout */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar */}
-          <Sidebar
-            isOpen={isSidebarOpen}
-            tables={tables}
-            onToggle={handleSidebarToggle}
-          />
+    <TooltipProvider>
+      <div className="min-h-screen bg-background">
+        <div className="flex h-screen w-full flex-col font-sans overflow-hidden">
+          {/* Main Layout */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Sidebar */}
+            <Sidebar
+              isOpen={isSidebarOpen}
+              tables={tables}
+              onToggle={handleSidebarToggle}
+            />
 
-          {/* Main Content */}
-          <div className="flex flex-1 flex-col min-w-0 bg-[#1e1e1e]">
-            <Outlet />
+            {/* Main Content */}
+            <div className="flex flex-1 flex-col min-w-0 ">
+              <Outlet />
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
 

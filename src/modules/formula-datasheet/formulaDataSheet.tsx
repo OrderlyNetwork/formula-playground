@@ -5,7 +5,6 @@ import {
   flexRender,
   type ColumnPinningState,
 } from "@tanstack/react-table";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useFormulaStore } from "@/store/formulaStore";
 import type { FormulaDefinition, FormulaScalar } from "@/types/formula";
@@ -19,6 +18,7 @@ import {
 } from "@/utils/formulaTableUtils";
 import { TypeAwareInput } from "@/modules/formula-graph/components/TypeAwareInput";
 import type { FactorType } from "@/types/formula";
+import { cn } from "@/lib/utils";
 
 interface FormulaDataSheetProps {
   formula?: FormulaDefinition;
@@ -288,7 +288,7 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
       <div className="overflow-hidden w-full">
         <div className="overflow-x-auto" style={{ maxHeight: "70vh" }}>
           <table className="w-full text-sm">
-            <thead className="border-b border-zinc-800">
+            <thead className="border-b border-gray-300">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
@@ -298,11 +298,12 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
                     return (
                       <th
                         key={header.id}
-                        className={`px-4 py-3 text-left font-medium whitespace-nowrap ${
-                          isPinned
-                            ? "bg-zinc-900/95 backdrop-blur-sm border-l border-zinc-700"
-                            : ""
-                        }`}
+                        className={cn(
+                          "px-4 py-3 text-left font-medium whitespace-nowrap",
+                          {
+                            "shadow-md bg-white": isPinned,
+                          }
+                        )}
                         style={{
                           width: header.getSize(),
                           minWidth: "200px",
@@ -347,11 +348,11 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
                     return (
                       <td
                         key={cell.id}
-                        className={`px-4 py-2 border-b border-zinc-800 ${
-                          isPinned
-                            ? "bg-zinc-900/95 backdrop-blur-sm border-l border-zinc-700"
-                            : ""
-                        }`}
+                        className={cn(
+                          `px-4 py-2 border-b border-gray-300 ${
+                            isPinned ? "shadow-md bg-white" : "bg-white"
+                          }`
+                        )}
                         style={{
                           minWidth: "200px",
                           position: isPinned ? "sticky" : "relative",
