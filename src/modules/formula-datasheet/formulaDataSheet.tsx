@@ -16,7 +16,6 @@ import {
   validateRow,
   reconstructFormulaInputs,
   type TableRow,
-  type FlattenedPath,
 } from "@/utils/formulaTableUtils";
 import { TypeAwareInput } from "@/modules/formula-graph/components/TypeAwareInput";
 import type { FactorType } from "@/types/formula";
@@ -40,9 +39,13 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   } = useFormulaStore();
 
   const [rows, setRows] = React.useState<TableRow[]>([]);
-  const [flattenedPaths, setFlattenedPaths] = React.useState<FlattenedPath[]>(
-    []
-  );
+  const flattenedPaths = useMemo(() => {
+    if (!formula) {
+      return [];
+    }
+
+    return flattenFormulaInputs(formula.inputs);
+  }, [formula]);
   const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
     right: ["result"], // Pin the Result column to the right
   });
@@ -50,9 +53,6 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   // Initialize data when formula changes
   useEffect(() => {
     if (formula) {
-      const paths = flattenFormulaInputs(formula.inputs);
-      setFlattenedPaths(paths);
-
       // Initialize with current inputs or create a default row
       if (Object.keys(currentInputs).length > 0) {
         // Create a row from current inputs
@@ -72,7 +72,6 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
       }
     } else {
       setRows([]);
-      setFlattenedPaths([]);
     }
   }, [formula, currentInputs, tsResult, error]);
 
@@ -226,6 +225,7 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
 
   // Generate columns dynamically
   const columns = useMemo(() => {
+    console.log("----------", formula);
     if (!formula) return [];
 
     return generateTableColumns(flattenedPaths, handleCellUpdate);
@@ -246,6 +246,9 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
       deleteRow,
       duplicateRow,
       renderCell,
+      addNewRow,
+      executeAllRows,
+      loading,
     },
   });
 

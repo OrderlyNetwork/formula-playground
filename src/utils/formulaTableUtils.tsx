@@ -185,7 +185,6 @@ export function generateTableColumns(
       (path): ColumnDef<TableRow> => ({
         id: path.path,
         header: () => {
-          console.log(path);
           return path.header;
         },
         accessorKey: `data.${path.path}`,
