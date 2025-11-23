@@ -193,7 +193,7 @@ export const FormulaDetails = () => {
   const shouldShowContent = tabs.length > 0 && activeTabId && currentFormula;
 
   return (
-    <div className="flex flex-1 flex-col min-w-0 bg-[#1e1e1e]">
+    <div className="flex flex-1 flex-col min-w-0 bg-white">
       {/* Tabs */}
       <TabBar
         tabs={tabItems}
@@ -203,7 +203,7 @@ export const FormulaDetails = () => {
 
       {/* Content */}
       {!shouldShowContent ? (
-        <div className="flex-1 flex items-center justify-center text-zinc-400">
+        <div className="flex-1 flex items-center justify-center text-zinc-600">
           <p>
             Select a formula to view and edit its parameters in a tabular
             format.
@@ -214,14 +214,14 @@ export const FormulaDetails = () => {
           {/* Split View: Editor & Results */}
           <ResizablePanelGroup direction="vertical" className="flex-1">
             {/* SQL Editor */}
-            <ResizablePanel defaultSize={40} minSize={20}>
+            <ResizablePanel defaultSize={80} minSize={20}>
               <FormulaDataSheet formula={currentFormula} />
             </ResizablePanel>
 
-            <ResizableHandle className="bg-zinc-800" />
+            <ResizableHandle className="bg-zinc-200" />
 
             {/* Results Table */}
-            <ResizablePanel defaultSize={60}>
+            <ResizablePanel defaultSize={20}>
               <ResizablePanelGroup direction="horizontal" className="h-full">
                 <ResizablePanel defaultSize={50} minSize={20}>
                   <FormulaDocs formula={currentFormula} />

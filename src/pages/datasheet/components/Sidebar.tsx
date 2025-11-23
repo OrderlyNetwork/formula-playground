@@ -33,7 +33,7 @@ export function Sidebar({ isOpen, tables, onToggle }: SidebarProps) {
   return (
     <div className="flex">
       {/* Icon Strip */}
-      <div className="flex w-12 flex-col items-center py-4 gap-2 bg-[#181818] border-r border-zinc-800 shrink-0">
+      <div className="flex w-12 flex-col items-center py-4 gap-2 bg-gray-50 border-r border-gray-200 shrink-0">
         {categories.map((category) => (
           <IconButton
             key={category.id}
@@ -46,7 +46,7 @@ export function Sidebar({ isOpen, tables, onToggle }: SidebarProps) {
 
       {/* Sidebar Content */}
       <div className={cn(
-        "bg-[#181818] transition-all duration-200",
+        "bg-gray-50 transition-all duration-200",
         isOpen && activePanel ? "w-64 opacity-100 translate-x-0" : "w-0 opacity-0 -translate-x-2 overflow-hidden"
       )}>
         <div className="flex flex-1 flex-col min-w-0 h-full">

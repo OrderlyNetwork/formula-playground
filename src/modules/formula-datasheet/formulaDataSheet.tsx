@@ -1,8 +1,9 @@
-import React, { useEffect, useCallback, useMemo } from "react";
+import React, { useEffect, useCallback, useMemo, useState } from "react";
 import {
   useReactTable,
   getCoreRowModel,
   flexRender,
+  type ColumnPinningState,
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -42,6 +43,9 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   const [flattenedPaths, setFlattenedPaths] = React.useState<FlattenedPath[]>(
     []
   );
+  const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
+    right: ["result"], // Pin the Result column to the right
+  });
 
   // Initialize data when formula changes
   useEffect(() => {
@@ -231,6 +235,11 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   const table = useReactTable({
     data: rows,
     columns,
+    state: {
+      columnPinning,
+    },
+    onColumnPinningChange: setColumnPinning,
+    enableColumnPinning: true,
     getCoreRowModel: getCoreRowModel(),
     meta: {
       updateRowData,
@@ -253,7 +262,7 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">{formula.name}</h3>
           <p className="text-sm text-gray-600">{formula.description}</p>
@@ -270,29 +279,51 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
             {loading ? "Executing..." : "Execute All"}
           </Button>
         </div>
-      </div>
+      </div> */}
 
       {/* Table */}
-      <div className="overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="overflow-hidden w-full">
+        <div className="overflow-x-auto" style={{ maxHeight: "70vh" }}>
           <table className="w-full text-sm">
             <thead className="border-b border-zinc-800">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      className="px-4 py-3 text-left font-medium whitespace-nowrap"
-                      style={{ width: header.getSize() }}
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </th>
-                  ))}
+                  {headerGroup.headers.map((header) => {
+                    const { column } = header;
+                    const isPinned = column.getIsPinned();
+
+                    return (
+                      <th
+                        key={header.id}
+                        className={`px-4 py-3 text-left font-medium whitespace-nowrap ${
+                          isPinned
+                            ? "bg-zinc-900/95 backdrop-blur-sm border-l border-zinc-700"
+                            : ""
+                        }`}
+                        style={{
+                          width: header.getSize(),
+                          minWidth: "200px",
+                          position: isPinned ? "sticky" : "relative",
+                          left:
+                            isPinned === "left"
+                              ? `${column.getStart("left")}px`
+                              : undefined,
+                          right:
+                            isPinned === "right"
+                              ? `${column.getAfter("right")}px`
+                              : undefined,
+                          zIndex: isPinned ? 10 : 0,
+                        }}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </th>
+                    );
+                  })}
                 </tr>
               ))}
             </thead>
@@ -303,20 +334,42 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
                   className={
                     row.original._isValid === false
                       ? "bg-red-50"
-                      : "hover:bg-[#2a2a2a]"
+                      : "hover:bg-gray-50"
                   }
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      className="px-4 py-2 border-b border-zinc-800"
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </td>
-                  ))}
+                  {row.getVisibleCells().map((cell) => {
+                    const { column } = cell;
+                    const isPinned = column.getIsPinned();
+
+                    return (
+                      <td
+                        key={cell.id}
+                        className={`px-4 py-2 border-b border-zinc-800 ${
+                          isPinned
+                            ? "bg-zinc-900/95 backdrop-blur-sm border-l border-zinc-700"
+                            : ""
+                        }`}
+                        style={{
+                          minWidth: "200px",
+                          position: isPinned ? "sticky" : "relative",
+                          left:
+                            isPinned === "left"
+                              ? `${column.getStart("left")}px`
+                              : undefined,
+                          right:
+                            isPinned === "right"
+                              ? `${column.getAfter("right")}px`
+                              : undefined,
+                          zIndex: isPinned ? 5 : 0,
+                        }}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

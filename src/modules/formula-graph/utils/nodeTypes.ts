@@ -120,13 +120,19 @@ export function validateValueForFactorType(
       }
 
       // Check constraints
-      if (factorType.constraints?.min !== undefined && num < factorType.constraints.min) {
+      if (
+        factorType.constraints?.min !== undefined &&
+        num < factorType.constraints.min
+      ) {
         return {
           isValid: false,
           error: `Value must be >= ${factorType.constraints.min}`,
         };
       }
-      if (factorType.constraints?.max !== undefined && num > factorType.constraints.max) {
+      if (
+        factorType.constraints?.max !== undefined &&
+        num > factorType.constraints.max
+      ) {
         return {
           isValid: false,
           error: `Value must be <= ${factorType.constraints.max}`,
@@ -156,7 +162,9 @@ export function validateValueForFactorType(
         if (!factorType.constraints.enum.includes(value)) {
           return {
             isValid: false,
-            error: `Value must be one of: ${factorType.constraints.enum.join(", ")}`,
+            error: `Value must be one of: ${factorType.constraints.enum.join(
+              ", "
+            )}`,
           };
         }
       }
@@ -172,21 +180,27 @@ export function validateValueForFactorType(
     }
 
     default:
-      return { isValid: false, error: `Unsupported type: ${factorType.baseType}` };
+      return {
+        isValid: false,
+        error: `Unsupported type: ${factorType.baseType}`,
+      };
   }
 }
 
 /**
  * Get input display type based on factor type
  */
-export function getInputDisplayType(factorType: FactorType): "text" | "number" | "select" | "textarea" {
+export function getInputDisplayType(
+  factorType: FactorType
+): "text" | "number" | "select" | "textarea" {
   if (factorType.constraints?.enum) {
     return "select";
   }
 
-  if (factorType.baseType === "number") {
-    return "number";
-  }
+  // number return text
+  // if (factorType.baseType === "number") {
+  //   return "number";
+  // }
 
   if (factorType.baseType === "string" && factorType.constraints?.pattern) {
     return "text"; // Could be enhanced to support specific patterns

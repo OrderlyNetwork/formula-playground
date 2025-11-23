@@ -1,5 +1,9 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import type { FormulaDefinition, FormulaScalar, FactorType } from "@/types/formula";
+import type {
+  FormulaDefinition,
+  FormulaScalar,
+  FactorType,
+} from "@/types/formula";
 
 /**
  * Flattened path information for table columns
@@ -58,32 +62,37 @@ export function flattenFormulaInputs(
           // Generate a few default array items
           const arrayItemPath = `${inputPath}[${i}]`;
           const nestedPaths = flattenFormulaInputs(
-            input.factorType.properties.map(prop => ({
+            input.factorType.properties.map((prop) => ({
               ...prop,
               key: prop.key,
               type: prop.type,
-              factorType: prop.factorType
+              factorType: prop.factorType,
             })),
             arrayItemPath,
             maxArrayItems
           );
 
-          paths.push(...nestedPaths.map(path => ({
-            ...path,
-            path: path.path.replace(`${arrayItemPath}.`, `${inputPath}.${i}.`),
-            header: path.header.replace(arrayItemPath, `${input.key} [${i}]`),
-            isArray: true,
-            arrayIndex: i
-          })));
+          paths.push(
+            ...nestedPaths.map((path) => ({
+              ...path,
+              path: path.path.replace(
+                `${arrayItemPath}.`,
+                `${inputPath}.${i}.`
+              ),
+              header: path.header.replace(arrayItemPath, `${input.key} [${i}]`),
+              isArray: true,
+              arrayIndex: i,
+            }))
+          );
         }
       } else {
         // Handle single object
         const nestedPaths = flattenFormulaInputs(
-          input.factorType.properties.map(prop => ({
+          input.factorType.properties.map((prop) => ({
             ...prop,
             key: prop.key,
             type: prop.type,
-            factorType: prop.factorType
+            factorType: prop.factorType,
           })),
           inputPath,
           maxArrayItems
@@ -97,7 +106,7 @@ export function flattenFormulaInputs(
         header: generateHeaderFromPath(inputPath),
         factorType: input.factorType,
         depth: parentPath.split(".").length - 1,
-        isArray: false
+        isArray: false,
       });
     }
   }
@@ -109,26 +118,30 @@ export function flattenFormulaInputs(
  * Generate human-readable header from dot-notation path
  */
 function generateHeaderFromPath(path: string): string {
-  return path
-    .split(/\.|\[|\]/)
-    .filter(Boolean)
-    .map((part, index, parts) => {
-      if (/^\d+$/.test(part)) {
-        // Array index - show with previous part
-        const prevPart = parts[index - 1];
-        return `${prevPart} [${part}]`;
-      }
-      // Convert camelCase to Title Case
-      return part
-        .replace(/([A-Z])/g, ' $1')
-        .replace(/^./, str => str.toUpperCase())
-        .trim();
-    })
-    .filter((part, index, parts) => {
-      // Filter out array index parts that were already handled
-      return !/^\d+$/.test(part) && (index === 0 || !parts[index - 1]?.match(/^\d+$/));
-    })
-    .join(' - ');
+  // Split path and get the last non-array part
+  const parts = path.split(/\.|\[|\]/).filter(Boolean);
+
+  // Find the last non-numeric part
+  let lastPart = "";
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const part = parts[i];
+    if (!/^\d+$/.test(part)) {
+      lastPart = part;
+      break;
+    }
+  }
+
+  if (!lastPart) return path;
+
+  // Convert camelCase and snake_case to Title Case
+  // Handle both camelCase (like "userName") and abbreviations (like "IMR_factor")
+  return lastPart
+    .replace(/_/g, " ") // Replace underscores with spaces
+    .replace(/([a-z])([A-Z])/g, "$1 $2") // Insert space before capital letters that follow lowercase
+    .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2") // Insert space between abbreviation and following word (e.g., "IMRFactor" -> "IMR Factor")
+    .replace(/\s+/g, " ") // Replace multiple spaces with single space
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word
 }
 
 /**
@@ -140,78 +153,86 @@ export function generateTableColumns(
 ): ColumnDef<TableRow>[] {
   const columns: ColumnDef<TableRow>[] = [
     // Row actions column
-    {
-      id: "actions",
-      header: "Actions",
-      size: 100,
-      cell: ({ row, table }) => (
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              const meta = table.options.meta as any;
-              meta?.deleteRow?.(row.id);
-            }}
-            className="text-red-600 hover:text-red-800 text-sm"
-          >
-            Delete
-          </button>
-          <button
-            onClick={() => {
-              const meta = table.options.meta as any;
-              meta?.duplicateRow?.(row.id);
-            }}
-            className="text-blue-600 hover:text-blue-800 text-sm"
-          >
-            Duplicate
-          </button>
-        </div>
-      ),
-    },
+    // {
+    //   id: "actions",
+    //   header: "Actions",
+    //   size: 100,
+    //   cell: ({ row, table }) => (
+    //     <div className="flex gap-2">
+    //       <button
+    //         onClick={() => {
+    //           const meta = table.options.meta as any;
+    //           meta?.deleteRow?.(row.id);
+    //         }}
+    //         className="text-red-600 hover:text-red-800 text-sm"
+    //       >
+    //         Delete
+    //       </button>
+    //       <button
+    //         onClick={() => {
+    //           const meta = table.options.meta as any;
+    //           meta?.duplicateRow?.(row.id);
+    //         }}
+    //         className="text-blue-600 hover:text-blue-800 text-sm"
+    //       >
+    //         Duplicate
+    //       </button>
+    //     </div>
+    //   ),
+    // },
     // Data columns
-    ...flattenedPaths.map((path): ColumnDef<TableRow> => ({
-      id: path.path,
-      header: path.header,
-      accessorKey: `data.${path.path}`,
-      size: path.factorType.baseType === "number" ? 120 : 200,
-      cell: ({ row, getValue, column, table }) => {
-        const value = getValue() as FormulaScalar;
-        const meta = table.options.meta as any;
+    ...flattenedPaths.map(
+      (path): ColumnDef<TableRow> => ({
+        id: path.path,
+        header: () => {
+          console.log(path);
+          return path.header;
+        },
+        accessorKey: `data.${path.path}`,
+        size: path.factorType.baseType === "number" ? 120 : 200,
+        cell: ({ row, getValue, column, table }) => {
+          const value = getValue() as FormulaScalar;
+          const meta = table.options.meta as any;
 
-        return meta?.renderCell?.({
-          value,
-          rowId: row.id,
-          path: path.path,
-          factorType: path.factorType,
-          onUpdate: (newValue: FormulaScalar) => {
-            // Update the data in the row
-            const currentData = { ...row.original.data };
-            setNestedValue(currentData, path.path, newValue);
+          return (
+            meta?.renderCell?.({
+              value,
+              rowId: row.id,
+              path: path.path,
+              factorType: path.factorType,
+              onUpdate: (newValue: FormulaScalar) => {
+                // Update the data in the row
+                const currentData = { ...row.original.data };
+                setNestedValue(currentData, path.path, newValue);
 
-            // Update table data
-            meta?.updateRowData?.(row.id, currentData);
+                // Update table data
+                meta?.updateRowData?.(row.id, currentData);
 
-            // Call external update handler
-            onCellUpdate?.(row.id, path.path, newValue);
-          }
-        }) || (
-          <DefaultCellRenderer
-            value={value}
-            factorType={path.factorType}
-            onUpdate={(newValue) => {
-              const currentData = { ...row.original.data };
-              setNestedValue(currentData, path.path, newValue);
-              meta?.updateRowData?.(row.id, currentData);
-              onCellUpdate?.(row.id, path.path, newValue);
-            }}
-          />
-        );
-      },
-    })),
+                // Call external update handler
+                onCellUpdate?.(row.id, path.path, newValue);
+              },
+            }) || (
+              <DefaultCellRenderer
+                value={value}
+                factorType={path.factorType}
+                onUpdate={(newValue) => {
+                  const currentData = { ...row.original.data };
+                  setNestedValue(currentData, path.path, newValue);
+                  meta?.updateRowData?.(row.id, currentData);
+                  onCellUpdate?.(row.id, path.path, newValue);
+                }}
+              />
+            )
+          );
+        },
+      })
+    ),
     // Result column
     {
       id: "result",
       header: "Result",
       size: 150,
+      enablePinning: true,
       cell: ({ row }) => {
         const error = row.original._error;
         const result = row.original._result;
@@ -255,7 +276,7 @@ interface DefaultCellRendererProps {
 const DefaultCellRenderer: React.FC<DefaultCellRendererProps> = ({
   value,
   factorType,
-  onUpdate
+  onUpdate,
 }) => {
   return (
     <TypeAwareInput
@@ -275,7 +296,7 @@ export function setNestedValue(
   path: string,
   value: FormulaScalar
 ): void {
-  const keys = path.split('.');
+  const keys = path.split(".");
   let current = obj;
 
   for (let i = 0; i < keys.length - 1; i++) {
@@ -321,12 +342,12 @@ export function getNestedValue(
   obj: Record<string, any>,
   path: string
 ): FormulaScalar {
-  const keys = path.split('.');
+  const keys = path.split(".");
   let current = obj;
 
   for (const key of keys) {
     if (current === null || current === undefined) {
-      return '';
+      return "";
     }
 
     const arrayMatch = key.match(/^(.+)\[(\d+)\]$/);
@@ -338,7 +359,7 @@ export function getNestedValue(
     }
   }
 
-  return current ?? '';
+  return current ?? "";
 }
 
 /**
@@ -376,7 +397,7 @@ export function createInitialRow(
   return {
     id: `row-${Date.now()}-${rowIndex}`,
     data,
-    _isValid: true
+    _isValid: true,
   };
 }
 
@@ -425,7 +446,7 @@ export function validateRow(
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 }
 
@@ -433,7 +454,10 @@ export function validateRow(
  * Import validation function from existing utils
  * This should be imported from the existing location
  */
-export function validateValueForFactorType(value: FormulaScalar, factorType: FactorType): {
+export function validateValueForFactorType(
+  value: FormulaScalar,
+  factorType: FactorType
+): {
   isValid: boolean;
   error?: string;
 } {
@@ -445,12 +469,24 @@ export function validateValueForFactorType(value: FormulaScalar, factorType: Fac
       return { isValid: false, error: "Must be a valid number" };
     }
 
-    if (factorType.constraints?.min !== undefined && numValue < factorType.constraints.min) {
-      return { isValid: false, error: `Must be at least ${factorType.constraints.min}` };
+    if (
+      factorType.constraints?.min !== undefined &&
+      numValue < factorType.constraints.min
+    ) {
+      return {
+        isValid: false,
+        error: `Must be at least ${factorType.constraints.min}`,
+      };
     }
 
-    if (factorType.constraints?.max !== undefined && numValue > factorType.constraints.max) {
-      return { isValid: false, error: `Must be at most ${factorType.constraints.max}` };
+    if (
+      factorType.constraints?.max !== undefined &&
+      numValue > factorType.constraints.max
+    ) {
+      return {
+        isValid: false,
+        error: `Must be at most ${factorType.constraints.max}`,
+      };
     }
   }
 
@@ -461,11 +497,20 @@ export function validateValueForFactorType(value: FormulaScalar, factorType: Fac
   }
 
   if (factorType.baseType === "string") {
-    if (factorType.constraints?.enum && !factorType.constraints.enum.includes(String(value))) {
-      return { isValid: false, error: `Must be one of: ${factorType.constraints.enum.join(", ")}` };
+    if (
+      factorType.constraints?.enum &&
+      !factorType.constraints.enum.includes(String(value))
+    ) {
+      return {
+        isValid: false,
+        error: `Must be one of: ${factorType.constraints.enum.join(", ")}`,
+      };
     }
 
-    if (factorType.constraints?.pattern && !new RegExp(factorType.constraints.pattern).test(String(value))) {
+    if (
+      factorType.constraints?.pattern &&
+      !new RegExp(factorType.constraints.pattern).test(String(value))
+    ) {
       return { isValid: false, error: "Format is invalid" };
     }
   }

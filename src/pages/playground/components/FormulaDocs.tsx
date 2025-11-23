@@ -11,9 +11,8 @@ export function FormulaDocs({ formula: propFormula }: FormulaDocsProps) {
   const { formulaDefinitions, selectedFormulaId } = useFormulaStore();
 
   // Use prop formula if provided, otherwise fall back to store selection
-  const selectedFormula = propFormula || formulaDefinitions.find(
-    (f) => f.id === selectedFormulaId
-  );
+  const selectedFormula =
+    propFormula || formulaDefinitions.find((f) => f.id === selectedFormulaId);
 
   if (!selectedFormula) {
     return (

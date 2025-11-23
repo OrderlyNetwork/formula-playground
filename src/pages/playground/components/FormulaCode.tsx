@@ -21,7 +21,8 @@ export function FormulaCode({ formula: propFormula }: FormulaCodeProps) {
     useFormulaStore();
 
   const selectedFormula = useMemo(
-    () => propFormula || formulaDefinitions.find((f) => f.id === selectedFormulaId),
+    () =>
+      propFormula || formulaDefinitions.find((f) => f.id === selectedFormulaId),
     [propFormula, formulaDefinitions, selectedFormulaId]
   );
 
