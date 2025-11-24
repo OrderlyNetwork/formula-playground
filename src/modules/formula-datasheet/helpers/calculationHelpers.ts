@@ -37,20 +37,8 @@ export const performRowCalculation = async (
   const calcStartTime = Date.now();
   const inputs = reconstructFormulaInputs(rowData, formula);
 
-  console.log(
-    `[DataSheet] ⚡ Starting ${trigger} calculation for row ${rowId}`,
-    { inputs }
-  );
-
   try {
     const calcResult = await dataSheetCalculator.calculateRow(formula, rowData);
-
-    console.log(`[DataSheet] ✅ Calculation completed for row ${rowId}:`, {
-      success: calcResult.success,
-      result: calcResult.result,
-      executionTime: calcResult.executionTime,
-      error: calcResult.error,
-    });
 
     // Record calculation event
     dataSheetStateTracker.recordCalculation(formula.id, {
@@ -74,13 +62,6 @@ export const performRowCalculation = async (
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Calculation failed";
-
-    console.error(`[DataSheet] ❌ Calculation failed for row ${rowId}`, {
-      formulaId: formula.id,
-      rowId,
-      error: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
-    });
 
     // Record calculation error
     dataSheetStateTracker.recordCalculation(formula.id, {
@@ -119,8 +100,6 @@ export const updateRowWithResult = (
   rowId: string,
   result: CalculationResult
 ): void => {
-  console.log(`[DataSheet] 🔄 Updating row ${rowId} with calculation results`);
-
   setRows((currentRows) =>
     currentRows.map((r) => {
       if (r.id === rowId) {
@@ -130,10 +109,6 @@ export const updateRowWithResult = (
           _executionTime: result.executionTime,
           _error: result.error,
         };
-        console.log(`[DataSheet] 📦 Row ${rowId} state change:`, {
-          oldResult: r._result,
-          newResult: updated._result,
-        });
         return updated;
       }
       return r;

@@ -109,9 +109,6 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
     previousFormulaIdRef.current = formula?.id;
 
     if (formula && formulaChanged) {
-      console.log(
-        `[DataSheet] 🔄 Formula changed to ${formula.id}, reinitializing rows`
-      );
       // Clear auto-calculated rows tracking when formula changes
       autoCalculatedRowsRef.current.clear();
 
@@ -130,9 +127,6 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
           _isValid: true,
         };
         setRows([initialRow]);
-        console.log(
-          `[DataSheet] ✅ Initialized row with stable ID: ${stableRowId}`
-        );
         // Record initial state
         dataSheetStateTracker.recordRowStates(formula.id, [initialRow]);
       } else {
@@ -142,9 +136,6 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
           id: stableRowId,
         };
         setRows([defaultRow]);
-        console.log(
-          `[DataSheet] ✅ Initialized default row with stable ID: ${stableRowId}`
-        );
         // Record initial state
         dataSheetStateTracker.recordRowStates(formula.id, [defaultRow]);
       }
@@ -166,17 +157,11 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
 
       // Check if this row has already been auto-calculated
       if (autoCalculatedRowsRef.current.has(rowId)) {
-        console.log(
-          `[DataSheet] ⏭️ Skipping auto-calculation for row ${rowId} - already calculated`
-        );
         return;
       }
 
       // Check if there's already a pending timer for this row
       if (debounceTimersRef.current.has(rowId)) {
-        console.log(
-          `[DataSheet] ⏭️ Skipping auto-calculation for row ${rowId} - pending timer`
-        );
         return;
       }
 
@@ -192,13 +177,9 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
           // Note: Keep the row in autoCalculatedRowsRef to prevent re-triggering
           // even if result is undefined (calculation failed)
         })
-        .catch((error) => {
+        .catch(() => {
           // This catch is for unexpected errors outside performRowCalculation
           // performRowCalculation already handles and logs errors internally
-          console.error(
-            `[DataSheet] ❌ Unexpected error in auto-calculation for row ${rowId}`,
-            error
-          );
         });
     },
     [formula]
@@ -276,21 +257,11 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   // Handle cell updates with debounced automatic calculation
   const handleCellUpdate = useCallback(
     async (rowId: string, path: string, value: FormulaScalar) => {
-      console.log(`[DataSheet] 📝 Cell update triggered:`, {
-        rowId,
-        path,
-        value,
-        formulaId: formula?.id,
-      });
-
       if (!formula) return;
 
       // Clear existing debounce timer for this row
       const existingTimer = debounceTimersRef.current.get(rowId);
       if (existingTimer !== undefined) {
-        console.log(
-          `[DataSheet] ⏱️ Clearing existing debounce timer for row ${rowId}`
-        );
         clearTimeout(existingTimer);
         debounceTimersRef.current.delete(rowId);
       }
@@ -359,10 +330,7 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
 
       // Set up debounced calculation for the updated row
       const timerId = window.setTimeout(async () => {
-        console.log(`[DataSheet] 🕐 Debounce timer fired for row ${rowId}`);
-
         if (!formula) {
-          console.log(`[DataSheet] ⚠️ No formula found, skipping calculation`);
           debounceTimersRef.current.delete(rowId);
           return;
         }
@@ -371,25 +339,12 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
         const updatedRow = rowsRef.current.find((row) => row.id === rowId);
 
         if (!updatedRow) {
-          console.log(
-            `[DataSheet] ⚠️ Row ${rowId} not found, skipping calculation`
-          );
           debounceTimersRef.current.delete(rowId);
           return;
         }
 
-        console.log(`[DataSheet] 📝 Row state:`, {
-          rowId,
-          isValid: updatedRow._isValid,
-          data: updatedRow.data,
-          currentResult: updatedRow._result,
-        });
-
         // Only calculate if row is valid
         if (updatedRow._isValid !== true) {
-          console.log(
-            `[DataSheet] ⚠️ Row ${rowId} is invalid, skipping calculation`
-          );
           debounceTimersRef.current.delete(rowId);
           return;
         }
@@ -405,15 +360,9 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
 
           // Update row with calculation results
           updateRowWithResult(setRows, rowId, result);
-
-          console.log(`[DataSheet] ✨ Calculation completed for row ${rowId}`);
-        } catch (error) {
+        } catch {
           // This catch is for unexpected errors outside performRowCalculation
           // performRowCalculation already handles and logs errors internally
-          console.error(
-            `[DataSheet] ❌ Unexpected error in debounced calculation for row ${rowId}`,
-            error
-          );
         } finally {
           debounceTimersRef.current.delete(rowId);
         }
@@ -421,9 +370,6 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
 
       // Store timer ID for this row
       debounceTimersRef.current.set(rowId, timerId);
-      console.log(
-        `[DataSheet] ⏰ Debounce timer set for row ${rowId} (delay: ${DEBOUNCE_DELAY_MS}ms)`
-      );
     },
     [formula, updateInputAt]
   );
@@ -451,13 +397,8 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   const updateRowData = useCallback(
     (rowId: string, data: Record<string, FormulaScalar>) => {
       if (!formula) {
-        console.warn(
-          `[DataSheet] ⚠️ Cannot update row ${rowId} - no formula available`
-        );
         return;
       }
-
-      console.log(`[DataSheet] 📝 Updating row data for row ${rowId}`, data);
 
       setRows((prevRows) =>
         prevRows.map((row) => {
@@ -504,9 +445,6 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
           _error: undefined,
         };
 
-        console.log(
-          `[DataSheet] ➕ Duplicated row with stable ID: ${stableRowId}`
-        );
         return [...prevRows, newRow];
       });
     },
@@ -526,9 +464,6 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
         id: stableRowId,
       };
 
-      console.log(
-        `[DataSheet] ➕ Added new row with stable ID: ${stableRowId}`
-      );
       return [...prev, newRow];
     });
   }, [formula, getStableRowId]);
@@ -543,19 +478,13 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
    */
   const executeAllRows = useCallback(async () => {
     if (!formula) {
-      console.warn("[DataSheet] ⚠️ No formula available for executeAllRows");
       return;
     }
-
-    console.log(
-      `[DataSheet] 🚀 Starting batch calculation for ${rows.length} rows`
-    );
 
     // Filter valid rows
     const validRows = rows.filter((row) => row._isValid);
 
     if (validRows.length === 0) {
-      console.log("[DataSheet] ⚠️ No valid rows to calculate");
       return;
     }
 
@@ -572,10 +501,6 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
     });
 
     const results = await Promise.allSettled(calculationPromises);
-
-    console.log(
-      `[DataSheet] ✅ Batch calculation completed: ${results.length} results`
-    );
 
     // Batch update all rows at once for better performance
     setRows((prevRows) => {
