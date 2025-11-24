@@ -4,6 +4,7 @@ import type {
   FormulaScalar,
   FactorType,
 } from "@/types/formula";
+import type { TableRow } from "@/modules/formula-datasheet/types";
 
 /**
  * Flattened path information for table columns
@@ -18,17 +19,10 @@ export interface FlattenedPath {
   description?: string; // Optional description from formula input definition
 }
 
-/**
- * Table row data structure
- */
-export interface TableRow {
-  id: string; // Unique row identifier
-  data: Record<string, FormulaScalar>; // Flattened data using dot-notation keys
-  _result?: FormulaScalar; // Formula execution result for this row
-  _executionTime?: number; // Execution time in milliseconds
-  _error?: string; // Execution error message
-  _isValid?: boolean; // Validation status
-}
+// Note: TableRow type is now imported from @/modules/formula-datasheet/types
+// to avoid duplication and maintain single source of truth
+// Re-export for backwards compatibility
+export type { TableRow };
 
 /**
  * Test case data structure
