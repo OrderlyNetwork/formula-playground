@@ -21,7 +21,10 @@
       "Skill(mock-server)",
       "Bash(timeout:*)",
       "Bash(pnpm run build:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm run build)",
+      "Bash(npm run dev)",
+      "Bash(pnpm run lint)"
     ],
     "deny": [],
     "ask": []

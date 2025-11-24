@@ -41,7 +41,7 @@ class DataSheetStateTracker {
 
   /**
    * Record a cell update event
-   * 
+   *
    * @param formulaId - Formula ID
    * @param event - Cell update event
    */
@@ -54,7 +54,7 @@ class DataSheetStateTracker {
 
   /**
    * Record a calculation event
-   * 
+   *
    * @param formulaId - Formula ID
    * @param event - Calculation event
    */
@@ -67,7 +67,7 @@ class DataSheetStateTracker {
 
   /**
    * Record current row states
-   * 
+   *
    * @param formulaId - Formula ID
    * @param rows - Current row states
    */
@@ -77,7 +77,7 @@ class DataSheetStateTracker {
 
   /**
    * Get all cell updates for a formula
-   * 
+   *
    * @param formulaId - Formula ID
    * @returns Array of cell update events
    */
@@ -87,7 +87,7 @@ class DataSheetStateTracker {
 
   /**
    * Get all calculations for a formula
-   * 
+   *
    * @param formulaId - Formula ID
    * @returns Array of calculation events
    */
@@ -97,7 +97,7 @@ class DataSheetStateTracker {
 
   /**
    * Get current row states for a formula
-   * 
+   *
    * @param formulaId - Formula ID
    * @returns Array of row states
    */
@@ -108,7 +108,7 @@ class DataSheetStateTracker {
   /**
    * Get complete state table for a formula
    * Includes cell updates, calculations, and current row states
-   * 
+   *
    * @param formulaId - Formula ID
    * @returns Complete state information
    */
@@ -129,14 +129,16 @@ class DataSheetStateTracker {
       cellUpdates: updates,
       calculations: calcs,
       currentRows: rows,
-      lastUpdate: updates.length > 0 ? updates[updates.length - 1].timestamp : undefined,
-      lastCalculation: calcs.length > 0 ? calcs[calcs.length - 1].timestamp : undefined,
+      lastUpdate:
+        updates.length > 0 ? updates[updates.length - 1].timestamp : undefined,
+      lastCalculation:
+        calcs.length > 0 ? calcs[calcs.length - 1].timestamp : undefined,
     };
   }
 
   /**
    * Clear all tracking data for a formula
-   * 
+   *
    * @param formulaId - Formula ID
    */
   clearFormula(formulaId: string): void {
@@ -156,7 +158,7 @@ class DataSheetStateTracker {
 
   /**
    * Get debug information for troubleshooting
-   * 
+   *
    * @param formulaId - Formula ID
    * @returns Debug information
    */
@@ -177,19 +179,26 @@ class DataSheetStateTracker {
 
     // Count rows with and without results
     const rowsWithResults = rows.filter((r) => r._result !== undefined).length;
-    const rowsWithoutResults = rows.filter((r) => r._result === undefined && r._isValid === true).length;
+    const rowsWithoutResults = rows.filter(
+      (r) => r._result === undefined && r._isValid === true
+    ).length;
 
     // Estimate pending calculations (simplified: updates after last calculation)
-    const lastCalcTime = calcs.length > 0 ? calcs[calcs.length - 1].timestamp : 0;
-    const pendingCalculations = updates.filter((u) => u.timestamp > lastCalcTime && u.isValid).length;
+    const lastCalcTime =
+      calcs.length > 0 ? calcs[calcs.length - 1].timestamp : 0;
+    const pendingCalculations = updates.filter(
+      (u) => u.timestamp > lastCalcTime && u.isValid
+    ).length;
 
     return {
       hasUpdates: updates.length > 0,
       hasCalculations: calcs.length > 0,
       updateCount: updates.length,
       calculationCount: calcs.length,
-      lastUpdateTime: updates.length > 0 ? updates[updates.length - 1].timestamp : undefined,
-      lastCalculationTime: calcs.length > 0 ? calcs[calcs.length - 1].timestamp : undefined,
+      lastUpdateTime:
+        updates.length > 0 ? updates[updates.length - 1].timestamp : undefined,
+      lastCalculationTime:
+        calcs.length > 0 ? calcs[calcs.length - 1].timestamp : undefined,
       pendingCalculations,
       rowsWithResults,
       rowsWithoutResults,
@@ -199,4 +208,3 @@ class DataSheetStateTracker {
 
 // Export singleton instance
 export const dataSheetStateTracker = new DataSheetStateTracker();
-

@@ -16,7 +16,7 @@ export function StatusBar({
   database = "sqlite",
   result = "Result 1",
   rowCount = 1000,
-  executionTime = 0.045,
+  executionTime = 45,
   onDownload,
 }: StatusBarProps) {
   return (
@@ -43,7 +43,7 @@ export function StatusBar({
           </div>
           <div className="flex items-center gap-1.5">
             <RefreshCw className="h-3 w-3" />
-            <span>{executionTime} seconds</span>
+            <span>{executionTime || 0}ms</span>
           </div>
         </div>
       </div>

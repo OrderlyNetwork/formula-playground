@@ -13,6 +13,7 @@ import {
 } from "@tanstack/react-table";
 import { Card } from "@/components/ui/card";
 import { useFormulaStore } from "@/store/formulaStore";
+import { useCalculationStatusStore } from "@/store/calculationStatusStore";
 import type { FormulaDefinition, FormulaScalar } from "@/types/formula";
 import {
   flattenFormulaInputs,
@@ -42,6 +43,8 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
 }) => {
   const { currentInputs, updateInputAt, tsResult, loading, error } =
     useFormulaStore();
+
+  const { updateMetrics } = useCalculationStatusStore();
 
   const [rows, setRows] = React.useState<TableRow[]>([]);
   const flattenedPaths = useMemo(() => {
@@ -246,6 +249,29 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
       }
     }
   }, [formula, rows, triggerRowCalculation]);
+
+  // Calculate and update global execution time data
+  useEffect(() => {
+    if (formula && rows.length > 0) {
+      const calculatedRows = rows.filter(
+        (row) => row._executionTime !== undefined
+      );
+      const totalTime = calculatedRows.reduce(
+        (sum, row) => sum + (row._executionTime || 0),
+        0
+      );
+      const averageTime =
+        calculatedRows.length > 0 ? totalTime / calculatedRows.length : 0;
+
+      // Update global store
+      updateMetrics(formula.id, {
+        totalTime,
+        averageTime,
+        calculatedRows: calculatedRows.length,
+        totalRows: rows.length,
+      });
+    }
+  }, [rows, formula, updateMetrics]);
 
   // Handle cell updates with debounced automatic calculation
   const handleCellUpdate = useCallback(
@@ -637,7 +663,7 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="h-full flex flex-col">
       {/* Header */}
       {/* <div className="flex items-center justify-between">
         <div>
@@ -659,8 +685,8 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
       </div> */}
 
       {/* Table */}
-      <div className="overflow-hidden w-full">
-        <div className="overflow-x-auto" style={{ maxHeight: "70vh" }}>
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full overflow-auto">
           {/* Div-based headless table layout */}
           <div
             role="table"
@@ -816,7 +842,7 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
 
       {/* Empty state */}
       {rows.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
+        <div className="flex-1 flex items-center justify-center text-gray-500">
           No test cases. Click "Add Row" to create your first test case.
         </div>
       )}

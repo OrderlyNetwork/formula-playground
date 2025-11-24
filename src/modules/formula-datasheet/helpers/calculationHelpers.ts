@@ -103,9 +103,7 @@ export const performRowCalculation = async (
 /**
  * Type for row update function
  */
-export type RowUpdater = (
-  updater: (rows: TableRow[]) => TableRow[]
-) => void;
+export type RowUpdater = (updater: (rows: TableRow[]) => TableRow[]) => void;
 
 /**
  * Updates a specific row with calculation results
@@ -168,4 +166,3 @@ export const updateRowData = (
     })
   );
 };
-

@@ -268,21 +268,20 @@ export function generateTableColumns(
       cell: ({ row }) => {
         const error = row.original._error;
         const result = row.original._result;
-        const executionTime = row.original._executionTime;
 
         if (error) {
-          return <div className="text-red-600 text-sm">Error: {error}</div>;
+          return (
+            <div
+              className="text-red-600 text-sm whitespace-nowrap px-2 overflow-hidden overflow-ellipsis"
+              style={{ textOverflow: "ellipsis" }}
+            >
+              Error: {error}
+            </div>
+          );
         }
 
         if (result !== undefined) {
-          return (
-            <div className="text-sm px-2">
-              <div className="font-mono">{String(result)}</div>
-              {executionTime && (
-                <div className="text-gray-500 text-xs">{executionTime}ms</div>
-              )}
-            </div>
-          );
+          return <div className="text-sm px-2 font-mono">{String(result)}</div>;
         }
 
         return <div className="text-gray-400 text-sm px-2">-</div>;

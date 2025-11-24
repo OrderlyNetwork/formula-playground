@@ -21,7 +21,7 @@ export class SyncFormulaExecutor {
   /**
    * Determine the appropriate engine for a formula based on its configuration
    * Priority: localNpmInfo (if enabled) -> jsdelivrInfo (if enabled) -> specified engine -> "ts"
-   * 
+   *
    * @param formula - Formula definition
    * @param specifiedEngine - Optional explicitly specified engine
    * @returns Selected engine type
@@ -53,7 +53,7 @@ export class SyncFormulaExecutor {
   /**
    * Execute a formula synchronously (TS, Local NPM, or Rust - Rust will be added in Phase 2)
    * Engine can be auto-detected based on formula configuration if not specified
-   * 
+   *
    * @param formula - Formula definition to execute
    * @param inputs - Input values for the formula
    * @param engine - Optional engine type to use
@@ -82,4 +82,3 @@ export class SyncFormulaExecutor {
     }
   }
 }
-

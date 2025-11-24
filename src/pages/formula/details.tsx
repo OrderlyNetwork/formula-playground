@@ -10,6 +10,7 @@ import { StatusBar } from "../datasheet/components/StatusBar";
 import type { TabItem, QueryResult } from "../datasheet/types";
 import { useFormulaStore } from "@/store/formulaStore";
 import { useFormulaTabStore } from "@/store/formulaTabStore";
+import { useCalculationStatusStore } from "@/store/calculationStatusStore";
 import { useParams, useNavigate } from "react-router";
 import { useEffect, useMemo } from "react";
 import { FormulaDocs } from "../playground/components/FormulaDocs";
@@ -93,6 +94,9 @@ export const FormulaDetails = () => {
   // Access formula store
   const { getFormulaDefinition, loadFormulasFromAllSources } =
     useFormulaStore();
+
+  // Access global calculation status store
+  const { getMetrics } = useCalculationStatusStore();
 
   // Access tab store
   const { tabs, activeTabId, addTab, closeTab, setActiveTab } =
@@ -235,7 +239,11 @@ export const FormulaDetails = () => {
           </ResizablePanelGroup>
 
           {/* Status Bar */}
-          <StatusBar onDownload={handleDownloadResults} />
+          <StatusBar
+            onDownload={handleDownloadResults}
+            executionTime={getMetrics(activeTabId || "")?.averageTime || 0}
+            rowCount={getMetrics(activeTabId || "")?.calculatedRows || 0}
+          />
         </>
       )}
     </div>

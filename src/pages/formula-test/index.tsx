@@ -13,6 +13,7 @@ import type { QueryResult, TabItem } from "../datasheet/types";
 import { FormulaDataSheet } from "@/modules/formula-datasheet/formulaDataSheet";
 import { useParams } from "react-router";
 import { useFormulaStore } from "@/store/formulaStore";
+import { useCalculationStatusStore } from "@/store/calculationStatusStore";
 
 // Mock Data
 const results: QueryResult[] = [
@@ -59,6 +60,9 @@ export function FormulaTestPage() {
   // Access formula store
   const { getFormulaDefinition } = useFormulaStore();
 
+  // Access global calculation status store
+  const { getMetrics } = useCalculationStatusStore();
+
   // Get current formula definition based on URL parameter
   const currentFormula = id ? getFormulaDefinition(id) : undefined;
 
@@ -79,7 +83,6 @@ export function FormulaTestPage() {
       {/* Tabs */}
       <TabBar
         tabs={tabs}
-        onAddTab={handleAddTab}
         onCloseTab={handleCloseTab}
       />
 
@@ -99,7 +102,11 @@ export function FormulaTestPage() {
       </ResizablePanelGroup>
 
       {/* Status Bar */}
-      <StatusBar onDownload={handleDownloadResults} />
+      <StatusBar
+        onDownload={handleDownloadResults}
+        executionTime={getMetrics(id || "")?.averageTime || 0}
+        rowCount={getMetrics(id || "")?.calculatedRows || 0}
+      />
     </div>
   );
 }
