@@ -14,7 +14,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, tables, onToggle }: SidebarProps) {
-  const [activePanel, setActivePanel] = useState<ActivePanel>('formulas');
+  const [activePanel, setActivePanel] = useState<ActivePanel>("formulas");
 
   const togglePanel = (panel: ActivePanel) => {
     setActivePanel(activePanel === panel ? null : panel);
@@ -45,10 +45,14 @@ export function Sidebar({ isOpen, tables, onToggle }: SidebarProps) {
       </div>
 
       {/* Sidebar Content */}
-      <div className={cn(
-        "bg-gray-50 transition-all duration-200",
-        isOpen && activePanel ? "w-64 opacity-100 translate-x-0" : "w-0 opacity-0 -translate-x-2 overflow-hidden"
-      )}>
+      <div
+        className={cn(
+          "bg-gray-50 transition-all duration-200 border-r border-gray-200",
+          isOpen && activePanel
+            ? "w-64 opacity-100 translate-x-0"
+            : "w-0 opacity-0 -translate-x-2 overflow-hidden"
+        )}
+      >
         <div className="flex flex-1 flex-col min-w-0 h-full">
           {ActivePanelComponent}
         </div>

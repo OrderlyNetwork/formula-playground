@@ -1,6 +1,5 @@
 import { memo } from "react";
 import type { FactorType, FormulaScalar } from "@/types/formula";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -8,7 +7,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { validateValueForFactorType, getInputDisplayType, getEnumOptions } from "../utils/nodeTypes";
+import {
+  validateValueForFactorType,
+  getInputDisplayType,
+  getEnumOptions,
+} from "../utils/nodeTypes";
+import { cn } from "@/lib/utils";
 
 interface TypeAwareInputProps {
   value: FormulaScalar;
@@ -77,7 +81,6 @@ export const TypeAwareInput = memo(function TypeAwareInput({
     return String(value ?? "");
   };
 
-  
   // Handle enum types with select
   if (displayType === "select") {
     return (
@@ -100,15 +103,14 @@ export const TypeAwareInput = memo(function TypeAwareInput({
     );
   }
 
-  // Handle primitive types with input
   return (
-    <Input
-      type={displayType}
+    <input
+      type="text"
       value={getDisplayValue()}
       onChange={(e) => handleChange(e.target.value)}
       disabled={disabled}
-      className={className}
-      placeholder={`Enter ${label || factorType.baseType}`}
+      className={cn(className, "focus-visible:outline-none")}
+      // placeholder={`Enter ${label || factorType.baseType}`}
       onMouseDown={onMouseDown}
     />
   );

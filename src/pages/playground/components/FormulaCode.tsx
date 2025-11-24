@@ -52,7 +52,7 @@ export function FormulaCode({ formula: propFormula }: FormulaCodeProps) {
           Select a formula to view implementation
         </div>
       ) : code ? (
-        <div className="h-full w-full overflow-hidden bg-white">
+        <div className="h-full w-full overflow-hidden bg-white pt-2">
           <Editor
             height="100%"
             value={code}

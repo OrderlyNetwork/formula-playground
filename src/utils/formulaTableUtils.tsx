@@ -182,6 +182,17 @@ export function generateTableColumns(
     //     </div>
     //   ),
     // },
+    {
+      id: "index",
+      header: "#",
+      size: 48,
+      enablePinning: true,
+      cell: ({ row }) => (
+        <div className="text-xs text-gray-500 text-right pr-2 w-full">
+          {row.index + 1}
+        </div>
+      ),
+    },
     // Data columns
     ...flattenedPaths.map(
       (path): ColumnDef<TableRow> => ({
@@ -262,7 +273,7 @@ export function generateTableColumns(
 
         if (result !== undefined) {
           return (
-            <div className="text-sm">
+            <div className="text-sm px-2">
               <div className="font-mono">{String(result)}</div>
               {executionTime && (
                 <div className="text-gray-500 text-xs">{executionTime}ms</div>
@@ -271,7 +282,7 @@ export function generateTableColumns(
           );
         }
 
-        return <div className="text-gray-400 text-sm">-</div>;
+        return <div className="text-gray-400 text-sm px-2">-</div>;
       },
     },
   ];
@@ -309,7 +320,7 @@ const DefaultCellRenderer: React.FC<DefaultCellRendererProps> = ({
       value={value}
       factorType={factorType}
       onChange={onUpdate}
-      className="w-full px-2 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-500"
+      className="w-full px-2 py-1 text-sm border-0 rounded-none"
     />
   );
 };

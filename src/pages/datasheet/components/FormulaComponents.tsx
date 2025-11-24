@@ -80,9 +80,7 @@ export function FormulaItem({ formula }: { formula: Formula }) {
     <div
       className={cn(
         "group flex items-center justify-between px-2 py-1.5 rounded cursor-pointer text-xs",
-        formula.active
-          ? "bg-[#37373d] text-white"
-          : "text-zinc-300 hover:bg-[#2a2d2e] hover:text-zinc-100"
+        formula.active ? "bg-[#37373d] text-white" : " hover:bg-gray-200"
       )}
       onClick={handleFormulaClick}
     >

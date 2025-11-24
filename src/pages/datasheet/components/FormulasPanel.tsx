@@ -20,7 +20,10 @@ export function LocalFormulasPanel() {
 
   // Debug: log formula definitions when they change
   useEffect(() => {
-    console.log("LocalFormulasPanel: Formula definitions loaded:", formulaDefinitions);
+    console.log(
+      "LocalFormulasPanel: Formula definitions loaded:",
+      formulaDefinitions
+    );
   }, [formulaDefinitions]);
 
   const { pinnedFormulas, unpinnedFormulas, totalFilteredFormulas } =
@@ -70,7 +73,7 @@ export function LocalFormulasPanel() {
     }, [searchQuery, isPinned, formulaDefinitions]);
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full ">
       {/* Header */}
       <div className="p-3 border-b border-gray-200">
         <h3 className="font-medium text-gray-900 text-sm mb-3">Formulas</h3>
@@ -105,7 +108,8 @@ export function LocalFormulasPanel() {
       <div className="px-2.5 py-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-600 shrink-0">
         {searchQuery.trim() ? (
           <>
-            Showing {totalFilteredFormulas} / {formulaDefinitions.length} formulas
+            Showing {totalFilteredFormulas} / {formulaDefinitions.length}{" "}
+            formulas
           </>
         ) : (
           <>Total {formulaDefinitions.length} formulas</>
