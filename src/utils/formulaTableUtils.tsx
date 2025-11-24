@@ -217,7 +217,8 @@ export function generateTableColumns(
             </div>
           );
         },
-        accessorKey: `data.${path.path}`,
+        // Use accessorFn instead of accessorKey to safely access deeply nested values
+        accessorFn: (row) => getNestedValue(row.data, path.path),
         size: path.factorType.baseType === "number" ? 120 : 200,
         cell: ({ row, getValue, table }) => {
           const value = getValue() as FormulaScalar;

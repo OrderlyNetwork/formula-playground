@@ -41,19 +41,33 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   formula,
   className = "",
 }) => {
-  const { currentInputs, updateInputAt, tsResult, loading, error } =
-    useFormulaStore();
+  // Optimize store selectors to prevent unnecessary re-renders
+  // Only select the values we actually need, not the entire store
+  const currentInputs = useFormulaStore((state) => state.currentInputs);
+  const updateInputAt = useFormulaStore((state) => state.updateInputAt);
+  const tsResult = useFormulaStore((state) => state.tsResult);
+  const loading = useFormulaStore((state) => state.loading);
+  const error = useFormulaStore((state) => state.error);
 
-  const { updateMetrics } = useCalculationStatusStore();
+  const renderCount = useRef(0);
+
+  // Use stable reference for updateMetrics
+  const updateMetrics = useCalculationStatusStore(
+    (state) => state.updateMetrics
+  );
 
   const [rows, setRows] = React.useState<TableRow[]>([]);
+
+  // Memoize flattenedPaths based on formula ID to prevent unnecessary recalculation
+  // Formula objects are immutable, so ID is sufficient for change detection
   const flattenedPaths = useMemo(() => {
     if (!formula) {
       return [];
     }
 
     return flattenFormulaInputs(formula.inputs);
-  }, [formula]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formula?.id]);
   const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({
     right: ["result"], // Pin the Result column to the right
     left: ["index"], // Pin the Index column to the left
@@ -69,10 +83,8 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   // Keep a ref to the latest rows state for accessing in async callbacks
   const rowsRef = useRef<TableRow[]>(rows);
 
-  // Sync rowsRef with rows state
-  useEffect(() => {
-    rowsRef.current = rows;
-  }, [rows]);
+  // Sync rowsRef immediately (no useEffect needed for simple ref updates)
+  rowsRef.current = rows;
 
   // Track the previous formula ID to detect formula changes
   const previousFormulaIdRef = useRef<string | undefined>(undefined);
@@ -186,78 +198,128 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   );
 
   // Record row states and auto-trigger calculation for valid rows without results
+  // Use a serialized version of rows to prevent infinite loops
+  const rowsSerializedRef = useRef<string>("");
+  const prevRowsLengthRef = useRef<number>(0);
+
   useEffect(() => {
-    if (formula && rows.length > 0) {
-      dataSheetStateTracker.recordRowStates(formula.id, rows);
+    if (!formula || rows.length === 0) return;
 
-      const debugInfo = dataSheetStateTracker.getDebugInfo(formula.id);
+    // Only process if rows actually changed (not just reference)
+    const currentSerialized = JSON.stringify(
+      rows.map((r) => ({
+        id: r.id,
+        isValid: r._isValid,
+        hasResult: r._result !== undefined,
+        dataKeys: Object.keys(r.data),
+      }))
+    );
 
-      // Auto-trigger calculation for valid rows without results
-      // Only trigger if:
-      // 1. There are no pending calculations
-      // 2. No recent cell updates (to avoid duplicate triggers)
-      // 3. Row hasn't been auto-calculated before (prevent infinite loop)
-      const hasRecentUpdates =
-        debugInfo.lastUpdateTime &&
-        Date.now() - debugInfo.lastUpdateTime < 1000; // Within last second
+    // Skip if rows haven't meaningfully changed
+    if (
+      currentSerialized === rowsSerializedRef.current &&
+      rows.length === prevRowsLengthRef.current
+    ) {
+      return;
+    }
 
-      if (
-        debugInfo.rowsWithoutResults > 0 &&
-        !hasRecentUpdates &&
-        debugInfo.pendingCalculations === 0
-      ) {
-        // Find rows that are valid but don't have results
-        rows.forEach((row) => {
-          if (
-            row._isValid === true &&
-            row._result === undefined &&
-            Object.keys(row.data).length > 0 && // Has some data
-            !autoCalculatedRowsRef.current.has(row.id) // Not already auto-calculated
-          ) {
-            // Check if row has at least one non-empty value
-            const hasData = Object.values(row.data).some(
-              (val) => val !== "" && val !== null && val !== undefined
-            );
+    rowsSerializedRef.current = currentSerialized;
+    prevRowsLengthRef.current = rows.length;
 
-            if (hasData) {
-              // Trigger calculation after a short delay to avoid race conditions
-              setTimeout(() => {
-                triggerRowCalculation(row.id, row.data);
-              }, 100);
-            }
+    // Record row states
+    dataSheetStateTracker.recordRowStates(formula.id, rows);
+
+    const debugInfo = dataSheetStateTracker.getDebugInfo(formula.id);
+
+    // Auto-trigger calculation for valid rows without results
+    // Only trigger if:
+    // 1. There are no pending calculations
+    // 2. No recent cell updates (to avoid duplicate triggers)
+    // 3. Row hasn't been auto-calculated before (prevent infinite loop)
+    const hasRecentUpdates =
+      debugInfo.lastUpdateTime && Date.now() - debugInfo.lastUpdateTime < 1000; // Within last second
+
+    if (
+      debugInfo.rowsWithoutResults > 0 &&
+      !hasRecentUpdates &&
+      debugInfo.pendingCalculations === 0
+    ) {
+      // Find rows that are valid but don't have results
+      rows.forEach((row) => {
+        if (
+          row._isValid === true &&
+          row._result === undefined &&
+          Object.keys(row.data).length > 0 && // Has some data
+          !autoCalculatedRowsRef.current.has(row.id) // Not already auto-calculated
+        ) {
+          // Check if row has at least one non-empty value
+          const hasData = Object.values(row.data).some(
+            (val) => val !== "" && val !== null && val !== undefined
+          );
+
+          if (hasData) {
+            // Trigger calculation after a short delay to avoid race conditions
+            setTimeout(() => {
+              triggerRowCalculation(row.id, row.data);
+            }, 100);
           }
-        });
-      }
+        }
+      });
     }
   }, [formula, rows, triggerRowCalculation]);
 
   // Calculate and update global execution time data
-  useEffect(() => {
-    if (formula && rows.length > 0) {
-      const calculatedRows = rows.filter(
-        (row) => row._executionTime !== undefined
-      );
-      const totalTime = calculatedRows.reduce(
-        (sum, row) => sum + (row._executionTime || 0),
-        0
-      );
-      const averageTime =
-        calculatedRows.length > 0 ? totalTime / calculatedRows.length : 0;
+  // Memoize metrics to prevent unnecessary updates
+  const metricsData = useMemo(() => {
+    if (!formula || rows.length === 0) return null;
 
-      // Update global store
-      updateMetrics(formula.id, {
-        totalTime,
-        averageTime,
-        calculatedRows: calculatedRows.length,
-        totalRows: rows.length,
-      });
-    }
-  }, [rows, formula, updateMetrics]);
+    const calculatedRows = rows.filter(
+      (row) => row._executionTime !== undefined
+    );
+    const totalTime = calculatedRows.reduce(
+      (sum, row) => sum + (row._executionTime || 0),
+      0
+    );
+    const averageTime =
+      calculatedRows.length > 0 ? totalTime / calculatedRows.length : 0;
+
+    return {
+      totalTime,
+      averageTime,
+      calculatedRows: calculatedRows.length,
+      totalRows: rows.length,
+    };
+  }, [formula, rows]);
+
+  // Track previous metrics to avoid redundant updates
+  const prevMetricsRef = useRef<string>("");
+
+  useEffect(() => {
+    if (!formula || !metricsData) return;
+
+    const metricsStr = JSON.stringify(metricsData);
+    if (metricsStr === prevMetricsRef.current) return;
+
+    prevMetricsRef.current = metricsStr;
+    updateMetrics(formula.id, metricsData);
+  }, [formula, metricsData, updateMetrics]);
+
+  // Store formula and updateInputAt in refs to avoid recreating handleCellUpdate
+  const formulaRef = useRef<FormulaDefinition | undefined>(formula);
+  const updateInputAtRef = useRef(updateInputAt);
+
+  // Update refs when values change
+  useEffect(() => {
+    formulaRef.current = formula;
+    updateInputAtRef.current = updateInputAt;
+  }, [formula, updateInputAt]);
 
   // Handle cell updates with debounced automatic calculation
+  // Stable callback that doesn't change on every render
   const handleCellUpdate = useCallback(
     async (rowId: string, path: string, value: FormulaScalar) => {
-      if (!formula) return;
+      const currentFormula = formulaRef.current;
+      if (!currentFormula) return;
 
       // Clear existing debounce timer for this row
       const existingTimer = debounceTimersRef.current.get(rowId);
@@ -281,11 +343,11 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
             const updatedData = { ...row.data, [path]: value };
             const validation = validateRow(
               { ...row, data: updatedData },
-              formula
+              currentFormula
             );
 
             // Record cell update event
-            dataSheetStateTracker.recordCellUpdate(formula.id, {
+            dataSheetStateTracker.recordCellUpdate(currentFormula.id, {
               timestamp: Date.now(),
               rowId,
               path,
@@ -315,12 +377,12 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
           if (updatedFirstRow) {
             const reconstructedInputs = reconstructFormulaInputs(
               updatedFirstRow.data,
-              formula
+              currentFormula
             );
 
             // Update each input individually to trigger the store's update logic
             for (const [key, val] of Object.entries(reconstructedInputs)) {
-              updateInputAt(key, val);
+              updateInputAtRef.current(key, val);
             }
           }
         }
@@ -330,6 +392,7 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
 
       // Set up debounced calculation for the updated row
       const timerId = window.setTimeout(async () => {
+        const formula = formulaRef.current;
         if (!formula) {
           debounceTimersRef.current.delete(rowId);
           return;
@@ -371,7 +434,7 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
       // Store timer ID for this row
       debounceTimersRef.current.set(rowId, timerId);
     },
-    [formula, updateInputAt]
+    [] // No dependencies - use refs instead
   );
 
   // Cleanup debounce timers on unmount
@@ -396,14 +459,15 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
    */
   const updateRowData = useCallback(
     (rowId: string, data: Record<string, FormulaScalar>) => {
-      if (!formula) {
+      const currentFormula = formulaRef.current;
+      if (!currentFormula) {
         return;
       }
 
       setRows((prevRows) =>
         prevRows.map((row) => {
           if (row.id === rowId) {
-            const validation = validateRow({ ...row, data }, formula);
+            const validation = validateRow({ ...row, data }, currentFormula);
             return {
               ...row,
               data,
@@ -417,7 +481,7 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
         })
       );
     },
-    [formula]
+    [] // Use ref instead
   );
 
   // Handle row deletion
@@ -428,14 +492,15 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   // Handle row duplication
   const duplicateRow = useCallback(
     (rowId: string) => {
-      if (!formula) return;
+      const currentFormula = formulaRef.current;
+      if (!currentFormula) return;
 
       setRows((prevRows) => {
         const rowToDuplicate = prevRows.find((row) => row.id === rowId);
         if (!rowToDuplicate) return prevRows;
 
         // Get stable row ID for the new row
-        const stableRowId = getStableRowId(formula.id, prevRows.length);
+        const stableRowId = getStableRowId(currentFormula.id, prevRows.length);
 
         const newRow: TableRow = {
           ...rowToDuplicate,
@@ -448,25 +513,26 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
         return [...prevRows, newRow];
       });
     },
-    [formula, getStableRowId]
+    [getStableRowId] // getStableRowId is stable
   );
 
   // Add new row
   const addNewRow = useCallback(() => {
-    if (!formula) return;
+    const currentFormula = formulaRef.current;
+    if (!currentFormula) return;
 
     setRows((prev) => {
       // Get stable row ID for the new row
-      const stableRowId = getStableRowId(formula.id, prev.length);
+      const stableRowId = getStableRowId(currentFormula.id, prev.length);
 
       const newRow = {
-        ...createInitialRow(formula, prev.length),
+        ...createInitialRow(currentFormula, prev.length),
         id: stableRowId,
       };
 
       return [...prev, newRow];
     });
-  }, [formula, getStableRowId]);
+  }, [getStableRowId]); // getStableRowId is stable
 
   /**
    * Execute formula for all valid rows
@@ -477,12 +543,15 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
    * Now each row calculation is independent and results are correctly associated
    */
   const executeAllRows = useCallback(async () => {
-    if (!formula) {
+    const currentFormula = formulaRef.current;
+    const currentRows = rowsRef.current;
+
+    if (!currentFormula) {
       return;
     }
 
     // Filter valid rows
-    const validRows = rows.filter((row) => row._isValid);
+    const validRows = currentRows.filter((row) => row._isValid);
 
     if (validRows.length === 0) {
       return;
@@ -494,7 +563,7 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
       const result = await performRowCalculation(
         row.id,
         row.data,
-        formula,
+        currentFormula,
         "manual"
       );
       return { rowId: row.id, result };
@@ -526,7 +595,7 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
         return row;
       });
     });
-  }, [formula, rows]);
+  }, []); // Use refs for current values
 
   // Custom cell renderer
   const renderCell = useCallback(
@@ -549,12 +618,15 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
     []
   );
 
-  // Generate columns dynamically
+  // Generate columns dynamically - only when flattenedPaths change
+  // handleCellUpdate is stable (no deps), so this won't recreate unnecessarily
+  // formula is accessed for null check but columns only depend on flattenedPaths
   const columns = useMemo(() => {
     if (!formula) return [];
 
     return generateTableColumns(flattenedPaths, handleCellUpdate);
-  }, [formula, flattenedPaths, handleCellUpdate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flattenedPaths, handleCellUpdate]);
 
   // Table setup
   const table = useReactTable({
@@ -576,6 +648,8 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
       loading,
     },
   });
+
+  console.log(`-------------${renderCount.current++}-------------`);
 
   if (!formula) {
     return (

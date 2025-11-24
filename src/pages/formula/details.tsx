@@ -188,11 +188,6 @@ export const FormulaDetails = () => {
     }));
   }, [tabs, activeTabId]);
 
-  console.log("Formula ID from URL:", id);
-  console.log("Active tab ID:", activeTabId);
-  console.log("Current formula:", currentFormula);
-  console.log("All tabs:", tabs);
-
   // 判断是否应该显示内容：有活动标签且公式数据已加载
   const shouldShowContent = tabs.length > 0 && activeTabId && currentFormula;
 
