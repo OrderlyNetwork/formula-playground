@@ -222,23 +222,26 @@ export function generateTableColumns(
         cell: ({ row, getValue, table }) => {
           const value = getValue() as FormulaScalar;
           const meta = table.options.meta as any;
+          // Use row.original.id for actual data ID, not row.id (table index)
+          const actualRowId = row.original.id;
 
           return (
             meta?.renderCell?.({
               value,
-              rowId: row.id,
+              rowId: actualRowId,
               path: path.path,
               factorType: path.factorType,
               onUpdate: (newValue: FormulaScalar) => {
                 // Update the data in the row
                 const currentData = { ...row.original.data };
+
                 setNestedValue(currentData, path.path, newValue);
 
                 // Update table data
-                meta?.updateRowData?.(row.id, currentData);
+                meta?.updateRowData?.(actualRowId, currentData);
 
                 // Call external update handler
-                onCellUpdate?.(row.id, path.path, newValue);
+                onCellUpdate?.(actualRowId, path.path, newValue);
               },
             }) || (
               <DefaultCellRenderer
@@ -247,8 +250,8 @@ export function generateTableColumns(
                 onUpdate={(newValue) => {
                   const currentData = { ...row.original.data };
                   setNestedValue(currentData, path.path, newValue);
-                  meta?.updateRowData?.(row.id, currentData);
-                  onCellUpdate?.(row.id, path.path, newValue);
+                  meta?.updateRowData?.(actualRowId, currentData);
+                  onCellUpdate?.(actualRowId, path.path, newValue);
                 }}
               />
             )
@@ -299,7 +302,6 @@ import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-  TooltipProvider,
   TooltipArrow,
 } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
@@ -401,15 +403,115 @@ export function getNestedValue(
 
 /**
  * Convert flattened data back to formula input format
+ * Uses formula definition to ensure correct structure and handle missing fields
+ *
+ * Strategy:
+ * 1. First, use setNestedValue to build structure from flattened paths (handles arrays correctly)
+ * 2. Then, if formula is provided, ensure all required fields from formula definition are present
  */
 export function reconstructFormulaInputs(
-  flattenedData: Record<string, FormulaScalar>
+  flattenedData: Record<string, FormulaScalar>,
+  formula?: FormulaDefinition
 ): Record<string, FormulaScalar> {
   const result: Record<string, FormulaScalar> = {};
 
-  // Create a properly nested object from flattened paths
+  // Create a map of path to expected type for proper type conversion
+  const pathTypeMap = new Map<string, FactorType>();
+  if (formula) {
+    const flattenedPaths = flattenFormulaInputs(formula.inputs);
+    flattenedPaths.forEach((fp) => {
+      pathTypeMap.set(fp.path, fp.factorType);
+    });
+  }
+
+  // Step 1: Build structure from flattened paths (handles arrays and nested objects)
   for (const [path, value] of Object.entries(flattenedData)) {
-    setNestedValue(result, path, value);
+    // Skip undefined and null, but allow empty string (for clearing fields)
+    if (value === undefined || value === null) {
+      continue;
+    }
+
+    // Convert value to the correct type if formula type info is available
+    let convertedValue = value;
+    const factorType = pathTypeMap.get(path);
+
+    if (factorType && value !== "") {
+      // Convert string numbers to actual numbers for number types
+      if (factorType.baseType === "number" && typeof value === "string") {
+        const numValue = Number(value);
+        if (!isNaN(numValue)) {
+          convertedValue = numValue;
+        }
+      }
+      // Convert string booleans to actual booleans for boolean types
+      else if (factorType.baseType === "boolean" && typeof value === "string") {
+        convertedValue = value === "true" || value === "1";
+      }
+    }
+
+    // Only set non-empty values to avoid overwriting with empty strings
+    // But if it's an empty string and the field needs to be cleared, set it
+    if (convertedValue !== "") {
+      setNestedValue(result, path, convertedValue);
+    }
+  }
+
+  // Step 2: If formula is provided, ensure all required fields are present
+  if (formula) {
+    for (const input of formula.inputs) {
+      // Ensure top-level input key exists
+      if (!(input.key in result)) {
+        if (input.type === "object" && input.factorType.properties) {
+          result[input.key] = {};
+        } else if (input.factorType?.array) {
+          result[input.key] = [];
+        } else {
+          // Set default based on type
+          if (input.default !== undefined) {
+            result[input.key] = input.default;
+          } else if (input.type === "number") {
+            result[input.key] = input.factorType?.nullable ? null : 0;
+          } else if (input.type === "boolean") {
+            result[input.key] = false;
+          } else {
+            result[input.key] = input.factorType?.nullable ? null : "";
+          }
+        }
+      }
+
+      // For object types, ensure all properties exist
+      if (input.type === "object" && input.factorType.properties) {
+        const obj = result[input.key] as Record<string, FormulaScalar>;
+        if (typeof obj === "object" && obj !== null && !Array.isArray(obj)) {
+          for (const prop of input.factorType.properties) {
+            const propPath = `${input.key}.${prop.key}`;
+            // Check if property exists in flattened data or in the object
+            if (!(prop.key in obj)) {
+              // Try to get from flattened data first
+              const flattenedValue = flattenedData[propPath];
+              if (
+                flattenedValue !== undefined &&
+                flattenedValue !== null &&
+                flattenedValue !== ""
+              ) {
+                obj[prop.key] = flattenedValue;
+              } else if (prop.default !== undefined) {
+                obj[prop.key] = prop.default;
+              } else {
+                // Use appropriate default
+                if (prop.type === "number") {
+                  obj[prop.key] = prop.factorType?.nullable ? null : 0;
+                } else if (prop.type === "boolean") {
+                  obj[prop.key] = false;
+                } else {
+                  obj[prop.key] = prop.factorType?.nullable ? null : "";
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   return result;
@@ -469,7 +571,7 @@ export function validateRow(
   formula: FormulaDefinition
 ): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
-  const inputs = reconstructFormulaInputs(row.data);
+  const inputs = reconstructFormulaInputs(row.data, formula);
 
   // Validate against formula input structure
   for (const input of formula.inputs) {

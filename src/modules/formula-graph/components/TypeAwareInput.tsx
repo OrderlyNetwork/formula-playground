@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useRef, useState, useEffect } from "react";
 import type { FactorType, FormulaScalar } from "@/types/formula";
 import {
   Select,
@@ -25,8 +25,9 @@ interface TypeAwareInputProps {
 }
 
 /**
- * TypeAwareInput - Input component for primitive types (string, number, boolean)
+ * TypeAwareInput - Uncontrolled input component for primitive types (string, number, boolean)
  * Arrays are handled by ArrayNode, objects are handled by ObjectNode
+ * Performance optimized: only triggers onChange on blur
  */
 export const TypeAwareInput = memo(function TypeAwareInput({
   value,
@@ -39,8 +40,29 @@ export const TypeAwareInput = memo(function TypeAwareInput({
 }: TypeAwareInputProps) {
   const displayType = getInputDisplayType(factorType);
   const enumOptions = getEnumOptions(factorType);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleChange = (newValue: string) => {
+  // Track select value internally for uncontrolled behavior
+  const [selectValue, setSelectValue] = useState<string>(() => {
+    if (factorType.baseType === "boolean") {
+      return String(Boolean(value));
+    }
+    return String(value ?? "");
+  });
+  const [isSelectOpen, setIsSelectOpen] = useState(false);
+
+  // Update select value when external value changes
+  useEffect(() => {
+    if (displayType === "select") {
+      const newValue =
+        factorType.baseType === "boolean"
+          ? String(Boolean(value))
+          : String(value ?? "");
+      setSelectValue(newValue);
+    }
+  }, [value, factorType.baseType, displayType]);
+
+  const parseAndValidate = (newValue: string): FormulaScalar | null => {
     let parsedValue: FormulaScalar = newValue;
 
     // Parse based on base type
@@ -66,12 +88,38 @@ export const TypeAwareInput = memo(function TypeAwareInput({
     // Validate the parsed value
     const validation = validateValueForFactorType(parsedValue, factorType);
     if (validation.isValid) {
-      onChange(parsedValue);
+      return parsedValue;
     }
-    // Could add error state display here if needed
+    return null;
   };
 
-  const getDisplayValue = (): string => {
+  const handleBlur = () => {
+    if (!inputRef.current) return;
+
+    const newValue = inputRef.current.value;
+    const parsedValue = parseAndValidate(newValue);
+
+    if (parsedValue !== null) {
+      onChange(parsedValue);
+    }
+  };
+
+  const handleSelectChange = (newValue: string) => {
+    setSelectValue(newValue);
+  };
+
+  const handleSelectOpenChange = (open: boolean) => {
+    // When select closes, trigger onChange if value changed
+    if (!open && isSelectOpen) {
+      const parsedValue = parseAndValidate(selectValue);
+      if (parsedValue !== null) {
+        onChange(parsedValue);
+      }
+    }
+    setIsSelectOpen(open);
+  };
+
+  const getDefaultValue = (): string => {
     if (factorType.baseType === "boolean") {
       return String(Boolean(value));
     }
@@ -85,8 +133,9 @@ export const TypeAwareInput = memo(function TypeAwareInput({
   if (displayType === "select") {
     return (
       <Select
-        value={getDisplayValue()}
-        onValueChange={handleChange}
+        value={selectValue}
+        onValueChange={handleSelectChange}
+        onOpenChange={handleSelectOpenChange}
         disabled={disabled}
       >
         <SelectTrigger className={className} onMouseDown={onMouseDown}>
@@ -105,9 +154,10 @@ export const TypeAwareInput = memo(function TypeAwareInput({
 
   return (
     <input
+      ref={inputRef}
       type="text"
-      value={getDisplayValue()}
-      onChange={(e) => handleChange(e.target.value)}
+      defaultValue={getDefaultValue()}
+      onBlur={handleBlur}
       disabled={disabled}
       className={cn(className, "focus-visible:outline-none")}
       // placeholder={`Enter ${label || factorType.baseType}`}

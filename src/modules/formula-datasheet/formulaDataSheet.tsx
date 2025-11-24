@@ -1,4 +1,10 @@
-import React, { useEffect, useCallback, useMemo, useState } from "react";
+import React, {
+  useEffect,
+  useCallback,
+  useMemo,
+  useState,
+  useRef,
+} from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -19,6 +25,11 @@ import {
 import { TypeAwareInput } from "@/modules/formula-graph/components/TypeAwareInput";
 import type { FactorType } from "@/types/formula";
 import { cn } from "@/lib/utils";
+import { dataSheetStateTracker } from "./services/dataSheetStateTracker";
+import {
+  performRowCalculation,
+  updateRowWithResult,
+} from "./helpers/calculationHelpers";
 
 interface FormulaDataSheetProps {
   formula?: FormulaDefinition;
@@ -29,14 +40,8 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   formula,
   className = "",
 }) => {
-  const {
-    currentInputs,
-    updateInputAt,
-    executeFormula,
-    tsResult,
-    loading,
-    error,
-  } = useFormulaStore();
+  const { currentInputs, updateInputAt, tsResult, loading, error } =
+    useFormulaStore();
 
   const [rows, setRows] = React.useState<TableRow[]>([]);
   const flattenedPaths = useMemo(() => {
@@ -51,14 +56,70 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
     left: ["index"], // Pin the Index column to the left
   });
 
-  // Initialize data when formula changes
+  // Debounce timers for automatic calculation (one per row)
+  const debounceTimersRef = useRef<Map<string, number>>(new Map());
+  const DEBOUNCE_DELAY_MS = 300;
+
+  // Track rows that have already been auto-calculated to prevent infinite loops
+  const autoCalculatedRowsRef = useRef<Set<string>>(new Set());
+
+  // Keep a ref to the latest rows state for accessing in async callbacks
+  const rowsRef = useRef<TableRow[]>(rows);
+
+  // Sync rowsRef with rows state
   useEffect(() => {
-    if (formula) {
+    rowsRef.current = rows;
+  }, [rows]);
+
+  // Track the previous formula ID to detect formula changes
+  const previousFormulaIdRef = useRef<string | undefined>(undefined);
+
+  // Store stable row IDs per formula to maintain consistency across formula switches
+  // Key: formulaId, Value: array of stable row IDs
+  const formulaRowIdsRef = useRef<Map<string, string[]>>(new Map());
+
+  /**
+   * Get or create a stable row ID for a formula and row index
+   * This ensures the same rowId is reused when switching back to a formula
+   */
+  const getStableRowId = useCallback(
+    (formulaId: string, rowIndex: number): string => {
+      if (!formulaRowIdsRef.current.has(formulaId)) {
+        formulaRowIdsRef.current.set(formulaId, []);
+      }
+
+      const rowIds = formulaRowIdsRef.current.get(formulaId)!;
+
+      // If we don't have a rowId for this index yet, create one
+      if (!rowIds[rowIndex]) {
+        rowIds[rowIndex] = `row-${formulaId}-${rowIndex}`;
+      }
+
+      return rowIds[rowIndex];
+    },
+    []
+  );
+
+  // Initialize data when formula changes (and only when formula changes)
+  useEffect(() => {
+    const formulaChanged = previousFormulaIdRef.current !== formula?.id;
+    previousFormulaIdRef.current = formula?.id;
+
+    if (formula && formulaChanged) {
+      console.log(
+        `[DataSheet] 🔄 Formula changed to ${formula.id}, reinitializing rows`
+      );
+      // Clear auto-calculated rows tracking when formula changes
+      autoCalculatedRowsRef.current.clear();
+
+      // Get stable row ID for this formula's first row
+      const stableRowId = getStableRowId(formula.id, 0);
+
       // Initialize with current inputs or create a default row
       if (Object.keys(currentInputs).length > 0) {
-        // Create a row from current inputs
+        // Create a row from current inputs with stable ID
         const initialRow: TableRow = {
-          id: `row-${Date.now()}-0`,
+          id: stableRowId,
           data: currentInputs,
           _result: tsResult?.outputs?.result,
           _executionTime: tsResult?.durationMs,
@@ -66,27 +127,178 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
           _isValid: true,
         };
         setRows([initialRow]);
+        console.log(
+          `[DataSheet] ✅ Initialized row with stable ID: ${stableRowId}`
+        );
+        // Record initial state
+        dataSheetStateTracker.recordRowStates(formula.id, [initialRow]);
       } else {
-        // Create a default row with empty values
-        const defaultRow = createInitialRow(formula, 0);
+        // Create a default row with empty values and stable ID
+        const defaultRow = {
+          ...createInitialRow(formula, 0),
+          id: stableRowId,
+        };
         setRows([defaultRow]);
+        console.log(
+          `[DataSheet] ✅ Initialized default row with stable ID: ${stableRowId}`
+        );
+        // Record initial state
+        dataSheetStateTracker.recordRowStates(formula.id, [defaultRow]);
       }
-    } else {
+    } else if (!formula) {
       setRows([]);
+      autoCalculatedRowsRef.current.clear();
     }
-  }, [formula, currentInputs, tsResult, error]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formula?.id]); // Only depend on formula ID, not on currentInputs/tsResult/error
 
-  // Handle cell updates
+  /**
+   * Helper function to trigger automatic calculation for a row
+   * This is used for auto-triggering calculations when a row becomes valid
+   * without user interaction (e.g., on formula change or initialization)
+   */
+  const triggerRowCalculation = useCallback(
+    (rowId: string, rowData: Record<string, FormulaScalar>) => {
+      if (!formula) return;
+
+      // Check if this row has already been auto-calculated
+      if (autoCalculatedRowsRef.current.has(rowId)) {
+        console.log(
+          `[DataSheet] ⏭️ Skipping auto-calculation for row ${rowId} - already calculated`
+        );
+        return;
+      }
+
+      // Check if there's already a pending timer for this row
+      if (debounceTimersRef.current.has(rowId)) {
+        console.log(
+          `[DataSheet] ⏭️ Skipping auto-calculation for row ${rowId} - pending timer`
+        );
+        return;
+      }
+
+      // Mark this row as being auto-calculated
+      autoCalculatedRowsRef.current.add(rowId);
+
+      // Calculate asynchronously using shared calculation logic
+      performRowCalculation(rowId, rowData, formula, "auto")
+        .then((result) => {
+          // Update row with calculation results
+          updateRowWithResult(setRows, rowId, result);
+
+          // Note: Keep the row in autoCalculatedRowsRef to prevent re-triggering
+          // even if result is undefined (calculation failed)
+        })
+        .catch((error) => {
+          // This catch is for unexpected errors outside performRowCalculation
+          // performRowCalculation already handles and logs errors internally
+          console.error(
+            `[DataSheet] ❌ Unexpected error in auto-calculation for row ${rowId}`,
+            error
+          );
+        });
+    },
+    [formula]
+  );
+
+  // Record row states and auto-trigger calculation for valid rows without results
+  useEffect(() => {
+    if (formula && rows.length > 0) {
+      dataSheetStateTracker.recordRowStates(formula.id, rows);
+
+      const debugInfo = dataSheetStateTracker.getDebugInfo(formula.id);
+
+      // Auto-trigger calculation for valid rows without results
+      // Only trigger if:
+      // 1. There are no pending calculations
+      // 2. No recent cell updates (to avoid duplicate triggers)
+      // 3. Row hasn't been auto-calculated before (prevent infinite loop)
+      const hasRecentUpdates =
+        debugInfo.lastUpdateTime &&
+        Date.now() - debugInfo.lastUpdateTime < 1000; // Within last second
+
+      if (
+        debugInfo.rowsWithoutResults > 0 &&
+        !hasRecentUpdates &&
+        debugInfo.pendingCalculations === 0
+      ) {
+        // Find rows that are valid but don't have results
+        rows.forEach((row) => {
+          if (
+            row._isValid === true &&
+            row._result === undefined &&
+            Object.keys(row.data).length > 0 && // Has some data
+            !autoCalculatedRowsRef.current.has(row.id) // Not already auto-calculated
+          ) {
+            // Check if row has at least one non-empty value
+            const hasData = Object.values(row.data).some(
+              (val) => val !== "" && val !== null && val !== undefined
+            );
+
+            if (hasData) {
+              // Trigger calculation after a short delay to avoid race conditions
+              setTimeout(() => {
+                triggerRowCalculation(row.id, row.data);
+              }, 100);
+            }
+          }
+        });
+      }
+    }
+  }, [formula, rows, triggerRowCalculation]);
+
+  // Handle cell updates with debounced automatic calculation
   const handleCellUpdate = useCallback(
     async (rowId: string, path: string, value: FormulaScalar) => {
-      setRows((prevRows) =>
-        prevRows.map((row) => {
+      console.log(`[DataSheet] 📝 Cell update triggered:`, {
+        rowId,
+        path,
+        value,
+        formulaId: formula?.id,
+      });
+
+      if (!formula) return;
+
+      // Clear existing debounce timer for this row
+      const existingTimer = debounceTimersRef.current.get(rowId);
+      if (existingTimer !== undefined) {
+        console.log(
+          `[DataSheet] ⏱️ Clearing existing debounce timer for row ${rowId}`
+        );
+        clearTimeout(existingTimer);
+        debounceTimersRef.current.delete(rowId);
+      }
+
+      // Clear auto-calculated flag when user updates a cell
+      // This allows re-calculation when data changes
+      autoCalculatedRowsRef.current.delete(rowId);
+
+      // Get old value for tracking from rowsRef
+      const currentRow = rowsRef.current.find((r) => r.id === rowId);
+      const oldValue: FormulaScalar = currentRow?.data[path] ?? "";
+
+      // Update row data and validation state
+      setRows((prevRows) => {
+        const updatedRows = prevRows.map((row) => {
           if (row.id === rowId) {
             const updatedData = { ...row.data, [path]: value };
             const validation = validateRow(
               { ...row, data: updatedData },
-              formula!
+              formula
             );
+
+            // Record cell update event
+            dataSheetStateTracker.recordCellUpdate(formula.id, {
+              timestamp: Date.now(),
+              rowId,
+              path,
+              oldValue,
+              newValue: value,
+              isValid: validation.isValid,
+              validationErrors: validation.isValid
+                ? undefined
+                : validation.errors,
+            });
 
             return {
               ...row,
@@ -98,32 +310,133 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
             };
           }
           return row;
-        })
-      );
-
-      // Update the formula store if this is the first row
-      if (rows[0]?.id === rowId) {
-        const reconstructedInputs = reconstructFormulaInputs({
-          ...rows[0].data,
-          [path]: value,
         });
 
-        // Update each input individually to trigger the store's update logic
-        for (const [key, val] of Object.entries(reconstructedInputs)) {
-          updateInputAt(key, val);
+        // Update the formula store if this is the first row
+        if (prevRows[0]?.id === rowId) {
+          const updatedFirstRow = updatedRows[0];
+          if (updatedFirstRow) {
+            const reconstructedInputs = reconstructFormulaInputs(
+              updatedFirstRow.data,
+              formula
+            );
+
+            // Update each input individually to trigger the store's update logic
+            for (const [key, val] of Object.entries(reconstructedInputs)) {
+              updateInputAt(key, val);
+            }
+          }
         }
-      }
+
+        return updatedRows;
+      });
+
+      // Set up debounced calculation for the updated row
+      const timerId = window.setTimeout(async () => {
+        console.log(`[DataSheet] 🕐 Debounce timer fired for row ${rowId}`);
+
+        if (!formula) {
+          console.log(`[DataSheet] ⚠️ No formula found, skipping calculation`);
+          debounceTimersRef.current.delete(rowId);
+          return;
+        }
+
+        // Get current row state from rowsRef (always up-to-date)
+        const updatedRow = rowsRef.current.find((row) => row.id === rowId);
+
+        if (!updatedRow) {
+          console.log(
+            `[DataSheet] ⚠️ Row ${rowId} not found, skipping calculation`
+          );
+          debounceTimersRef.current.delete(rowId);
+          return;
+        }
+
+        console.log(`[DataSheet] 📝 Row state:`, {
+          rowId,
+          isValid: updatedRow._isValid,
+          data: updatedRow.data,
+          currentResult: updatedRow._result,
+        });
+
+        // Only calculate if row is valid
+        if (updatedRow._isValid !== true) {
+          console.log(
+            `[DataSheet] ⚠️ Row ${rowId} is invalid, skipping calculation`
+          );
+          debounceTimersRef.current.delete(rowId);
+          return;
+        }
+
+        // Row is valid - proceed with calculation using shared logic
+        try {
+          const result = await performRowCalculation(
+            rowId,
+            updatedRow.data,
+            formula,
+            "cell-update"
+          );
+
+          // Update row with calculation results
+          updateRowWithResult(setRows, rowId, result);
+
+          console.log(`[DataSheet] ✨ Calculation completed for row ${rowId}`);
+        } catch (error) {
+          // This catch is for unexpected errors outside performRowCalculation
+          // performRowCalculation already handles and logs errors internally
+          console.error(
+            `[DataSheet] ❌ Unexpected error in debounced calculation for row ${rowId}`,
+            error
+          );
+        } finally {
+          debounceTimersRef.current.delete(rowId);
+        }
+      }, DEBOUNCE_DELAY_MS);
+
+      // Store timer ID for this row
+      debounceTimersRef.current.set(rowId, timerId);
+      console.log(
+        `[DataSheet] ⏰ Debounce timer set for row ${rowId} (delay: ${DEBOUNCE_DELAY_MS}ms)`
+      );
     },
-    [rows, formula, updateInputAt]
+    [formula, updateInputAt]
   );
 
-  // Handle row data updates
+  // Cleanup debounce timers on unmount
+  useEffect(() => {
+    const timers = debounceTimersRef.current;
+    return () => {
+      // Clear all debounce timers
+      timers.forEach((timerId) => {
+        clearTimeout(timerId);
+      });
+      timers.clear();
+    };
+  }, []);
+
+  /**
+   * Handle row data updates
+   * This function is provided to table meta but currently not used
+   * since handleCellUpdate handles individual cell updates
+   * Keeping it for potential batch update scenarios
+   *
+   * FIXED: Re-enabled the implementation with proper formula validation
+   */
   const updateRowData = useCallback(
     (rowId: string, data: Record<string, FormulaScalar>) => {
+      if (!formula) {
+        console.warn(
+          `[DataSheet] ⚠️ Cannot update row ${rowId} - no formula available`
+        );
+        return;
+      }
+
+      console.log(`[DataSheet] 📝 Updating row data for row ${rowId}`, data);
+
       setRows((prevRows) =>
         prevRows.map((row) => {
           if (row.id === rowId) {
-            const validation = validateRow({ ...row, data }, formula!);
+            const validation = validateRow({ ...row, data }, formula);
             return {
               ...row,
               data,
@@ -146,62 +459,123 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   }, []);
 
   // Handle row duplication
-  const duplicateRow = useCallback((rowId: string) => {
-    setRows((prevRows) => {
-      const rowToDuplicate = prevRows.find((row) => row.id === rowId);
-      if (!rowToDuplicate) return prevRows;
+  const duplicateRow = useCallback(
+    (rowId: string) => {
+      if (!formula) return;
 
-      const newRow: TableRow = {
-        ...rowToDuplicate,
-        id: `row-${Date.now()}-${prevRows.length}`,
-        _result: undefined, // Reset result for duplicated row
-        _executionTime: undefined,
-        _error: undefined,
-      };
+      setRows((prevRows) => {
+        const rowToDuplicate = prevRows.find((row) => row.id === rowId);
+        if (!rowToDuplicate) return prevRows;
 
-      return [...prevRows, newRow];
-    });
-  }, []);
+        // Get stable row ID for the new row
+        const stableRowId = getStableRowId(formula.id, prevRows.length);
+
+        const newRow: TableRow = {
+          ...rowToDuplicate,
+          id: stableRowId,
+          _result: undefined, // Reset result for duplicated row
+          _executionTime: undefined,
+          _error: undefined,
+        };
+
+        console.log(
+          `[DataSheet] ➕ Duplicated row with stable ID: ${stableRowId}`
+        );
+        return [...prevRows, newRow];
+      });
+    },
+    [formula, getStableRowId]
+  );
 
   // Add new row
   const addNewRow = useCallback(() => {
     if (!formula) return;
-    const newRow = createInitialRow(formula, rows.length);
-    setRows((prev) => [...prev, newRow]);
-  }, [formula, rows.length]);
 
-  // Execute formula for all valid rows
-  const executeAllRows = useCallback(async () => {
-    if (!formula) return;
+    setRows((prev) => {
+      // Get stable row ID for the new row
+      const stableRowId = getStableRowId(formula.id, prev.length);
 
-    for (const row of rows) {
-      if (!row._isValid) continue; // Skip invalid rows
+      const newRow = {
+        ...createInitialRow(formula, prev.length),
+        id: stableRowId,
+      };
 
-      // Set inputs from this row
-      const inputs = reconstructFormulaInputs(row.data);
-      for (const [key, value] of Object.entries(inputs)) {
-        updateInputAt(key, value);
-      }
-
-      // Execute formula
-      await executeFormula();
-
-      // Update row with results
-      setRows((prevRows) =>
-        prevRows.map((r) => {
-          if (r.id === row.id) {
-            return {
-              ...r,
-              _result: tsResult?.outputs?.result,
-              _executionTime: tsResult?.durationMs,
-              _error: error || undefined,
-            };
-          }
-          return r;
-        })
+      console.log(
+        `[DataSheet] ➕ Added new row with stable ID: ${stableRowId}`
       );
+      return [...prev, newRow];
+    });
+  }, [formula, getStableRowId]);
+
+  /**
+   * Execute formula for all valid rows
+   * This function calculates results for all valid rows in the table
+   * Each row is calculated independently with its own result
+   *
+   * FIXED: Previously this relied on global tsResult/error which could be stale
+   * Now each row calculation is independent and results are correctly associated
+   */
+  const executeAllRows = useCallback(async () => {
+    if (!formula) {
+      console.warn("[DataSheet] ⚠️ No formula available for executeAllRows");
+      return;
     }
-  }, [formula, rows, updateInputAt, executeFormula, tsResult, error]);
+
+    console.log(
+      `[DataSheet] 🚀 Starting batch calculation for ${rows.length} rows`
+    );
+
+    // Filter valid rows
+    const validRows = rows.filter((row) => row._isValid);
+
+    if (validRows.length === 0) {
+      console.log("[DataSheet] ⚠️ No valid rows to calculate");
+      return;
+    }
+
+    // Calculate all valid rows in parallel (or use sequential if needed)
+    // Using Promise.allSettled to ensure all calculations complete regardless of failures
+    const calculationPromises = validRows.map(async (row) => {
+      const result = await performRowCalculation(
+        row.id,
+        row.data,
+        formula,
+        "manual"
+      );
+      return { rowId: row.id, result };
+    });
+
+    const results = await Promise.allSettled(calculationPromises);
+
+    console.log(
+      `[DataSheet] ✅ Batch calculation completed: ${results.length} results`
+    );
+
+    // Batch update all rows at once for better performance
+    setRows((prevRows) => {
+      // Create a map of rowId -> result for efficient lookup
+      const resultMap = new Map<string, (typeof results)[0]>();
+      results.forEach((r) => {
+        if (r.status === "fulfilled") {
+          resultMap.set(r.value.rowId, r);
+        }
+      });
+
+      return prevRows.map((row) => {
+        const resultEntry = resultMap.get(row.id);
+        if (resultEntry && resultEntry.status === "fulfilled") {
+          const { result } = resultEntry.value;
+          return {
+            ...row,
+            _result: result.result,
+            _executionTime: result.executionTime,
+            _error: result.error,
+          };
+        }
+        return row;
+      });
+    });
+  }, [formula, rows]);
 
   // Custom cell renderer
   const renderCell = useCallback(
