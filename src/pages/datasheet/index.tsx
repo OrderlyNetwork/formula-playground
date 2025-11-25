@@ -1,5 +1,4 @@
 "use client";
-import { useLocation } from "react-router";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Database, Settings } from "lucide-react";
@@ -77,12 +76,5 @@ function EmptyState() {
 }
 
 export function DatabaseDashboard() {
-  const location = useLocation();
-
-  // If we should show empty state, return it directly
-  // if (shouldShowEmptyState) {
-  //   return <EmptyState />;
-  // }
-
   return <EmptyState />;
 }

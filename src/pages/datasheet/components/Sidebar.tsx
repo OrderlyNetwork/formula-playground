@@ -9,7 +9,7 @@ import { IconButton } from "./SharedComponents";
 
 interface SidebarProps {
   isOpen: boolean;
-  tables: Table[];
+  tables?: Table[];
   onToggle?: () => void;
 }
 
@@ -27,7 +27,7 @@ export function Sidebar({ isOpen, tables, onToggle }: SidebarProps) {
     if (!panelConfig) return null;
 
     const Component = panelConfig.component;
-    return <Component tables={tables} />;
+    return <Component tables={tables || []} />;
   }, [activePanel, tables]);
 
   return (

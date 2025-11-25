@@ -5,86 +5,15 @@ import {
 } from "@/components/ui/resizable";
 import { TabBar } from "../datasheet/components/TabBar";
 import { FormulaDataSheet } from "@/modules/formula-datasheet/formulaDataSheet";
-import { ResultsTable } from "../datasheet/components/ResultsTable";
 import { StatusBar } from "../datasheet/components/StatusBar";
-import type { TabItem, QueryResult } from "../datasheet/types";
+import type { TabItem } from "../datasheet/types";
 import { useFormulaStore } from "@/store/formulaStore";
 import { useFormulaTabStore } from "@/store/formulaTabStore";
 import { useCalculationStatusStore } from "@/store/calculationStatusStore";
 import { useParams, useNavigate } from "react-router";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useCallback, useRef } from "react";
 import { FormulaDocs } from "../playground/components/FormulaDocs";
 import { FormulaCode } from "../playground/components/FormulaCode";
-
-// Mock Data
-const results: QueryResult[] = [
-  {
-    id: 1,
-    title: "ACADEMY DINOSAUR",
-    description:
-      "A Epic Drama of a Feminist And a Mad Scientist who must Battle a Teacher in The Canadian Rockies",
-  },
-  {
-    id: 2,
-    title: "ACE GOLDFINGER",
-    description:
-      "A Astounding Epistle of a Database Administrator And a Explorer who must Find a Car in Ancient China",
-  },
-  {
-    id: 3,
-    title: "ADAPTATION HOLES",
-    description:
-      "A Astounding Reflection of a Lumberjack And a Car who must Sink a Lumberjack in A Baloon Factory",
-  },
-  {
-    id: 4,
-    title: "AFFAIR PREJUDICE",
-    description:
-      "A Fanciful Documentary of a Frisbee And a Lumberjack who must Chase a Monkey in A Shark Tank",
-  },
-  {
-    id: 5,
-    title: "AFRICAN EGG",
-    description:
-      "A Fast-Paced Documentary of a Pastry Chef And a Dentist who must Pursue a Forensic Psychologist in The Gulf of Mexico",
-  },
-  {
-    id: 6,
-    title: "AGENT TRUMAN",
-    description:
-      "A Intrepid Panorama of a Robot And a Boy who must Escape a Sumo Wrestler in Ancient China",
-  },
-  {
-    id: 7,
-    title: "AIRPLANE SIERRA",
-    description:
-      "A Touching Saga of a Hunter And a Butler who must Discover a Butler in A Jet Boat",
-  },
-  {
-    id: 8,
-    title: "AIRPORT POLLOCK",
-    description:
-      "A Epic Tale of a Moose And a Girl who must Confront a Monkey in Ancient India",
-  },
-  {
-    id: 9,
-    title: "ALABAMA DEVIL",
-    description:
-      "A Thoughtful Panorama of a Database Administrator And a Mad Scientist who must Outgun a Mad Scientist in A Jet Boat",
-  },
-  {
-    id: 10,
-    title: "ALADDIN CALENDAR",
-    description:
-      "A Action-Packed Tale of a Man And a Lumberjack who must Reach a Feminist in Ancient China",
-  },
-  {
-    id: 11,
-    title: "ALAMO VIDEOTAPE",
-    description:
-      "A Boring Epistle of a Butler And a Cat who must Fight a Pastry Chef in A MySQL Convention",
-  },
-];
 
 export const FormulaDetails = () => {
   // Get formula ID from URL params
@@ -102,82 +31,106 @@ export const FormulaDetails = () => {
   const { tabs, activeTabId, addTab, closeTab, setActiveTab } =
     useFormulaTabStore();
 
-  // Load formulas and manage tabs
-  useEffect(() => {
-    const initializeFormula = async () => {
-      // Load all formulas first
-      await loadFormulasFromAllSources();
-    };
+  // Track if formulas have been loaded to avoid duplicate loading
+  const formulasLoadedRef = useRef(false);
 
-    initializeFormula();
+  // Load formulas on mount - only once
+  useEffect(() => {
+    if (!formulasLoadedRef.current) {
+      formulasLoadedRef.current = true;
+      loadFormulasFromAllSources();
+    }
   }, [loadFormulasFromAllSources]);
 
-  // Add tab when URL changes and formulas are loaded
+  // Add tab when URL changes and sync active tab
+  // This effect handles both adding tabs and syncing active tab with URL
   useEffect(() => {
-    if (id) {
-      const formula = getFormulaDefinition(id);
-      if (formula) {
-        addTab(id, formula.name || id, "code");
-      }
-    }
-  }, [id, getFormulaDefinition, addTab]);
+    if (!id) return;
 
-  // Sync active tab with URL - only if the tab exists
-  useEffect(() => {
-    if (id) {
-      const tabExists = tabs.some((tab) => tab.id === id);
-      if (tabExists && id !== activeTabId) {
-        setActiveTab(id);
-      }
+    const formula = getFormulaDefinition(id);
+    if (!formula) return;
+
+    // Add tab if it doesn't exist (addTab handles duplicate check)
+    addTab(id, formula.name || id, "code");
+
+    // Sync active tab with URL if different
+    if (id !== activeTabId) {
+      setActiveTab(id);
     }
-  }, [id, activeTabId, setActiveTab, tabs]);
+  }, [id, getFormulaDefinition, addTab, setActiveTab, activeTabId]);
 
   // Get current formula definition based on active tab
   const currentFormula = useMemo(() => {
     return activeTabId ? getFormulaDefinition(activeTabId) : undefined;
   }, [activeTabId, getFormulaDefinition]);
 
-  const handleDownloadResults = () => {
+  /**
+   * Handle download results action
+   * TODO: Implement actual download functionality
+   */
+  const handleDownloadResults = useCallback(() => {
     console.log("Downloading results...");
-  };
+    // TODO: Implement CSV/Excel export functionality
+  }, []);
 
-  const handleCloseTab = (label: string) => {
-    // Find tab by label
-    const tab = tabs.find((t) => t.label === label);
-    if (!tab) return;
+  /**
+   * Handle closing a tab
+   * Navigates to the next available tab or back to datasheet if no tabs remain
+   */
+  const handleCloseTab = useCallback(
+    (label: string) => {
+      // Find tab by label
+      const tab = tabs.find((t) => t.label === label);
+      if (!tab) return;
 
-    const tabIndex = tabs.findIndex((t) => t.id === tab.id);
-    const newTabs = tabs.filter((t) => t.id !== tab.id);
+      const isClosingActiveTab = tab.id === id;
+      const tabIndex = tabs.findIndex((t) => t.id === tab.id);
 
-    // 关闭标签页
-    closeTab(tab.id);
+      // Calculate which tab will be active after closing
+      const remainingTabs = tabs.filter((t) => t.id !== tab.id);
+      let nextActiveTabId: string | null = null;
 
-    // 如果关闭的是当前 URL 对应的标签
-    if (tab.id === id) {
-      if (newTabs.length === 0) {
-        // 没有其他标签页了，导航回数据表页面
-        navigate("/datasheet");
-      } else {
-        // 确定下一个要激活的标签页
-        let nextTab;
-        if (tabIndex < newTabs.length) {
-          nextTab = newTabs[tabIndex];
+      if (remainingTabs.length > 0) {
+        // Determine next tab based on store logic: prefer right tab, fallback to left
+        if (tabIndex < remainingTabs.length) {
+          nextActiveTabId = remainingTabs[tabIndex].id;
         } else {
-          nextTab = newTabs[tabIndex - 1];
+          nextActiveTabId =
+            remainingTabs[tabIndex - 1]?.id || remainingTabs[0].id;
         }
-        navigate(`/formula/${nextTab.id}`);
       }
-    }
-  };
 
-  const handleTabClick = (label: string) => {
-    // Find tab by label
-    const tab = tabs.find((t) => t.label === label);
-    if (tab) {
-      setActiveTab(tab.id);
-      navigate(`/formula/${tab.id}`);
-    }
-  };
+      // Close the tab (store handles activating next tab based on its logic)
+      closeTab(tab.id);
+
+      // If closing the active tab, navigate to the next tab or datasheet
+      if (isClosingActiveTab) {
+        if (nextActiveTabId) {
+          // Navigate to the next tab that should be active
+          navigate(`/formula/${nextActiveTabId}`);
+        } else {
+          // No tabs remaining, navigate back to datasheet
+          navigate("/datasheet");
+        }
+      }
+    },
+    [tabs, id, closeTab, navigate]
+  );
+
+  /**
+   * Handle tab click to switch between tabs
+   */
+  const handleTabClick = useCallback(
+    (label: string) => {
+      // Find tab by label
+      const tab = tabs.find((t) => t.label === label);
+      if (tab && tab.id !== activeTabId) {
+        setActiveTab(tab.id);
+        navigate(`/formula/${tab.id}`);
+      }
+    },
+    [tabs, activeTabId, setActiveTab, navigate]
+  );
 
   // Convert tabs to TabItem format for TabBar component
   const tabItems: TabItem[] = useMemo(() => {
@@ -188,8 +141,15 @@ export const FormulaDetails = () => {
     }));
   }, [tabs, activeTabId]);
 
-  // 判断是否应该显示内容：有活动标签且公式数据已加载
-  const shouldShowContent = tabs.length > 0 && activeTabId && currentFormula;
+  /**
+   * Determine if content should be displayed
+   * Requires: tabs exist, active tab is set, and formula is loaded
+   */
+  const shouldShowContent = useMemo(() => {
+    return (
+      tabs.length > 0 && activeTabId !== null && currentFormula !== undefined
+    );
+  }, [tabs.length, activeTabId, currentFormula]);
 
   return (
     <div className="flex flex-1 flex-col min-w-0 bg-white">
