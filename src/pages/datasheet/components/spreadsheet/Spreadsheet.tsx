@@ -9,6 +9,7 @@ import { GridStore } from "@/store/spreadsheet";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { FlattenedPath } from "@/utils/formulaTableUtils";
+import type { RowDef } from "@/types/spreadsheet";
 import SpreadsheetToolbar from "./SpreadsheetToolbar";
 import SpreadsheetHeader from "./SpreadsheetHeader";
 import SpreadsheetRow from "./SpreadsheetRow";
@@ -35,12 +36,14 @@ interface SpreadsheetProps {
 const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
   // Separate state and actions using selectors to avoid unnecessary re-renders
   const columns = useSpreadsheetStore((state) => state.columns);
+  const rows = useSpreadsheetStore((state) => state.rows);
   const selection = useSpreadsheetStore((state) => state.selection);
   const isColumnsReady = useSpreadsheetStore((state) => state.isColumnsReady);
   const currentFormula = useSpreadsheetStore((state) => state.currentFormula);
 
   // Get actions separately (they're stable and won't cause re-renders)
   const setColumns = useSpreadsheetStore((state) => state.setColumns);
+  const setRows = useSpreadsheetStore((state) => state.setRows);
   const setIsColumnsReady = useSpreadsheetStore(
     (state) => state.setIsColumnsReady
   );
@@ -57,8 +60,10 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
     (state) => state.updateSelectionOnCellClick
   );
 
-  // Local state for row IDs (managed by GridStore, synced to local state for rendering)
-  const [rowIds, setRowIds] = useState<string[]>([]);
+  // Local state for row IDs is now managed by Zustand store
+
+  // Convert rows from store to rowIds array for rendering
+  const rowIds = useMemo(() => rows.map(row => row.id), [rows]);
 
   // GridStore for data calculation (stable ref)
   const storeRef = useRef<GridStore | null>(null);
@@ -188,19 +193,19 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
   );
 
   /**
-   * Generate row IDs with minimum row count
+   * Generate row definitions with minimum row count
    * Ensures at least MIN_ROWS rows exist for UI display
    */
-  const generateRowIds = useCallback(
-    (count: number, formulaId?: string): string[] => {
-      const ids: string[] = [];
+  const generateRows = useCallback(
+    (count: number, formulaId?: string): RowDef[] => {
+      const rows: RowDef[] = [];
       const baseId = formulaId || "row";
       const targetCount = Math.max(count, MIN_ROWS);
 
       for (let i = 0; i < targetCount; i++) {
-        ids.push(`${baseId}_${i}`);
+        rows.push({ id: `${baseId}_${i}` });
       }
-      return ids;
+      return rows;
     },
     []
   );
@@ -212,23 +217,21 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
         ? generateColumnsFromFormula(flattenedPaths)
         : [];
 
-      // Generate initial row IDs
-      const initialRowIds = generateRowIds(0, currentFormula?.id);
+      // Generate initial rows
+      const initialRows = generateRows(0, currentFormula?.id);
 
       // Initialize GridStore with calculation callback
       if (!storeRef.current) {
         storeRef.current = new GridStore(
-          initialRowIds.map((id) => ({ id })),
+          initialRows,
           initialColumns,
           handleCalculateRow
         );
       }
 
-      // Initialize local row IDs state
-      setRowIds(initialRowIds);
-
       // Initialize Zustand store
       setColumns(initialColumns);
+      setRows(initialRows);
       setIsColumnsReady(flattenedPaths !== undefined);
 
       isInitializedRef.current = true;
@@ -253,16 +256,14 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
   // Sync GridStore when structure changes
   useEffect(() => {
     if (storeRef.current) {
-      // Convert rowIds to minimal row objects for GridStore
-      const rowsForGrid = rowIds.map((id) => ({ id }));
-      storeRef.current.syncStructure(rowsForGrid, columns);
+      storeRef.current.syncStructure(rows, columns);
     }
-  }, [rowIds, columns]);
+  }, [rows, columns]);
 
   // Track if initial data has been loaded to GridStore
   const lastSyncedFormulaRef = useRef<string | undefined>(undefined);
 
-  // Initialize row IDs when formula changes
+  // Initialize rows when formula changes
   useEffect(() => {
     if (!currentFormula) return;
 
@@ -271,60 +272,46 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
     // Check if this is a new formula (initial load or formula change)
     if (lastSyncedFormulaRef.current !== currentFormulaId) {
       console.log(
-        "🔄 Formula changed: Generating new row IDs for formula:",
+        "🔄 Formula changed: Generating new rows for formula:",
         currentFormulaId
       );
       lastSyncedFormulaRef.current = currentFormulaId;
 
-      // Generate new row IDs for the new formula
-      const newRowIds = generateRowIds(0, currentFormulaId);
-      setRowIds(newRowIds);
+      // Generate new rows for the new formula
+      const newRows = generateRows(0, currentFormulaId);
+      setRows(newRows);
 
       // Update GridStore with new row structure
       if (storeRef.current) {
-        const rowsForGrid = newRowIds.map((id) => ({ id }));
-        storeRef.current.syncStructure(rowsForGrid, columns);
+        storeRef.current.syncStructure(newRows, columns);
 
         // Set index column values (silent mode)
-        newRowIds.forEach((rowId, index) => {
-          storeRef.current!.setValue(rowId, "index", String(index + 1), true);
+        newRows.forEach((row, index) => {
+          storeRef.current!.setValue(row.id, "index", String(index + 1), true);
         });
       }
 
       console.log(
-        "✅ Row IDs initialized. GridStore is the single source of truth for input data."
+        "✅ Rows initialized. GridStore is the single source of truth for input data."
       );
     }
-  }, [currentFormula, columns, generateRowIds]);
+  }, [currentFormula, columns, generateRows, setRows]);
 
   // --- Actions ---
 
   /**
    * Add a new row to the spreadsheet
-   * Generates a new row ID and updates both local state and GridStore
+   * Uses store's addRow method and syncs with GridStore
    */
   const addRow = useCallback(() => {
-    const formulaId = currentFormula?.id || "row";
-    const newRowId = `${formulaId}_${rowIds.length}`;
+    const afterRowId = selection?.type === "row" ? selection.id : undefined;
 
-    // Update local row IDs state
-    setRowIds((prev) => [...prev, newRowId]);
-
-    // Add row to GridStore
-    if (storeRef.current) {
-      storeRef.current.syncStructure(
-        [...rowIds, newRowId].map((id) => ({ id })),
-        columns
-      );
-      // Set index for new row (silent mode)
-      storeRef.current.setValue(
-        newRowId,
-        "index",
-        String(rowIds.length + 1),
-        true
-      );
-    }
-  }, [currentFormula?.id, rowIds, columns]);
+    // Add row using store method with GridStore sync
+    // Note: We need to call the store method directly with GridStore instance
+    // since the action selector doesn't include the extra parameters
+    const state = useSpreadsheetStore.getState();
+    state.addRow(afterRowId, storeRef.current || undefined, columns);
+  }, [selection, columns]);
 
   const addColumn = useCallback(() => {
     const afterColId = selection?.type === "column" ? selection.id : undefined;
@@ -394,7 +381,7 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
     );
   }
 
-  console.log("------->>>rowIds--------", rowIds);
+  console.log("------->>>rows--------", rows);
 
   return (
     <div className="flex flex-col h-full bg-white shadow-sm overflow-hidden">
