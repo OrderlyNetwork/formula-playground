@@ -18,6 +18,7 @@ import { useStableRowIds } from "./hooks/useStableRowIds";
 import { useDataSheetRows } from "./hooks/useDataSheetRows";
 import { useAutoCalculation } from "./hooks/useAutoCalculation";
 import { useDataSheetMetrics } from "./hooks/useDataSheetMetrics";
+import Spreadsheet from "@/pages/datasheet/components/spreadsheet/Spreadsheet";
 
 interface FormulaDataSheetProps {
   formula?: FormulaDefinition;
@@ -87,7 +88,8 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
     <div className="h-full flex flex-col">
       {/* Table */}
       <div className="flex-1 overflow-hidden">
-        {rowsBelongToCurrentFormula ? (
+        <Spreadsheet />
+        {/* {rowsBelongToCurrentFormula ? (
           <DataSheetTable
             rows={rows}
             flattenedPaths={flattenedPaths}
@@ -103,7 +105,7 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
           <div className="flex items-center justify-center h-full text-gray-500">
             Loading...
           </div>
-        )}
+        )} */}
       </div>
 
       {/* Empty state */}

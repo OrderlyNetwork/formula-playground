@@ -9,11 +9,10 @@ import { IconButton } from "./SharedComponents";
 
 interface SidebarProps {
   isOpen: boolean;
-  tables?: Table[];
   onToggle?: () => void;
 }
 
-export function Sidebar({ isOpen, tables, onToggle }: SidebarProps) {
+export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const [activePanel, setActivePanel] = useState<ActivePanel>("formulas");
 
   const togglePanel = (panel: ActivePanel) => {
@@ -27,8 +26,8 @@ export function Sidebar({ isOpen, tables, onToggle }: SidebarProps) {
     if (!panelConfig) return null;
 
     const Component = panelConfig.component;
-    return <Component tables={tables || []} />;
-  }, [activePanel, tables]);
+    return <Component />;
+  }, [activePanel]);
 
   return (
     <div className="flex">

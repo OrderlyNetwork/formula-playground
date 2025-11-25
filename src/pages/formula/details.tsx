@@ -14,6 +14,7 @@ import { useParams, useNavigate } from "react-router";
 import { useEffect, useMemo, useCallback, useRef } from "react";
 import { FormulaDocs } from "../playground/components/FormulaDocs";
 import { FormulaCode } from "../playground/components/FormulaCode";
+import Spreadsheet from "../datasheet/components/spreadsheet/Spreadsheet";
 
 export const FormulaDetails = () => {
   // Get formula ID from URL params
