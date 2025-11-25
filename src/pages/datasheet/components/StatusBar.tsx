@@ -20,19 +20,19 @@ export function StatusBar({
   onDownload,
 }: StatusBarProps) {
   return (
-    <div className="h-8 bg-[#007acc] flex items-center justify-between px-2 text-xs text-white select-none">
+    <div className="h-8 bg-gray-100 flex items-center justify-between px-2 text-xs text-white select-none border-t border-gray-200">
       <div className="flex items-center h-full">
         <div className="flex items-center gap-2 px-2 h-full bg-[#007acc] hover:bg-white/10 cursor-pointer">
           <span className="font-bold">{connection}</span>
         </div>
-        <div className="flex items-center gap-2 px-2 h-full bg-[#1e1e1e] text-zinc-400 hover:bg-[#2d2d2d] cursor-pointer ml-0.5">
+        <div className="flex items-center gap-2 px-2 h-full bg-gray-200 text-zinc-400 hover:bg-white/10 cursor-pointer ml-0.5">
           <span>{database}</span>
         </div>
-        <div className="flex items-center gap-2 px-2 h-full bg-[#1e1e1e] text-zinc-400 hover:bg-[#2d2d2d] cursor-pointer ml-0.5">
+        <div className="flex items-center gap-2 px-2 h-full bg-gray-200 text-zinc-400 hover:bg-white/10 cursor-pointer ml-0.5">
           <span>{result}</span>
           <ChevronDown className="h-3 w-3" />
         </div>
-        <div className="flex items-center gap-4 px-4 h-full bg-[#1e1e1e] text-zinc-400 ml-0.5">
+        <div className="flex items-center gap-4 px-4 h-full bg-gray-200 text-zinc-400 ml-0.5">
           <div className="flex items-center gap-1.5">
             <Table2 className="h-3 w-3" />
             <span>{rowCount}</span>
@@ -47,7 +47,7 @@ export function StatusBar({
           </div>
         </div>
       </div>
-      <div className="flex items-center h-full bg-[#1e1e1e] ml-0.5 px-2">
+      <div className="flex items-center h-full bg-gray-200 ml-0.5 px-2">
         <Button
           variant="ghost"
           size="sm"

@@ -63,7 +63,7 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
   // Local state for row IDs is now managed by Zustand store
 
   // Convert rows from store to rowIds array for rendering
-  const rowIds = useMemo(() => rows.map(row => row.id), [rows]);
+  const rowIds = useMemo(() => rows.map((row) => row.id), [rows]);
 
   // GridStore for data calculation (stable ref)
   const storeRef = useRef<GridStore | null>(null);
@@ -380,8 +380,6 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
       </div>
     );
   }
-
-  console.log("------->>>rows--------", rows);
 
   return (
     <div className="flex flex-col h-full bg-white shadow-sm overflow-hidden">

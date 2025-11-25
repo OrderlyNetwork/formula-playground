@@ -1,5 +1,5 @@
 "use client";
-import { LayoutGrid, SquareFunction, X } from "lucide-react";
+import { LayoutGrid, Sigma, SquareFunction, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TabItem as TabItemType } from "../types";
 
@@ -14,7 +14,7 @@ export function TabBar({ tabs, onCloseTab, onTabClick }: TabBarProps) {
     <div className="flex items-center bg-gray-100 border-b border-gray-300">
       {tabs.map((tab) => (
         <TabComponent
-          key={tab.label}
+          key={tab.id}
           label={tab.label}
           active={tab.active}
           type={tab.type}
@@ -53,7 +53,7 @@ function TabComponent({
     >
       {type === "code" ? (
         <span className="text-purple-600">
-          <SquareFunction size={18} />
+          <Sigma size={18} />
         </span>
       ) : (
         <LayoutGrid className="h-3 w-3 text-purple-600" />
@@ -61,7 +61,7 @@ function TabComponent({
       <span className="truncate flex-1">{label}</span>
       <X
         className={cn(
-          "h-3 w-3 opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded",
+          "h-4 w-4 p-0.5 opacity-0 group-hover:opacity-100 hover:bg-gray-200 rounded",
           active && "opacity-100"
         )}
         onClick={(e) => {

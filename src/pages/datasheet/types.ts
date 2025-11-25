@@ -12,6 +12,7 @@ export interface QueryResult {
 }
 
 export interface TabItem {
+  id: string;
   label: string;
   type: "code" | "grid";
   active?: boolean;

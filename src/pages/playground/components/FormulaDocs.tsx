@@ -53,60 +53,6 @@ export function FormulaDocs({ formula: propFormula }: FormulaDocsProps) {
             </div>
           )}
         </div>
-
-        {/* <Card title="Inputs">
-          <div className="space-y-2">
-            {selectedFormula.inputs.length === 0 ? (
-              <p className="text-sm text-gray-500">No inputs</p>
-            ) : (
-              selectedFormula.inputs.map((input) => (
-                <div
-                  key={input.key}
-                  className="rounded-md border bg-white p-3 text-sm"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium text-gray-900">{input.key}</div>
-                    <div className="text-xs text-gray-500">
-                      {input.type}
-                      {input.unit ? ` · ${input.unit}` : ""}
-                    </div>
-                  </div>
-                  {input.description && (
-                    <p className="mt-1 text-gray-700">{input.description}</p>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
-
-        <Card title="Outputs">
-          <div className="space-y-2">
-            {selectedFormula.outputs.length === 0 ? (
-              <p className="text-sm text-gray-500">No outputs</p>
-            ) : (
-              selectedFormula.outputs.map((output) => (
-                <div
-                  key={output.key}
-                  className="rounded-md border bg-white p-3 text-sm"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium text-gray-900">
-                      {output.key}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {output.type}
-                      {output.unit ? ` · ${output.unit}` : ""}
-                    </div>
-                  </div>
-                  {output.description && (
-                    <p className="mt-1 text-gray-700">{output.description}</p>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </Card> */}
       </div>
     </ScrollArea>
   );

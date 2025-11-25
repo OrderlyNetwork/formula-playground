@@ -3,6 +3,7 @@ import {
   BetweenHorizontalStart,
   BetweenVerticalStart,
   Globe,
+  Webhook,
 } from "lucide-react";
 import type { FlattenedPath } from "@/utils/formulaTableUtils";
 import { Button } from "@/components/ui/button";
@@ -74,7 +75,7 @@ const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
           <Globe size={20} />
         </Button>
         <Button variant="ghost" size="icon" className="p-1 w-7 h-7">
-          <Globe size={20} />
+          <Webhook size={20} />
         </Button>
       </div>
     </div>

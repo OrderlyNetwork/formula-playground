@@ -136,6 +136,7 @@ export const FormulaDetails = () => {
 
   const tabItems: TabItem[] = useMemo(() => {
     return tabs.map((tab) => ({
+      id: tab.id,
       label: tab.label,
       type: tab.type,
       active: tab.id === activeTabId,
