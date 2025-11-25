@@ -14,21 +14,6 @@
   overflow: hidden;
 }
 
-/* React Flow: remove default wrapper styles for input nodes so custom component controls look */
-.react-flow__node-input,
-.react-flow__node-output {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-}
-.react-flow__node-default,
-.react-flow__node-input,
-.react-flow__node-output,
-.react-flow__node-group {
-  width: auto !important;
-}
-
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

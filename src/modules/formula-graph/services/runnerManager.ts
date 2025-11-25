@@ -1,6 +1,11 @@
 /**
  * Global Runner Manager
  * 管理所有 FormulaNode 的 RunnerService 实例和事件通信
+ * 
+ * @deprecated React Flow functionality has been removed.
+ * This service was designed for FormulaNode execution in React Flow graphs.
+ * Most functionality has been replaced by DataSheet-based execution.
+ * This file is kept for compatibility but should not be used for new code.
  */
 
 import { RunnerService } from "./runnerService";
@@ -187,9 +192,13 @@ class RunnerManager {
     );
   }
 
+  /**
+   * @deprecated React Flow has been removed.
+   * This method is no longer needed and does nothing.
+   */
   private setupReactFlowListeners(): void {
-    // 这里可以监听 React Flow 的节点和边变化
-    // 更新节点依赖关系
+    // React Flow has been removed. This method is kept for compatibility.
+    // No longer needed as there are no React Flow nodes to listen to.
   }
 
   private getNodeDependencies(nodeId: string): RunnerDependencies {

@@ -1,15 +1,24 @@
+/**
+ * @deprecated Canvas functionality was designed for React Flow.
+ * This store is still used for multi-formula URL sync but may be refactored in the future.
+ */
 import { create } from "zustand";
 
 /**
  * Canvas mode type
  * - single: Only one formula can exist on canvas at a time, clicking a formula replaces the current one
  * - multi: Multiple formulas can exist on canvas, clicking a formula appends it to the canvas
+ * 
+ * Note: React Flow canvas has been removed. This mode is only used for URL sync.
  */
 export type CanvasMode = "single" | "multi";
 
 /**
  * Canvas store for managing canvas state
  * Handles single formula mode (replace) vs multi formula mode (append)
+ * 
+ * Note: Originally designed for React Flow canvas management.
+ * Currently only used for multi-formula URL synchronization.
  */
 interface CanvasStore {
   // State

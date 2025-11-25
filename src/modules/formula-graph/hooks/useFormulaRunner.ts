@@ -1,6 +1,11 @@
 /**
  * Formula Runner Hook
  * 提供便捷的 FormulaNode 执行管理功能
+ * 
+ * @deprecated React Flow functionality has been removed.
+ * This hook was designed for FormulaNode execution in React Flow graphs.
+ * Most functionality has been replaced by DataSheet-based execution.
+ * This file is kept for compatibility but should not be used for new code.
  */
 
 import { useEffect, useCallback } from "react";

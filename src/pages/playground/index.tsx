@@ -7,7 +7,6 @@ import {
 } from "react-router";
 import { Toolbar } from "./components/Toolbar";
 import { LeftPanel } from "./components/LeftPanel";
-import { CenterCanvas } from "./components/CenterCanvas";
 import { FormulaDocs } from "./components/FormulaDocs";
 import { FormulaCode } from "./components/FormulaCode";
 import {

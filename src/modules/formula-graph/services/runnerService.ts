@@ -1,6 +1,11 @@
 /**
  * FormulaNode Runner Service
  * 管理单个 FormulaNode 的执行上下文和自动运行逻辑
+ * 
+ * @deprecated React Flow functionality has been removed.
+ * This service was designed for FormulaNode execution in React Flow graphs.
+ * Most functionality has been replaced by DataSheet-based execution.
+ * This file is kept for compatibility but should not be used for new code.
  */
 
 import { NodeExecutionStatus } from "../../../types/runner";

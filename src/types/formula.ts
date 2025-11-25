@@ -1,5 +1,4 @@
 // Type definitions for Formula Playground
-import type { Node, Edge } from "reactflow";
 import type { NodeExecutionStatus } from "./runner";
 
 export type FormulaInputType = "number" | "string" | "boolean" | "object";
@@ -217,14 +216,39 @@ export interface FormulaNodeData {
 }
 
 /**
- * @description Type-safe React Flow node type
+ * @description Formula node type (previously React Flow node type)
+ * Note: React Flow has been removed. This type is kept for compatibility.
+ * @deprecated React Flow functionality has been removed. This type may be refactored in the future.
  */
-export type FormulaNode = Node<FormulaNodeData>;
+export interface FormulaNode {
+  id: string;
+  type: string;
+  position: { x: number; y: number };
+  data: FormulaNodeData;
+  selected?: boolean;
+  dragging?: boolean;
+  width?: number;
+  height?: number;
+}
 
 /**
- * @description Type-safe React Flow edge type
+ * @description Formula edge type (previously React Flow edge type)
+ * Note: React Flow has been removed. This type is kept for compatibility.
+ * @deprecated React Flow functionality has been removed. This type may be refactored in the future.
  */
-export type FormulaEdge = Edge;
+export interface FormulaEdge {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+  animated?: boolean;
+  style?: Record<string, unknown>; // CSS style properties
+  label?: string;
+  labelStyle?: Record<string, unknown>; // CSS style properties
+  labelShowBg?: boolean;
+  labelBgStyle?: Record<string, unknown>; // CSS style properties
+}
 
 /**
  * @description User-defined data source saved from OutputNode values

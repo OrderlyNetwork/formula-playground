@@ -1,7 +1,8 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useFormulaStore } from "@/store/formulaStore";
-import { useGraphStore } from "@/store/graphStore";
+// Note: graphStore and canvasStore are kept for URL sync compatibility
+// but React Flow functionality has been removed
 import { useCanvasStore } from "@/store/canvasStore";
 
 /**
@@ -72,8 +73,8 @@ export function useFormulaUrlSync() {
   } = useFormulaStore();
   // Get store instance to access getState for latest values
   const store = useFormulaStore;
-  // Get graph store to check if nodes are generated
-  const { nodes: graphNodes } = useGraphStore();
+  // Note: Previously used graphStore to check if nodes were generated.
+  // Since React Flow has been removed, this check is no longer needed.
   // Get canvas store for multi-formula mode
   const {
     mode: canvasMode,
@@ -403,27 +404,11 @@ export function useFormulaUrlSync() {
   ]);
 
   /**
-   * This effect is no longer needed as we restore params immediately in the formula sync effect
-   * Keeping it as a fallback in case queueMicrotask doesn't work as expected
+   * This effect is no longer needed as we restore params immediately in the formula sync effect.
+   * Previously used graphNodes.length to wait for React Flow nodes to be generated.
+   * Since React Flow has been removed, this fallback is no longer necessary.
    */
-  useEffect(() => {
-    // Fallback: If we still have pending params after nodes are generated, restore them
-    if (
-      pendingParamsRestoreRef.current &&
-      graphNodes.length > 0 &&
-      isSyncingFromUrlRef.current
-    ) {
-      const paramsToRestore = pendingParamsRestoreRef.current;
-
-      setInputs(paramsToRestore);
-      lastSyncedInputsRef.current = paramsToRestore;
-      pendingParamsRestoreRef.current = null;
-
-      setTimeout(() => {
-        isSyncingFromUrlRef.current = false;
-      }, 50);
-    }
-  }, [graphNodes.length, setInputs]);
+  // Removed: useEffect that checked graphNodes.length
 
   /**
    * Sync parameters from URL to store
@@ -443,13 +428,13 @@ export function useFormulaUrlSync() {
     // Only sync params if:
     // 1. URL has params
     // 2. We're on a formula page (has formula ID)
-    // 3. Formula is already selected (to ensure nodes exist)
-    // 4. Nodes are already generated (graphNodes.length > 0)
+    // 3. Formula is already selected
+    // Note: Previously checked graphNodes.length, but this is no longer needed
+    // since React Flow has been removed
     if (
       encodedParams &&
       urlFormulaId &&
-      urlFormulaId === selectedFormulaId &&
-      graphNodes.length > 0
+      urlFormulaId === selectedFormulaId
     ) {
       const decoded = decodeParams(encodedParams);
       if (decoded && Object.keys(decoded).length > 0) {
@@ -487,8 +472,7 @@ export function useFormulaUrlSync() {
     store,
     params.id,
     selectedFormulaId,
-    graphNodes.length,
-  ]); // Include graphNodes.length to detect when nodes are ready
+  ]); // Removed graphNodes.length dependency (React Flow removed)
 
   /**
    * Sync current formula params to canvasStore when in multi mode

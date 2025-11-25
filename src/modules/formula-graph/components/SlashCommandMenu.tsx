@@ -121,16 +121,13 @@ export const SlashCommandMenu = memo(function SlashCommandMenu({
   /**
    * Group commands by type
    */
-  const groupedCommands = filteredCommands.reduce(
-    (acc, cmd) => {
-      if (!acc[cmd.type]) {
-        acc[cmd.type] = [];
-      }
-      acc[cmd.type].push(cmd);
-      return acc;
-    },
-    {} as Record<"api" | "ws", SlashCommandItem[]>
-  );
+  const groupedCommands = filteredCommands.reduce((acc, cmd) => {
+    if (!acc[cmd.type]) {
+      acc[cmd.type] = [];
+    }
+    acc[cmd.type].push(cmd);
+    return acc;
+  }, {} as Record<"api" | "ws", SlashCommandItem[]>);
 
   // Flatten grouped commands for indexing
   const flatCommands: SlashCommandItem[] = [];
@@ -157,7 +154,7 @@ export const SlashCommandMenu = memo(function SlashCommandMenu({
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 min-w-[200px] max-w-[300px] max-h-[300px] overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md p-1"
+      className="fixed z-50 min-w-[200px] max-w-[300px] max-h-[300px] overflow-y-auto border bg-popover text-popover-foreground shadow-md p-1"
       style={{
         top: `${position.top}px`,
         left: `${position.left}px`,
@@ -238,4 +235,3 @@ export const SlashCommandMenu = memo(function SlashCommandMenu({
     </div>
   );
 });
-

@@ -1,3 +1,8 @@
+/**
+ * @deprecated React Flow functionality has been removed.
+ * This store is kept for compatibility but should not be used for new code.
+ * Most functionality has been replaced by DataSheet (formula-datasheet module).
+ */
 import { create } from "zustand";
 import type { FormulaNode, FormulaEdge } from "../types/formula";
 import type { NodeExecutionState, NodeExecutionStatus } from "../types/runner";
