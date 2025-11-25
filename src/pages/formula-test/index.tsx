@@ -13,7 +13,9 @@ import type { QueryResult, TabItem } from "../datasheet/types";
 import { FormulaDataSheet } from "@/modules/formula-datasheet/formulaDataSheet";
 import { useParams } from "react-router";
 import { useFormulaStore } from "@/store/formulaStore";
+import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 import { useCalculationStatusStore } from "@/store/calculationStatusStore";
+import { useEffect } from "react";
 
 // Mock Data
 const results: QueryResult[] = [
@@ -60,11 +62,21 @@ export function FormulaTestPage() {
   // Access formula store
   const { getFormulaDefinition } = useFormulaStore();
 
+  // Access spreadsheet store
+  const setCurrentFormula = useSpreadsheetStore(
+    (state) => state.setCurrentFormula
+  );
+
   // Access global calculation status store
   const { getMetrics } = useCalculationStatusStore();
 
   // Get current formula definition based on URL parameter
   const currentFormula = id ? getFormulaDefinition(id) : undefined;
+
+  // Sync currentFormula to spreadsheetStore
+  useEffect(() => {
+    setCurrentFormula(currentFormula);
+  }, [currentFormula, setCurrentFormula]);
 
   const handleDownloadResults = () => {
     console.log("Downloading results...");
@@ -90,7 +102,7 @@ export function FormulaTestPage() {
       <ResizablePanelGroup direction="vertical" className="flex-1">
         {/* Formula Data Sheet */}
         <ResizablePanel defaultSize={40} minSize={20}>
-          <FormulaDataSheet formula={currentFormula} />
+          <FormulaDataSheet />
         </ResizablePanel>
 
         <ResizableHandle className="bg-zinc-800" />

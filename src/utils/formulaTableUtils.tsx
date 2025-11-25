@@ -25,6 +25,30 @@ export interface FlattenedPath {
 export type { TableRow };
 
 /**
+ * Internal fields on TableRow that should not be treated as data
+ */
+const INTERNAL_ROW_FIELDS = new Set([
+  "id",
+  "_result",
+  "_executionTime",
+  "_error",
+  "_isValid",
+]);
+
+/**
+ * Extract data fields from a TableRow (exclude internal fields)
+ */
+export function extractRowData(row: TableRow): Record<string, FormulaScalar> {
+  const data: Record<string, FormulaScalar> = {};
+  for (const [key, value] of Object.entries(row)) {
+    if (!INTERNAL_ROW_FIELDS.has(key) && value !== undefined) {
+      data[key] = value as FormulaScalar;
+    }
+  }
+  return data;
+}
+
+/**
  * Test case data structure
  */
 export interface TestCase {
@@ -212,7 +236,7 @@ export function generateTableColumns(
           );
         },
         // Use accessorFn instead of accessorKey to safely access deeply nested values
-        accessorFn: (row) => getNestedValue(row.data, path.path),
+        accessorFn: (row) => getNestedValue(extractRowData(row), path.path),
         size: path.factorType.baseType === "number" ? 120 : 200,
         cell: ({ row, getValue, table }) => {
           const value = getValue() as FormulaScalar;
@@ -227,8 +251,8 @@ export function generateTableColumns(
               path: path.path,
               factorType: path.factorType,
               onUpdate: (newValue: FormulaScalar) => {
-                // Update the data in the row
-                const currentData = { ...row.original.data };
+                // Update the data in the row (extract current data, modify, update)
+                const currentData = { ...extractRowData(row.original) };
 
                 setNestedValue(currentData, path.path, newValue);
 
@@ -243,7 +267,7 @@ export function generateTableColumns(
                 value={value}
                 factorType={path.factorType}
                 onUpdate={(newValue) => {
-                  const currentData = { ...row.original.data };
+                  const currentData = { ...extractRowData(row.original) };
                   setNestedValue(currentData, path.path, newValue);
                   meta?.updateRowData?.(actualRowId, currentData);
                   onCellUpdate?.(actualRowId, path.path, newValue);
@@ -513,25 +537,27 @@ export function reconstructFormulaInputs(
 
 /**
  * Create initial table row data from formula defaults
+ * Data fields are stored directly on the row object
  */
 export function createInitialRow(
   formula: FormulaDefinition,
   rowIndex: number
 ): TableRow {
   const flattenedPaths = flattenFormulaInputs(formula.inputs);
-  const data: Record<string, FormulaScalar> = {};
-
-  // Initialize with default values
-  for (const path of flattenedPaths) {
-    const defaultValue = getDefaultValueForFactorType(path.factorType);
-    data[path.path] = defaultValue;
-  }
-
-  return {
+  
+  // Start with base row structure
+  const row: TableRow = {
     id: `row-${Date.now()}-${rowIndex}`,
-    data,
     _isValid: true,
   };
+
+  // Add data fields directly to the row
+  for (const path of flattenedPaths) {
+    const defaultValue = getDefaultValueForFactorType(path.factorType);
+    row[path.path] = defaultValue;
+  }
+
+  return row;
 }
 
 /**
@@ -565,7 +591,7 @@ export function validateRow(
   formula: FormulaDefinition
 ): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
-  const inputs = reconstructFormulaInputs(row.data, formula);
+  const inputs = reconstructFormulaInputs(extractRowData(row), formula);
 
   // Validate against formula input structure
   for (const input of formula.inputs) {

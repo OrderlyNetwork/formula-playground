@@ -14,6 +14,52 @@ import {
 import type { TableRow } from "../types";
 import { dataSheetStateTracker } from "../services/dataSheetStateTracker";
 
+/**
+ * Internal fields on TableRow that should not be treated as data
+ */
+const INTERNAL_ROW_FIELDS = new Set([
+  "id",
+  "_result",
+  "_executionTime",
+  "_error",
+  "_isValid",
+]);
+
+/**
+ * Extract data fields from a TableRow (exclude internal fields)
+ */
+function extractRowData(row: TableRow): Record<string, FormulaScalar> {
+  const data: Record<string, FormulaScalar> = {};
+  for (const [key, value] of Object.entries(row)) {
+    if (!INTERNAL_ROW_FIELDS.has(key) && value !== undefined) {
+      data[key] = value as FormulaScalar;
+    }
+  }
+  return data;
+}
+
+/**
+ * Merge data fields into a row (preserving internal fields)
+ */
+function mergeDataIntoRow(
+  row: TableRow,
+  data: Record<string, FormulaScalar>
+): TableRow {
+  // Start with internal fields from original row
+  const result: TableRow = {
+    id: row.id,
+    _result: row._result,
+    _executionTime: row._executionTime,
+    _error: row._error,
+    _isValid: row._isValid,
+  };
+  // Add data fields
+  for (const [key, value] of Object.entries(data)) {
+    result[key] = value;
+  }
+  return result;
+}
+
 interface UseDataSheetRowsOptions {
   formula?: FormulaDefinition;
   getStableRowId: (formulaId: string, rowIndex: number) => string;
@@ -86,17 +132,18 @@ export function useDataSheetRows({
 
       // Get old value for tracking
       const currentRow = rowsRef.current.find((r) => r.id === rowId);
-      const oldValue: FormulaScalar = currentRow?.data[path] ?? "";
+      const oldValue: FormulaScalar = currentRow?.[path] ?? "";
 
       // Update row data and validation state
       setRows((prevRows) => {
         const updatedRows = prevRows.map((row) => {
           if (row.id === rowId) {
-            const updatedData = { ...row.data, [path]: value };
-            const validation = validateRow(
-              { ...row, data: updatedData },
-              currentFormula
-            );
+            // Extract current data, update with new value
+            const currentData = extractRowData(row);
+            const updatedData = { ...currentData, [path]: value };
+            // Merge updated data back into row for validation
+            const updatedRow = mergeDataIntoRow(row, updatedData);
+            const validation = validateRow(updatedRow, currentFormula);
 
             // Record cell update event
             dataSheetStateTracker.recordCellUpdate(currentFormula.id, {
@@ -111,14 +158,16 @@ export function useDataSheetRows({
                 : validation.errors,
             });
 
-            return {
-              ...row,
-              data: updatedData,
-              _isValid: validation.isValid,
-              _error: validation.isValid
-                ? undefined
-                : validation.errors.join(", "),
-            };
+            return mergeDataIntoRow(
+              {
+                ...row,
+                _isValid: validation.isValid,
+                _error: validation.isValid
+                  ? undefined
+                  : validation.errors.join(", "),
+              },
+              updatedData
+            );
           }
           return row;
         });
@@ -128,7 +177,7 @@ export function useDataSheetRows({
           const updatedFirstRow = updatedRows[0];
           if (updatedFirstRow) {
             const reconstructedInputs = reconstructFormulaInputs(
-              updatedFirstRow.data,
+              extractRowData(updatedFirstRow),
               currentFormula
             );
 
@@ -156,15 +205,18 @@ export function useDataSheetRows({
       setRows((prevRows) =>
         prevRows.map((row) => {
           if (row.id === rowId) {
-            const validation = validateRow({ ...row, data }, currentFormula);
-            return {
-              ...row,
-              data,
-              _isValid: validation.isValid,
-              _error: validation.isValid
-                ? undefined
-                : validation.errors.join(", "),
-            };
+            const updatedRow = mergeDataIntoRow(row, data);
+            const validation = validateRow(updatedRow, currentFormula);
+            return mergeDataIntoRow(
+              {
+                ...row,
+                _isValid: validation.isValid,
+                _error: validation.isValid
+                  ? undefined
+                  : validation.errors.join(", "),
+              },
+              data
+            );
           }
           return row;
         })

@@ -1,6 +1,9 @@
-import React, { useEffect, useRef, memo, useState } from "react";
+import React, { useEffect, useRef, memo, useState, useMemo } from "react";
 import { GridStore } from "@/store/spreadsheet";
+import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 import type { ColumnDef, CellValue } from "@/types/spreadsheet";
+import InputCell from "./InputCell";
+import { cn } from "@/lib/utils";
 
 interface CellProps {
   rowId: string;
@@ -19,6 +22,7 @@ interface CellProps {
  * 1. Does NOT use props for 'value' to avoid re-rendering by parent.
  * 2. Uses `useRef` to maintain the input DOM element.
  * 3. Subscribes to `store` to receive updates.
+ * 4. For result column, subscribes to SpreadsheetStore calculation results.
  */
 const Cell: React.FC<CellProps> = ({
   rowId,
@@ -36,14 +40,31 @@ const Cell: React.FC<CellProps> = ({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_forceUpdateCounter, setForceUpdate] = useState(0);
 
+  // Subscribe to calculation result for result column (O(1) lookup by rowId)
+  const calculationResult = useSpreadsheetStore((state) =>
+    column.id === "result" ? state.calculationResults[rowId] : undefined
+  );
+
   useEffect(() => {
-    // 1. Initial Value
+    // For result column, use calculation result from SpreadsheetStore
+    if (column.id === "result" && inputRef.current) {
+      if (calculationResult?.error) {
+        inputRef.current.value = `Error: ${calculationResult.error}`;
+      } else if (calculationResult?.result !== undefined) {
+        inputRef.current.value = String(calculationResult.result);
+      } else {
+        inputRef.current.value = "";
+      }
+      return; // Skip GridStore subscription for result column
+    }
+
+    // 1. Initial Value from GridStore (for non-result columns)
     const initialVal = store.getValue(rowId, column.id);
     if (inputRef.current) {
       inputRef.current.value = String(initialVal ?? "");
     }
 
-    // 2. Subscribe to external changes
+    // 2. Subscribe to external changes from GridStore
     const unsubscribe = store.subscribe(
       rowId,
       column.id,
@@ -61,7 +82,7 @@ const Cell: React.FC<CellProps> = ({
     );
 
     return () => unsubscribe();
-  }, [rowId, column.id, store, column.type]);
+  }, [rowId, column.id, store, column.type, calculationResult]);
 
   const handleBlur = () => {
     if (inputRef.current && column.editable !== false) {
@@ -93,21 +114,35 @@ const Cell: React.FC<CellProps> = ({
     ? "bg-gray-50"
     : "bg-white";
 
-  const baseClasses = `relative border-r border-b border-grid-border box-border ${bgClass}`;
+  // const baseClasses = `relative border-r border-b border-grid-border box-border ${bgClass}`;
 
   // Combine props className with base classes
-  const containerClass = `${baseClasses} ${className || ""}`;
+  // const containerClass = `${baseClasses} ${className || ""}`;
+
+  const innerElement = useMemo(() => {
+    if (typeof column.render === "function") {
+      return column.render(rowId, column, store);
+    }
+    return null;
+  }, [rowId, column, store]);
+
+  const containerClass = cn(
+    "relative border-r border-b border-grid-border box-border overflow-hidden p-1 transition-colors focus-within:inset-ring-2 focus-within:inset-ring-blue-500 focus-within:z-10 ",
+    bgClass,
+    className
+    // containerClass
+  );
 
   // Custom Render Strategy
-  if (column.type === "custom" && column.render) {
-    const currentValue = store.getValue(rowId, column.id);
+  if (innerElement) {
+    // const currentValue = store.getValue(rowId, column.id);
     return (
       <div
-        className={`${containerClass} overflow-hidden p-1 transition-colors`}
+        className={containerClass}
         style={{ width: column.width, ...style }}
         onClick={handleFocus}
       >
-        {column.render(currentValue)}
+        {innerElement}
       </div>
     );
   }
@@ -118,7 +153,14 @@ const Cell: React.FC<CellProps> = ({
       className={`${containerClass} transition-colors`}
       style={{ width: column.width, height: 40, ...style }}
     >
-      <input
+      <InputCell
+        rowId={rowId}
+        column={column}
+        store={store}
+        isSelected={isSelected}
+        onCellClick={onCellClick}
+      />
+      {/* <input
         ref={inputRef}
         // type={column.type === "number" ? "number" : "text"}
         type="text"
@@ -131,7 +173,7 @@ const Cell: React.FC<CellProps> = ({
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
         readOnly={!isEditable}
-      />
+      /> */}
     </div>
   );
 };

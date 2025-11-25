@@ -13,6 +13,30 @@ import {
 } from "../helpers/calculationHelpers";
 import { DEBOUNCE_DELAY_MS, AUTO_TRIGGER_DELAY_MS } from "../constants";
 
+/**
+ * Internal fields on TableRow that should not be treated as data
+ */
+const INTERNAL_ROW_FIELDS = new Set([
+  "id",
+  "_result",
+  "_executionTime",
+  "_error",
+  "_isValid",
+]);
+
+/**
+ * Extract data fields from a TableRow (exclude internal fields)
+ */
+function extractRowData(row: TableRow): Record<string, FormulaScalar> {
+  const data: Record<string, FormulaScalar> = {};
+  for (const [key, value] of Object.entries(row)) {
+    if (!INTERNAL_ROW_FIELDS.has(key) && value !== undefined) {
+      data[key] = value as FormulaScalar;
+    }
+  }
+  return data;
+}
+
 interface UseAutoCalculationOptions {
   formula?: FormulaDefinition;
   rows: TableRow[];
@@ -121,10 +145,12 @@ export function useAutoCalculation({
         }
 
         // Row is valid - proceed with calculation using shared logic
+        // Extract data fields from row (exclude internal fields)
+        const rowData = extractRowData(updatedRow);
         try {
           const result = await performRowCalculation(
             rowId,
-            updatedRow.data,
+            rowData,
             formula,
             "cell-update"
           );
@@ -158,9 +184,11 @@ export function useAutoCalculation({
 
     // Calculate all valid rows in parallel
     const calculationPromises = validRows.map(async (row) => {
+      // Extract data fields from row (exclude internal fields)
+      const rowData = extractRowData(row);
       const result = await performRowCalculation(
         row.id,
-        row.data,
+        rowData,
         formula,
         "manual"
       );
@@ -208,7 +236,7 @@ export function useAutoCalculation({
         id: r.id,
         isValid: r._isValid,
         hasResult: r._result !== undefined,
-        dataKeys: Object.keys(r.data),
+        dataKeys: Object.keys(extractRowData(r)),
       }))
     );
 
@@ -239,21 +267,22 @@ export function useAutoCalculation({
     ) {
       // Find rows that are valid but don't have results
       rows.forEach((row) => {
+        const rowData = extractRowData(row);
         if (
           row._isValid === true &&
           row._result === undefined &&
-          Object.keys(row.data).length > 0 &&
+          Object.keys(rowData).length > 0 &&
           !autoCalculatedRowsRef.current.has(row.id)
         ) {
           // Check if row has at least one non-empty value
-          const hasData = Object.values(row.data).some(
+          const hasData = Object.values(rowData).some(
             (val) => val !== "" && val !== null && val !== undefined
           );
 
           if (hasData) {
             // Trigger calculation after a short delay to avoid race conditions
             setTimeout(() => {
-              triggerRowCalculation(row.id, row.data);
+              triggerRowCalculation(row.id, rowData);
             }, AUTO_TRIGGER_DELAY_MS);
           }
         }

@@ -82,8 +82,19 @@ src/modules/formula-datasheet/
 ### 基本使用（无变化）
 ```typescript
 import { FormulaDataSheet } from "@/modules/formula-datasheet";
+import { useSpreadsheetStore } from "@/store/spreadsheetStore";
+import { useEffect } from "react";
 
-<FormulaDataSheet formula={formula} />
+// In your component:
+const setCurrentFormula = useSpreadsheetStore((state) => state.setCurrentFormula);
+
+// Sync currentFormula to store
+useEffect(() => {
+  setCurrentFormula(formula);
+}, [formula, setCurrentFormula]);
+
+// FormulaDataSheet will read formula from store
+<FormulaDataSheet />
 ```
 
 ### 高级使用（新增）

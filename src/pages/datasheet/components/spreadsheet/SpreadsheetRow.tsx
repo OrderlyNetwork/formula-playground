@@ -1,14 +1,16 @@
 import React from "react";
-import type { ColumnDef, RowDef } from "@/types/spreadsheet";
+import type { ColumnDef } from "@/types/spreadsheet";
 import type { GridStore } from "@/store/spreadsheet";
 import Cell from "./Cell";
 import { getStickyStyle } from "./spreadsheetUtils";
 
 /**
  * Props for SpreadsheetRow component
+ * Uses rowId string instead of full row object (calculation results are fetched via key lookup)
  */
 interface SpreadsheetRowProps {
-  row: RowDef;
+  /** Row identifier for O(1) lookup */
+  rowId: string;
   rowIndex: number;
   columns: ColumnDef[];
   store: GridStore;
@@ -21,9 +23,10 @@ interface SpreadsheetRowProps {
 
 /**
  * Single row component for spreadsheet
+ * Cell container handles renderer selection based on column type
  */
 const SpreadsheetRow: React.FC<SpreadsheetRowProps> = ({
-  row,
+  rowId,
   rowIndex,
   columns,
   store,
@@ -40,7 +43,7 @@ const SpreadsheetRow: React.FC<SpreadsheetRowProps> = ({
     >
       {/* Row Number - Sticky Left */}
       <div
-        onClick={() => onRowHeaderClick(row.id)}
+        onClick={() => onRowHeaderClick(rowId)}
         className={`w-10 border-r border-b border-grid-border flex items-center justify-center text-xs font-mono sticky left-0 z-30 select-none cursor-pointer transition-colors ${
           isRowSelected
             ? "bg-blue-200 text-blue-800 border-blue-300"
@@ -50,7 +53,7 @@ const SpreadsheetRow: React.FC<SpreadsheetRowProps> = ({
         {rowIndex + 1}
       </div>
 
-      {/* Cells */}
+      {/* Cells - Cell container handles renderer selection */}
       {columns.map((col) => {
         const { style: cellStyle, className } = getStickyStyle(col, false);
         // Use pre-computed Sets for O(1) lookup
@@ -59,8 +62,8 @@ const SpreadsheetRow: React.FC<SpreadsheetRowProps> = ({
 
         return (
           <Cell
-            key={`${row.id}-${col.id}`}
-            rowId={row.id}
+            key={`${rowId}-${col.id}`}
+            rowId={rowId}
             column={col}
             store={store}
             style={cellStyle}
@@ -75,4 +78,3 @@ const SpreadsheetRow: React.FC<SpreadsheetRowProps> = ({
 };
 
 export default SpreadsheetRow;
-

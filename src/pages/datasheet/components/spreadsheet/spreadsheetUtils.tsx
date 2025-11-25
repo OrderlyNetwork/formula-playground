@@ -1,6 +1,8 @@
 import type { ColumnDef, RowDef, CellValue } from "@/types/spreadsheet";
 import type { FlattenedPath } from "@/utils/formulaTableUtils";
 import type { TableRow } from "@/modules/formula-datasheet/types";
+import type { GridStore } from "@/store/spreadsheet";
+import ResultCell from "./ResultCell";
 
 /**
  * Generate unique identifier for rows
@@ -37,34 +39,18 @@ export const generateColumnsFromFormula = (
   });
 
   // Add Result column (sticky right)
+  // Uses type="result" to trigger ResultCell renderer in Cell container
   columns.push({
     id: "result",
     title: "Result",
     width: 150,
-    type: "custom",
+    type: "result" as const,
     locked: true,
     editable: false,
     sticky: "right",
-    render: (val: CellValue) => {
-      const strVal = String(val || "");
-
-      // Check if it's an error
-      if (strVal.startsWith("Error:")) {
-        return (
-          <div className="text-red-600 text-xs px-2 truncate">{strVal}</div>
-        );
-      }
-
-      // Display result
-      if (strVal && strVal !== "") {
-        return (
-          <div className="text-gray-900 text-sm px-2 font-mono text-right truncate">
-            {strVal}
-          </div>
-        );
-      }
-
-      return <div className="text-gray-400 text-sm px-2">-</div>;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    render: (rowId: string, column: ColumnDef, _: GridStore) => {
+      return <ResultCell rowId={rowId} column={column} />;
     },
   });
 
@@ -129,4 +115,3 @@ export const getStickyStyle = (
 
   return { style, className };
 };
-

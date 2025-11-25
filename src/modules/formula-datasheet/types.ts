@@ -6,12 +6,11 @@ import type { FormulaScalar } from "@/types/formula";
 
 /**
  * Represents a single row in the data sheet table
+ * Data fields are stored directly on the object using dynamic keys
  */
 export interface TableRow {
   /** Unique identifier for the row */
   id: string;
-  /** Input data for the row (flattened key-value pairs) */
-  data: Record<string, FormulaScalar>;
   /** Calculation result (if calculated) */
   _result?: FormulaScalar;
   /** Execution time in milliseconds (if calculated) */
@@ -20,6 +19,8 @@ export interface TableRow {
   _error?: string;
   /** Validation status */
   _isValid?: boolean;
+  /** Dynamic data fields - parameter values stored directly on row */
+  [key: string]: FormulaScalar | undefined;
 }
 
 /**
@@ -47,4 +48,3 @@ export interface RowCalculationResult {
   /** Error message if calculation failed */
   error?: string;
 }
-

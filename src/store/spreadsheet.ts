@@ -9,10 +9,16 @@ export class GridStore {
   private listeners: Map<string, Set<(val: CellValue) => void>> = new Map();
   private rows: RowDef[] = [];
   private columns: ColumnDef[] = [];
+  private onCalculateRow?: (rowId: string, colId: string) => void;
 
-  constructor(initialRows: RowDef[], initialCols: ColumnDef[]) {
+  constructor(
+    initialRows: RowDef[],
+    initialCols: ColumnDef[],
+    onCalculateRow?: (rowId: string, colId: string) => void
+  ) {
     this.rows = initialRows;
     this.columns = initialCols;
+    this.onCalculateRow = onCalculateRow;
   }
 
   // --- Key Helpers ---
@@ -25,7 +31,51 @@ export class GridStore {
     return this.data.get(this.getKey(rowId, colId)) ?? "";
   }
 
-  public setValue(rowId: string, colId: string, value: CellValue) {
+  /**
+   * Get all input data for a row (excluding index and result columns)
+   * @param rowId - Row identifier
+   * @returns Record of column ID to cell value for editable columns only
+   */
+  public getRowData(rowId: string): Record<string, CellValue> {
+    const rowData: Record<string, CellValue> = {};
+
+    // Iterate through all columns and get values for editable ones
+    this.columns.forEach((col) => {
+      // Only include editable columns (input data), exclude index and result
+      if (col.editable !== false && col.id !== "index" && col.id !== "result") {
+        const value = this.getValue(rowId, col.id);
+        // Only include non-empty values
+        if (value !== null && value !== "") {
+          rowData[col.id] = value;
+        }
+      }
+    });
+
+    return rowData;
+  }
+
+  /**
+   * Check if a row exists in the store
+   * @param rowId - Row identifier
+   * @returns True if row exists
+   */
+  public hasRow(rowId: string): boolean {
+    return this.rows.some((row) => row.id === rowId);
+  }
+
+  /**
+   * Set a cell value and optionally trigger calculation
+   * @param rowId - Row identifier
+   * @param colId - Column identifier
+   * @param value - New cell value
+   * @param silent - If true, skip calculation trigger (for bulk updates)
+   */
+  public setValue(
+    rowId: string,
+    colId: string,
+    value: CellValue,
+    silent = false
+  ) {
     const key = this.getKey(rowId, colId);
     const oldValue = this.data.get(key);
 
@@ -36,8 +86,10 @@ export class GridStore {
     if (oldValue !== value) {
       this.notify(rowId, colId, value);
 
-      // 3. Trigger Calculations (Business Logic)
-      this.calculateRow(rowId);
+      // 3. Trigger Calculations (Business Logic) - only if not silent
+      if (!silent) {
+        this.calculateRow(rowId, colId);
+      }
     }
   }
 
@@ -73,34 +125,23 @@ export class GridStore {
     }
   }
 
-  // --- Calculation Logic (Simplified Formula Engine) ---
-  // In a real app, this would be a dependency graph.
-  // Here we hardcode: "total" = "price" * "qty"
-  public calculateRow(rowId: string) {
-    console.log("-------->>>>>calculateRow", rowId);
-    // // Check if we have the necessary columns for our hardcoded formula logic
-    // const hasPrice = this.columns.some((c) => c.id === "price");
-    // const hasQty = this.columns.some((c) => c.id === "qty");
-    // const hasTotal = this.columns.some((c) => c.id === "total");
+  // --- Calculation Logic ---
+  /**
+   * Trigger calculation for a row when a cell value changes
+   * Calls the external callback if provided
+   * @param rowId - Row identifier
+   * @param colId - Column identifier that triggered the change
+   */
+  public calculateRow(rowId: string, colId: string) {
+    // Find the column to check if it's editable
+    const column = this.columns.find((c) => c.id === colId);
 
-    // if (hasPrice && hasQty && hasTotal) {
-    //   const price = parseFloat(
-    //     (this.getValue(rowId, "price") as string) || "0"
-    //   );
-    //   const qty = parseFloat((this.getValue(rowId, "qty") as string) || "0");
-
-    //   const total = (price * qty).toFixed(2);
-
-    //   // Update the total cell (which triggers its listener -> updates DOM)
-    //   // We do NOT call setValue recursively if the value hasn't changed to avoid loops
-    //   const currentTotal = this.getValue(rowId, "total");
-    //   if (currentTotal !== total) {
-    //     // Direct set data and notify
-    //     const key = this.getKey(rowId, "total");
-    //     this.data.set(key, total);
-    //     this.notify(rowId, "total", total);
-    //   }
-    // }
+    // Only trigger calculation for editable columns (user inputs)
+    // Skip for result columns or non-editable columns
+    if (column && column.editable !== false && this.onCalculateRow) {
+      // Call the external calculation callback
+      this.onCalculateRow(rowId, colId);
+    }
   }
 
   // --- Structure Management ---

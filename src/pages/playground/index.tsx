@@ -15,6 +15,7 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { useFormulaStore } from "../../store/formulaStore";
+import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 import { CodeInput } from "./components/CodeInput";
 import { db } from "../../lib/dexie";
 import { formulaRepository } from "@/modules/formulaRepository";
@@ -246,6 +247,22 @@ function UserLayout() {
   // - Restoring state from URL when page loads/shared URL is opened
   // - Preventing circular updates
   useFormulaUrlSync();
+
+  // Get selected formula from formula store
+  const { selectedFormulaId, formulaDefinitions } = useFormulaStore();
+  
+  // Get setCurrentFormula from spreadsheet store
+  const setCurrentFormula = useSpreadsheetStore(
+    (state) => state.setCurrentFormula
+  );
+
+  // Sync currentFormula to spreadsheetStore when selection changes
+  useEffect(() => {
+    const formula = selectedFormulaId
+      ? formulaDefinitions.find((f) => f.id === selectedFormulaId)
+      : undefined;
+    setCurrentFormula(formula);
+  }, [selectedFormulaId, formulaDefinitions, setCurrentFormula]);
 
   return (
     <ResizablePanelGroup direction="horizontal" className="h-full">
