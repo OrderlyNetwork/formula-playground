@@ -36,12 +36,10 @@ export function IconButton({
             )}
             onClick={onClick}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-5 w-5" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent side="right">
-          {category.label}
-        </TooltipContent>
+        <TooltipContent side="right">{category.label}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );

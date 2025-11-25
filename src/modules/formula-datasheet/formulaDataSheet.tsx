@@ -1,19 +1,7 @@
-/**
- * FormulaDataSheet Component
- * Main component for displaying and editing formula parameters in a table format
- *
- * This component has been refactored to be more maintainable:
- * - Custom hooks manage different concerns (rows, calculation, metrics)
- * - Table rendering is delegated to DataSheetTable component
- * - Main component acts as a coordinator
- */
-
 import React, { useMemo } from "react";
-import { useFormulaStore } from "@/store/formulaStore";
-import type { FormulaDefinition, FormulaScalar } from "@/types/formula";
+import type { FormulaDefinition } from "@/types/formula";
 import { flattenFormulaInputs } from "@/utils/formulaTableUtils";
 import { NoFormulaState, NoRowsState } from "./components/EmptyState";
-import { DataSheetTable } from "./components/DataSheetTable";
 import { useStableRowIds } from "./hooks/useStableRowIds";
 import { useDataSheetRows } from "./hooks/useDataSheetRows";
 import { useAutoCalculation } from "./hooks/useAutoCalculation";
@@ -33,8 +21,6 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   formula,
   className = "",
 }) => {
-  const loading = useFormulaStore((state) => state.loading);
-
   // Memoize flattenedPaths based on formula ID to prevent unnecessary recalculation
   const flattenedPaths = useMemo(() => {
     if (!formula) return [];
@@ -45,18 +31,12 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   // Custom hooks for managing different concerns
   const { getStableRowId } = useStableRowIds();
 
-  const {
-    rows,
-    setRows,
-    rowsRef,
-    updateCell,
-    updateRowData,
-    deleteRow,
-    duplicateRow,
-    addNewRow,
-  } = useDataSheetRows({ formula, getStableRowId });
+  const { rows, setRows, rowsRef } = useDataSheetRows({
+    formula,
+    getStableRowId,
+  });
 
-  const { handleCellUpdate, executeAllRows } = useAutoCalculation({
+  useAutoCalculation({
     formula,
     rows,
     rowsRef,
@@ -64,15 +44,6 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   });
 
   useDataSheetMetrics({ formula, rows });
-
-  // Combine updateCell with handleCellUpdate for auto-calculation
-  const onCellUpdate = React.useCallback(
-    (rowId: string, path: string, value: FormulaScalar) => {
-      updateCell(rowId, path, value);
-      handleCellUpdate(rowId, path, value);
-    },
-    [updateCell, handleCellUpdate]
-  );
 
   // Render empty state if no formula selected
   if (!formula) {
@@ -88,24 +59,13 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
     <div className="h-full flex flex-col">
       {/* Table */}
       <div className="flex-1 overflow-hidden">
-        <Spreadsheet />
-        {/* {rowsBelongToCurrentFormula ? (
-          <DataSheetTable
-            rows={rows}
-            flattenedPaths={flattenedPaths}
-            loading={loading}
-            onCellUpdate={onCellUpdate}
-            onUpdateRowData={updateRowData}
-            onDeleteRow={deleteRow}
-            onDuplicateRow={duplicateRow}
-            onAddNewRow={addNewRow}
-            onExecuteAllRows={executeAllRows}
-          />
+        {rowsBelongToCurrentFormula ? (
+          <Spreadsheet rows={rows} flattenedPaths={flattenedPaths} />
         ) : (
           <div className="flex items-center justify-center h-full text-gray-500">
             Loading...
           </div>
-        )} */}
+        )}
       </div>
 
       {/* Empty state */}

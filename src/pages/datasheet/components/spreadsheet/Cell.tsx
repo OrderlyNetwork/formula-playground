@@ -33,7 +33,8 @@ const Cell: React.FC<CellProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Local state ONLY for custom rendering triggers.
-  const [_, setForceUpdate] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_forceUpdateCounter, setForceUpdate] = useState(0);
 
   useEffect(() => {
     // 1. Initial Value
@@ -120,7 +121,7 @@ const Cell: React.FC<CellProps> = ({
       <input
         ref={inputRef}
         type={column.type === "number" ? "number" : "text"}
-        className={`w-full h-full px-2 outline-none focus:ring-2 focus:ring-blue-500 focus:z-10 absolute inset-0 bg-transparent text-sm text-gray-700 ${
+        className={`w-full h-full px-2 outline-none focus:inset-ring-2 focus:inset-ring-blue-500 focus:z-10 absolute inset-0 bg-transparent text-sm text-gray-700 ${
           !isEditable
             ? "cursor-not-allowed text-gray-500 font-mono text-right"
             : ""
@@ -134,4 +135,22 @@ const Cell: React.FC<CellProps> = ({
   );
 };
 
-export default memo(Cell);
+/**
+ * Custom comparison function for memo
+ * Only re-render if these props actually changed
+ */
+const areEqual = (prevProps: CellProps, nextProps: CellProps) => {
+  return (
+    prevProps.rowId === nextProps.rowId &&
+    prevProps.column.id === nextProps.column.id &&
+    prevProps.column.width === nextProps.column.width &&
+    prevProps.column.editable === nextProps.column.editable &&
+    prevProps.column.locked === nextProps.column.locked &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.store === nextProps.store
+    // onCellClick is stable (useCallback), no need to compare
+    // style and className are derived from column, handled above
+  );
+};
+
+export default memo(Cell, areEqual);

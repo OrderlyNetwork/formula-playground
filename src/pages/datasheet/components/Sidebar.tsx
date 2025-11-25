@@ -1,7 +1,6 @@
 "use client";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import type { Table } from "../types";
 import type { ActivePanel } from "./constants";
 import { categories } from "./constants";
 import { PANEL_REGISTRY } from "./panelRegistry";

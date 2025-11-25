@@ -77,29 +77,30 @@ export class GridStore {
   // In a real app, this would be a dependency graph.
   // Here we hardcode: "total" = "price" * "qty"
   public calculateRow(rowId: string) {
-    // Check if we have the necessary columns for our hardcoded formula logic
-    const hasPrice = this.columns.some((c) => c.id === "price");
-    const hasQty = this.columns.some((c) => c.id === "qty");
-    const hasTotal = this.columns.some((c) => c.id === "total");
+    console.log("-------->>>>>calculateRow", rowId);
+    // // Check if we have the necessary columns for our hardcoded formula logic
+    // const hasPrice = this.columns.some((c) => c.id === "price");
+    // const hasQty = this.columns.some((c) => c.id === "qty");
+    // const hasTotal = this.columns.some((c) => c.id === "total");
 
-    if (hasPrice && hasQty && hasTotal) {
-      const price = parseFloat(
-        (this.getValue(rowId, "price") as string) || "0"
-      );
-      const qty = parseFloat((this.getValue(rowId, "qty") as string) || "0");
+    // if (hasPrice && hasQty && hasTotal) {
+    //   const price = parseFloat(
+    //     (this.getValue(rowId, "price") as string) || "0"
+    //   );
+    //   const qty = parseFloat((this.getValue(rowId, "qty") as string) || "0");
 
-      const total = (price * qty).toFixed(2);
+    //   const total = (price * qty).toFixed(2);
 
-      // Update the total cell (which triggers its listener -> updates DOM)
-      // We do NOT call setValue recursively if the value hasn't changed to avoid loops
-      const currentTotal = this.getValue(rowId, "total");
-      if (currentTotal !== total) {
-        // Direct set data and notify
-        const key = this.getKey(rowId, "total");
-        this.data.set(key, total);
-        this.notify(rowId, "total", total);
-      }
-    }
+    //   // Update the total cell (which triggers its listener -> updates DOM)
+    //   // We do NOT call setValue recursively if the value hasn't changed to avoid loops
+    //   const currentTotal = this.getValue(rowId, "total");
+    //   if (currentTotal !== total) {
+    //     // Direct set data and notify
+    //     const key = this.getKey(rowId, "total");
+    //     this.data.set(key, total);
+    //     this.notify(rowId, "total", total);
+    //   }
+    // }
   }
 
   // --- Structure Management ---
