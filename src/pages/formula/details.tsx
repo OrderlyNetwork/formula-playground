@@ -14,7 +14,33 @@ import { useParams, useNavigate } from "react-router";
 import { useEffect, useMemo, useCallback, useRef } from "react";
 import { FormulaDocs } from "../playground/components/FormulaDocs";
 import { FormulaCode } from "../playground/components/FormulaCode";
-import Spreadsheet from "../datasheet/components/spreadsheet/Spreadsheet";
+import { Progress } from "@/components/ui/progress";
+
+/**
+ * Loading state component
+ * Displayed while formulas are being loaded from sources
+ */
+const LoadingState = () => (
+  <div className="flex-1 flex flex-col items-center justify-center gap-4 text-zinc-600">
+    <div className="w-64 space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600" />
+        <p className="text-sm font-medium">Loading formulas...</p>
+      </div>
+      <Progress value={66} className="h-1" />
+    </div>
+  </div>
+);
+
+/**
+ * Empty state component
+ * Displayed when no formula is selected or formula not found
+ */
+const EmptyState = () => (
+  <div className="flex-1 flex items-center justify-center text-zinc-600">
+    <p>Select a formula to view and edit its parameters in a tabular format.</p>
+  </div>
+);
 
 export const FormulaDetails = () => {
   // Get formula ID from URL params
@@ -22,7 +48,7 @@ export const FormulaDetails = () => {
   const navigate = useNavigate();
 
   // Access formula store
-  const { getFormulaDefinition, loadFormulasFromAllSources } =
+  const { loadFormulasFromAllSources, formulaDefinitions, loading } =
     useFormulaStore();
 
   // Access global calculation status store
@@ -45,11 +71,18 @@ export const FormulaDetails = () => {
 
   // Add tab when URL changes and sync active tab
   // This effect handles both adding tabs and syncing active tab with URL
+  // Wait for formulas to load before attempting to add tab
   useEffect(() => {
-    if (!id) return;
+    // Don't proceed if no ID or still loading
+    if (!id || loading) return;
 
-    const formula = getFormulaDefinition(id);
-    if (!formula) return;
+    // Find formula directly from definitions
+    const formula = formulaDefinitions.find((f) => f.id === id);
+    if (!formula) {
+      // Formula not found even after loading - might be invalid ID
+      console.warn(`Formula with id "${id}" not found`);
+      return;
+    }
 
     // Add tab if it doesn't exist (addTab handles duplicate check)
     addTab(id, formula.name || id, "code");
@@ -58,12 +91,14 @@ export const FormulaDetails = () => {
     if (id !== activeTabId) {
       setActiveTab(id);
     }
-  }, [id, getFormulaDefinition, addTab, setActiveTab, activeTabId]);
+  }, [id, loading, formulaDefinitions, addTab, setActiveTab, activeTabId]);
 
   // Get current formula definition based on active tab
+  // Compute directly from formulaDefinitions to ensure reactivity
   const currentFormula = useMemo(() => {
-    return activeTabId ? getFormulaDefinition(activeTabId) : undefined;
-  }, [activeTabId, getFormulaDefinition]);
+    if (!activeTabId) return undefined;
+    return formulaDefinitions.find((f) => f.id === activeTabId);
+  }, [activeTabId, formulaDefinitions]);
 
   /**
    * Handle download results action
@@ -144,13 +179,16 @@ export const FormulaDetails = () => {
 
   /**
    * Determine if content should be displayed
-   * Requires: tabs exist, active tab is set, and formula is loaded
+   * Requires: not loading, tabs exist, active tab is set, and formula is loaded
    */
   const shouldShowContent = useMemo(() => {
     return (
-      tabs.length > 0 && activeTabId !== null && currentFormula !== undefined
+      !loading &&
+      tabs.length > 0 &&
+      activeTabId !== null &&
+      currentFormula !== undefined
     );
-  }, [tabs.length, activeTabId, currentFormula]);
+  }, [loading, tabs.length, activeTabId, currentFormula]);
 
   return (
     <div className="flex flex-1 flex-col min-w-0 bg-white">
@@ -162,13 +200,10 @@ export const FormulaDetails = () => {
       />
 
       {/* Content */}
-      {!shouldShowContent ? (
-        <div className="flex-1 flex items-center justify-center text-zinc-600">
-          <p>
-            Select a formula to view and edit its parameters in a tabular
-            format.
-          </p>
-        </div>
+      {loading ? (
+        <LoadingState />
+      ) : !shouldShowContent ? (
+        <EmptyState />
       ) : (
         <>
           {/* Split View: Editor & Results */}

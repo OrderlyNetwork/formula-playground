@@ -120,7 +120,8 @@ const Cell: React.FC<CellProps> = ({
     >
       <input
         ref={inputRef}
-        type={column.type === "number" ? "number" : "text"}
+        // type={column.type === "number" ? "number" : "text"}
+        type="text"
         className={`w-full h-full px-2 outline-none focus:inset-ring-2 focus:inset-ring-blue-500 focus:z-10 absolute inset-0 bg-transparent text-sm text-gray-700 ${
           !isEditable
             ? "cursor-not-allowed text-gray-500 font-mono text-right"

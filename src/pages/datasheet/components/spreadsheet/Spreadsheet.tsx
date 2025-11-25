@@ -1,15 +1,17 @@
 import React, { useRef, useEffect, useCallback, useMemo } from "react";
-import type { ColumnDef, RowDef, CellValue } from "@/types/spreadsheet";
 import { GridStore } from "@/store/spreadsheet";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import Cell from "./Cell";
-import { Trash2, Lock, ArrowDown, ArrowRight } from "lucide-react";
 import type { TableRow } from "@/modules/formula-datasheet/types";
 import type { FlattenedPath } from "@/utils/formulaTableUtils";
-
-// Initial Data Generators
-const generateId = () => Math.random().toString(36).substr(2, 9);
+import SpreadsheetToolbar from "./SpreadsheetToolbar";
+import SpreadsheetHeader from "./SpreadsheetHeader";
+import SpreadsheetRow from "./SpreadsheetRow";
+import {
+  generateColumnsFromFormula,
+  generateRows,
+  toCellValue,
+} from "./spreadsheetUtils";
 
 /**
  * Props interface for Spreadsheet component
@@ -18,94 +20,6 @@ interface SpreadsheetProps {
   rows?: TableRow[];
   flattenedPaths?: FlattenedPath[];
 }
-
-/**
- * Generate columns from formula flattened paths
- */
-const generateColumnsFromFormula = (
-  flattenedPaths: FlattenedPath[]
-): ColumnDef[] => {
-  const columns: ColumnDef[] = [];
-
-  // Add columns from formula inputs
-  flattenedPaths.forEach((path) => {
-    const widthMap: Record<string, number> = {
-      number: 200,
-      string: 200,
-      boolean: 100,
-      object: 250,
-    };
-
-    const width = widthMap[path.factorType.baseType] || 150;
-
-    columns.push({
-      id: path.path,
-      title: path.header,
-      width,
-
-      type: path.factorType.baseType === "number" ? "number" : "text",
-      locked: true,
-      editable: true,
-    });
-  });
-
-  // Add Result column (sticky right)
-  columns.push({
-    id: "result",
-    title: "Result",
-    width: 150,
-    type: "custom",
-    locked: true,
-    editable: false,
-    sticky: "right",
-    render: (val: CellValue) => {
-      const strVal = String(val || "");
-
-      // Check if it's an error
-      if (strVal.startsWith("Error:")) {
-        return (
-          <div className="text-red-600 text-xs px-2 truncate">{strVal}</div>
-        );
-      }
-
-      // Display result
-      if (strVal && strVal !== "") {
-        return (
-          <div className="text-gray-900 text-sm px-2 font-mono text-right truncate">
-            {strVal}
-          </div>
-        );
-      }
-
-      return <div className="text-gray-400 text-sm px-2">-</div>;
-    },
-  });
-
-  return columns;
-};
-
-/**
- * Generate rows with minimum 50 entries
- * If formulaRows provided, use their IDs; otherwise generate new IDs
- * Always ensures at least 50 rows exist
- */
-const generateRows = (formulaRows?: TableRow[]): RowDef[] => {
-  const rows: RowDef[] = [];
-
-  // First, add formula rows if provided
-  if (formulaRows && formulaRows.length > 0) {
-    formulaRows.forEach((row) => {
-      rows.push({ id: row.id });
-    });
-  }
-
-  // Then pad to minimum 50 rows
-  while (rows.length < 50) {
-    rows.push({ id: generateId() });
-  }
-
-  return rows;
-};
 
 const Spreadsheet: React.FC<SpreadsheetProps> = ({
   rows: formulaRows,
@@ -227,15 +141,6 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
     [updateSelectionOnCellClick]
   );
 
-  // Helper function to convert FormulaScalar to CellValue
-  const toCellValue = (value: unknown): CellValue => {
-    if (value === null || value === undefined) return null;
-    if (typeof value === "string" || typeof value === "number") return value;
-    if (typeof value === "boolean") return String(value);
-    // For objects and arrays, convert to JSON string
-    return JSON.stringify(value);
-  };
-
   // Initialize GridStore with formula data
   useEffect(() => {
     if (formulaRows && formulaRows.length > 0 && storeRef.current) {
@@ -259,32 +164,6 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
       });
     }
   }, [formulaRows, rows]);
-
-  // --- Styling Helpers (Memoized) ---
-  const getStickyStyle = useCallback(
-    (
-      col: ColumnDef,
-      isHeader: boolean
-    ): { style: React.CSSProperties; className: string } => {
-      if (!col.sticky) return { style: {}, className: "" };
-
-      const style: React.CSSProperties = { position: "sticky" };
-      let className = isHeader ? "z-30" : "z-20"; // Headers higher than body
-
-      if (col.sticky === "right") {
-        style.right = 0;
-        className +=
-          " border-l border-grid-border shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.1)]";
-      } else if (col.sticky === "left") {
-        style.left = 40;
-        className +=
-          " border-r border-grid-border shadow-[4px_0_8px_-4px_rgba(0,0,0,0.1)]";
-      }
-
-      return { style, className };
-    },
-    []
-  );
 
   // Pre-compute selection sets for O(1) lookup instead of O(n) checks
   const selectedRowIds = useMemo(() => {
@@ -329,42 +208,12 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
   return (
     <div className="flex flex-col h-full bg-white shadow-sm overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 p-3 border-b border-gray-200 bg-gray-50">
-        <button
-          onClick={addRow}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors active:translate-y-0.5"
-          title={
-            selection?.type === "row"
-              ? "Add Row After Selected"
-              : "Add Row at Bottom"
-          }
-        >
-          <ArrowDown size={14} className="text-blue-600" />
-          <span>Add Row {selection?.type === "row" ? "(Insert)" : ""}</span>
-        </button>
-        <button
-          onClick={addColumn}
-          // disabled={flattenedPaths && flattenedPaths.length > 0}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors active:translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
-          title={
-            flattenedPaths && flattenedPaths.length > 0
-              ? "Columns are defined by formula inputs"
-              : selection?.type === "column"
-              ? "Add Column After Selected"
-              : "Add Column at End"
-          }
-        >
-          <ArrowRight size={14} className="text-green-600" />
-          <span>
-            Add Column {selection?.type === "column" ? "(Insert)" : ""}
-          </span>
-        </button>
-        <div className="h-6 w-px bg-gray-300 mx-2"></div>
-        <span className="text-xs text-gray-500">
-          Click <strong>Row Index</strong> or <strong>Column Header</strong> to
-          select. Add buttons insert after selection.
-        </span>
-      </div>
+      <SpreadsheetToolbar
+        selection={selection}
+        flattenedPaths={flattenedPaths}
+        onAddRow={addRow}
+        onAddColumn={addColumn}
+      />
 
       {/* Grid Container with Virtual Scrolling */}
       <div
@@ -376,44 +225,12 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
           style={{ height: `${rowVirtualizer.getTotalSize() + 40}px` }}
         >
           {/* Header Row - Sticky */}
-          <div className="flex sticky top-0 z-40 shadow-sm min-w-max">
-            {/* Row Number Header - Sticky Left Corner */}
-            <div className="w-10 bg-gray-100 border-r border-b border-gray-300 flex-shrink-0 sticky left-0 z-50"></div>
-
-            {columns.map((col) => {
-              const { style, className } = getStickyStyle(col, true);
-              const isSelected = selectedColIds.has(col.id);
-              return (
-                <div
-                  key={col.id}
-                  onClick={() => handleColHeaderClick(col.id)}
-                  className={`bg-gray-100 border-r border-b border-gray-300 px-2 py-2 flex items-center justify-between group font-semibold text-xs uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors ${
-                    isSelected
-                      ? "bg-blue-200 text-blue-900 border-blue-300"
-                      : "text-gray-600"
-                  } ${className}`}
-                  style={{ width: col.width, minWidth: col.width, ...style }}
-                >
-                  <div className="flex items-center gap-1 truncate">
-                    {col.locked && <Lock size={10} className="text-gray-400" />}
-                    <span>{col.title}</span>
-                  </div>
-                  {!col.locked && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteColumnAction(col.id);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded text-red-500 transition-all"
-                      title="Delete Column"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <SpreadsheetHeader
+            columns={columns}
+            selectedColIds={selectedColIds}
+            onColHeaderClick={handleColHeaderClick}
+            onDeleteColumn={deleteColumnAction}
+          />
 
           {/* Virtualized Data Rows */}
           <div
@@ -427,47 +244,21 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
               const isRowSelected = selectedRowIds.has(row.id);
 
               return (
-                <div
+                <SpreadsheetRow
                   key={row.id}
-                  className="flex min-w-max group absolute top-0 left-0 w-full"
+                  row={row}
+                  rowIndex={virtualRow.index}
+                  columns={columns}
+                  store={storeRef.current!}
+                  isRowSelected={isRowSelected}
+                  selectedColIds={selectedColIds}
+                  onRowHeaderClick={handleRowHeaderClick}
+                  onCellClick={handleCellClick}
                   style={{
                     height: `${virtualRow.size}px`,
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
-                >
-                  {/* Row Number - Sticky Left */}
-                  <div
-                    onClick={() => handleRowHeaderClick(row.id)}
-                    className={`w-10 border-r border-b border-grid-border flex items-center justify-center text-xs font-mono sticky left-0 z-30 select-none cursor-pointer transition-colors ${
-                      isRowSelected
-                        ? "bg-blue-200 text-blue-800 border-blue-300"
-                        : "bg-gray-50 text-gray-400 hover:bg-blue-50 hover:text-blue-600"
-                    }`}
-                  >
-                    {virtualRow.index + 1}
-                  </div>
-
-                  {/* Cells */}
-                  {columns.map((col) => {
-                    const { style, className } = getStickyStyle(col, false);
-                    // Use pre-computed Sets for O(1) lookup
-                    const isColSelected = selectedColIds.has(col.id);
-                    const isCellSelected = isRowSelected || isColSelected;
-
-                    return (
-                      <Cell
-                        key={`${row.id}-${col.id}`}
-                        rowId={row.id}
-                        column={col}
-                        store={storeRef.current!}
-                        style={style}
-                        className={className}
-                        isSelected={isCellSelected}
-                        onCellClick={handleCellClick}
-                      />
-                    );
-                  })}
-                </div>
+                />
               );
             })}
           </div>
