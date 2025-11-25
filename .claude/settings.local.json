@@ -24,7 +24,8 @@
       "Bash(curl:*)",
       "Bash(npm run build)",
       "Bash(npm run dev)",
-      "Bash(pnpm run lint)"
+      "Bash(pnpm run lint)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

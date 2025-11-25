@@ -291,7 +291,7 @@ export function generateTableColumns(
  * Default cell renderer using TypeAwareInput
  */
 import React from "react";
-import { TypeAwareInput } from "@/modules/formula-graph/components/TypeAwareInput";
+import { TypeAwareInput } from "@/modules/formula-datasheet/components/TypeAwareInput";
 import {
   Tooltip,
   TooltipTrigger,

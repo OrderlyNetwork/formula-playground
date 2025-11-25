@@ -13,7 +13,7 @@ import {
 import type { FormulaScalar, FactorType } from "@/types/formula";
 import type { TableRow } from "../types";
 import { generateTableColumns, type FlattenedPath } from "@/utils/formulaTableUtils";
-import { TypeAwareInput } from "@/modules/formula-graph/components/TypeAwareInput";
+import { TypeAwareInput } from "@/modules/formula-datasheet/components/TypeAwareInput";
 import { cn } from "@/lib/utils";
 import { MIN_COLUMN_WIDTH } from "../constants";
 

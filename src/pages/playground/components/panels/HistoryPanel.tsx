@@ -10,7 +10,7 @@ import { Trash2 } from "lucide-react";
 
 /**
  * Extract formula names from a canvas snapshot
- * Returns an array of formula names found in the snapshot's nodes
+ * Returns an array of formula names found in the snapshot's formula parameters
  */
 function getFormulaNamesFromSnapshot(
   snapshot: CanvasSnapshot,
@@ -18,18 +18,17 @@ function getFormulaNamesFromSnapshot(
 ): string[] {
   const formulaIds = new Set<string>();
 
-  // Extract formula IDs from nodes
-  snapshot.nodes.forEach((node) => {
-    if (node.type === "formula") {
-      // Extract formula ID from node ID (handle both "formula" and "formulaId-formula" formats)
-      const formulaId = node.id.includes("-")
-        ? node.id.split("-")[0]
-        : node.data?.id;
-      if (formulaId) {
-        formulaIds.add(formulaId);
-      }
-    }
+  // Extract formula IDs from formula parameters
+  Object.keys(snapshot.formulaParams).forEach((formulaId) => {
+    formulaIds.add(formulaId);
   });
+
+  // Also extract from formulaIds array if available (for newer snapshots)
+  if (snapshot.formulaIds) {
+    snapshot.formulaIds.forEach((formulaId) => {
+      formulaIds.add(formulaId);
+    });
+  }
 
   // Map formula IDs to names
   const formulaNames = Array.from(formulaIds)

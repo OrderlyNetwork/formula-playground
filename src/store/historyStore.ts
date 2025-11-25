@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import type { CanvasSnapshot } from "../types/history";
-import type { FormulaNode, FormulaEdge } from "../types/formula";
 import { canvasSnapshotManager } from "../modules/history-manager";
 
 interface HistoryStore {
@@ -20,10 +19,9 @@ interface HistoryStore {
 
   // Canvas snapshot actions
   saveCanvasSnapshot: (
-    nodes: FormulaNode[],
-    edges: FormulaEdge[],
     formulaParams: Record<string, Record<string, unknown>>,
-    canvasMode: "single" | "multi"
+    canvasMode: "single" | "multi",
+    formulaIds?: string[]
   ) => Promise<string>;
   loadCanvasSnapshots: () => Promise<void>;
   replayCanvasSnapshot: (snapshotId: string) => Promise<void>;
@@ -85,28 +83,25 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
   },
 
   // Save canvas snapshot
+  // Note: React Flow functionality has been removed, now only saves formula parameters and canvas mode
   saveCanvasSnapshot: async (
-    nodes: FormulaNode[],
-    edges: FormulaEdge[],
     formulaParams: Record<string, Record<string, unknown>>,
-    canvasMode: "single" | "multi"
+    canvasMode: "single" | "multi",
+    formulaIds?: string[]
   ) => {
     const timestamp = Date.now();
     const name = formatTimestampName(timestamp);
 
-    // Deep clone nodes and edges to avoid reference issues
-    const snapshotNodes = JSON.parse(JSON.stringify(nodes)) as FormulaNode[];
-    const snapshotEdges = JSON.parse(JSON.stringify(edges)) as FormulaEdge[];
+    // Deep clone formula params to avoid reference issues
     const snapshotParams = JSON.parse(
       JSON.stringify(formulaParams)
     ) as Record<string, Record<string, unknown>>;
 
     const snapshotId = await canvasSnapshotManager.addSnapshot({
       name,
-      nodes: snapshotNodes,
-      edges: snapshotEdges,
       formulaParams: snapshotParams,
       canvasMode,
+      formulaIds,
     });
 
     // Reload snapshots to update UI
@@ -126,6 +121,7 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
   },
 
   // Replay a canvas snapshot - restore canvas state
+  // Note: React Flow functionality has been removed, so this function only restores canvas mode and formula parameters
   replayCanvasSnapshot: async (snapshotId: string) => {
     try {
       const snapshot = await canvasSnapshotManager.getSnapshotById(snapshotId);
@@ -134,59 +130,22 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
         return;
       }
 
-      // Import stores dynamically to avoid circular dependencies
-      const { useGraphStore } = await import("./graphStore");
+      // Import store dynamically to avoid circular dependencies
       const { useCanvasStore } = await import("./canvasStore");
-
-      const graphStore = useGraphStore.getState();
       const canvasStore = useCanvasStore.getState();
-
-      // Restore nodes and edges
-      graphStore.setNodes(snapshot.nodes);
-      graphStore.setEdges(snapshot.edges);
 
       // Restore canvas mode
       canvasStore.setMode(snapshot.canvasMode);
 
-      // Update canvasFormulaIds based on restored nodes first
-      // This needs to happen before setting formulaParams because clearCanvas clears params
-      if (snapshot.canvasMode === "multi") {
-        // Extract formula IDs from nodes
-        const formulaIds = new Set<string>();
-        snapshot.nodes.forEach((node) => {
-          if (node.type === "formula") {
-            // Extract formula ID from node ID (handle both "formula" and "formulaId-formula" formats)
-            const formulaId = node.id.includes("-")
-              ? node.id.split("-")[0]
-              : node.data?.id;
-            if (formulaId) {
-              formulaIds.add(formulaId);
-            }
-          }
-        });
-        // Update canvasFormulaIds (this clears existing params)
+      // Restore formula IDs from snapshot data (if available)
+      if (snapshot.formulaIds && Array.isArray(snapshot.formulaIds)) {
         canvasStore.clearCanvas();
-        formulaIds.forEach((formulaId) => {
+        snapshot.formulaIds.forEach((formulaId: string) => {
           canvasStore.addFormulaToCanvas(formulaId);
         });
-      } else {
-        // Single mode - find the first formula node
-        const formulaNode = snapshot.nodes.find((node) => node.type === "formula");
-        if (formulaNode) {
-          const formulaId = formulaNode.id.includes("-")
-            ? formulaNode.id.split("-")[0]
-            : formulaNode.data?.id;
-          if (formulaId) {
-            canvasStore.replaceCanvasFormula(formulaId);
-          }
-        } else {
-          // No formula node found, clear canvas
-          canvasStore.clearCanvas();
-        }
       }
 
-      // Restore formula parameters after canvasFormulaIds are set
-      // This ensures params are set on the correct formulas
+      // Restore formula parameters
       Object.entries(snapshot.formulaParams).forEach(([formulaId, params]) => {
         canvasStore.setFormulaParams(formulaId, params);
       });
