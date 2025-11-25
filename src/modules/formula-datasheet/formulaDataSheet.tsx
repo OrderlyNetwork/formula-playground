@@ -1,11 +1,14 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useRef } from "react";
 import type { FormulaDefinition } from "@/types/formula";
-import { flattenFormulaInputs } from "@/utils/formulaTableUtils";
+import {
+  flattenFormulaInputs,
+  createInitialRow,
+} from "@/utils/formulaTableUtils";
 import { NoFormulaState, NoRowsState } from "./components/EmptyState";
 import { useStableRowIds } from "./hooks/useStableRowIds";
-import { useDataSheetRows } from "./hooks/useDataSheetRows";
-import { useAutoCalculation } from "./hooks/useAutoCalculation";
 import { useDataSheetMetrics } from "./hooks/useDataSheetMetrics";
+import { useSpreadsheetStore } from "@/store/spreadsheetStore";
+import { dataSheetStateTracker } from "./services/dataSheetStateTracker";
 import Spreadsheet from "@/pages/datasheet/components/spreadsheet/Spreadsheet";
 
 interface FormulaDataSheetProps {
@@ -21,31 +24,48 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   formula,
   className = "",
 }) => {
-  // Memoize flattenedPaths based on formula ID to prevent unnecessary recalculation
   const flattenedPaths = useMemo(() => {
     if (!formula) return [];
     return flattenFormulaInputs(formula.inputs);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formula?.id]);
 
-  // Custom hooks for managing different concerns
   const { getStableRowId } = useStableRowIds();
 
-  const { rows, setRows, rowsRef } = useDataSheetRows({
-    formula,
-    getStableRowId,
-  });
+  const rows = useSpreadsheetStore((state) => state.rows);
+  const setFormulaAndRows = useSpreadsheetStore(
+    (state) => state.setFormulaAndRows
+  );
+  const reset = useSpreadsheetStore((state) => state.reset);
 
-  useAutoCalculation({
-    formula,
-    rows,
-    rowsRef,
-    setRows,
-  });
+  // Track the previous formula ID to detect formula changes
+  const previousFormulaIdRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    const formulaChanged = previousFormulaIdRef.current !== formula?.id;
+    previousFormulaIdRef.current = formula?.id;
+
+    if (formula && formulaChanged) {
+      const stableRowId = getStableRowId(formula.id, 0);
+
+      // Always create a default empty row when formula changes
+      const defaultRow = {
+        ...createInitialRow(formula, 0),
+        id: stableRowId,
+      };
+
+      // Set formula and rows together (store will automatically pad to min 50 rows)
+      setFormulaAndRows(formula, [defaultRow]);
+
+      // Record initial state (only the first meaningful row)
+      dataSheetStateTracker.recordRowStates(formula.id, [defaultRow]);
+    } else if (!formula) {
+      reset();
+    }
+  }, [formula, getStableRowId, setFormulaAndRows, reset]);
 
   useDataSheetMetrics({ formula, rows });
 
-  // Render empty state if no formula selected
   if (!formula) {
     return <NoFormulaState className={className} />;
   }
@@ -57,10 +77,9 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Table */}
       <div className="flex-1 overflow-hidden">
         {rowsBelongToCurrentFormula ? (
-          <Spreadsheet rows={rows} flattenedPaths={flattenedPaths} />
+          <Spreadsheet flattenedPaths={flattenedPaths} />
         ) : (
           <div className="flex items-center justify-center h-full text-gray-500">
             Loading...
@@ -68,7 +87,6 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
         )}
       </div>
 
-      {/* Empty state */}
       {rowsBelongToCurrentFormula && rows.length === 0 && <NoRowsState />}
     </div>
   );

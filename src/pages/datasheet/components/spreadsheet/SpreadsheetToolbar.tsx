@@ -1,7 +1,5 @@
 import React from "react";
 import {
-  ArrowDown,
-  ArrowRight,
   BetweenHorizontalStart,
   BetweenVerticalStart,
   Globe,
@@ -42,6 +40,7 @@ const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
         onClick={onAddRow}
         variant="ghost"
         size="icon"
+        className="p-1 w-7 h-7"
         title={
           selection?.type === "row"
             ? "Add Row After Selected"
@@ -56,6 +55,7 @@ const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
         onClick={onAddColumn}
         variant="ghost"
         size="icon"
+        className="p-1 w-7 h-7"
         title={
           flattenedPaths && flattenedPaths.length > 0
             ? "Columns are defined by formula inputs"
@@ -70,10 +70,10 @@ const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
       </Button>
       <div className="h-6 w-px bg-gray-300 mx-2"></div>
       <div className="flex gap-1">
-        <Button variant="ghost" size="icon">
+        <Button variant="ghost" size="icon" className="p-1 w-7 h-7">
           <Globe size={20} />
         </Button>
-        <Button variant="ghost" size="icon">
+        <Button variant="ghost" size="icon" className="p-1 w-7 h-7">
           <Globe size={20} />
         </Button>
       </div>

@@ -2,29 +2,20 @@ import React, { useRef, useEffect, useCallback, useMemo } from "react";
 import { GridStore } from "@/store/spreadsheet";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import type { TableRow } from "@/modules/formula-datasheet/types";
 import type { FlattenedPath } from "@/utils/formulaTableUtils";
 import SpreadsheetToolbar from "./SpreadsheetToolbar";
 import SpreadsheetHeader from "./SpreadsheetHeader";
 import SpreadsheetRow from "./SpreadsheetRow";
-import {
-  generateColumnsFromFormula,
-  generateRows,
-  toCellValue,
-} from "./spreadsheetUtils";
+import { generateColumnsFromFormula, toCellValue } from "./spreadsheetUtils";
 
 /**
  * Props interface for Spreadsheet component
  */
 interface SpreadsheetProps {
-  rows?: TableRow[];
   flattenedPaths?: FlattenedPath[];
 }
 
-const Spreadsheet: React.FC<SpreadsheetProps> = ({
-  rows: formulaRows,
-  flattenedPaths,
-}) => {
+const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
   // Separate state and actions using selectors to avoid unnecessary re-renders
   const columns = useSpreadsheetStore((state) => state.columns);
   const rows = useSpreadsheetStore((state) => state.rows);
@@ -33,7 +24,6 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
 
   // Get actions separately (they're stable and won't cause re-renders)
   const setColumns = useSpreadsheetStore((state) => state.setColumns);
-  const setRows = useSpreadsheetStore((state) => state.setRows);
   const setIsColumnsReady = useSpreadsheetStore(
     (state) => state.setIsColumnsReady
   );
@@ -60,16 +50,14 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
       const initialColumns = flattenedPaths
         ? generateColumnsFromFormula(flattenedPaths)
         : [];
-      const initialRows = generateRows(formulaRows);
 
       // Initialize GridStore
       if (!storeRef.current) {
-        storeRef.current = new GridStore(initialRows, initialColumns);
+        storeRef.current = new GridStore([], initialColumns);
       }
 
       // Initialize Zustand store
       setColumns(initialColumns);
-      setRows(initialRows);
       setIsColumnsReady(flattenedPaths !== undefined);
 
       isInitializedRef.current = true;
@@ -90,14 +78,6 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
       setIsColumnsReady(true);
     }
   }, [flattenedPaths, setColumns, setIsColumnsReady]);
-
-  // Sync rows when formulaRows changes - always ensure minimum 50 rows
-  useEffect(() => {
-    if (!isInitializedRef.current) return; // Skip during initialization
-
-    const newRows = generateRows(formulaRows);
-    setRows(newRows);
-  }, [formulaRows, setRows]);
 
   // Sync GridStore when structure changes
   useEffect(() => {
@@ -141,12 +121,12 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
     [updateSelectionOnCellClick]
   );
 
-  // Initialize GridStore with formula data
+  // Initialize GridStore with row data from store
   useEffect(() => {
-    if (formulaRows && formulaRows.length > 0 && storeRef.current) {
+    if (rows && rows.length > 0 && storeRef.current) {
       const s = storeRef.current;
 
-      formulaRows.forEach((row, rowIndex) => {
+      rows.forEach((row, rowIndex) => {
         // Set index column value
         s.setValue(row.id, "index", String(rowIndex + 1));
 
@@ -163,7 +143,7 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
         }
       });
     }
-  }, [formulaRows, rows]);
+  }, [rows]);
 
   // Pre-compute selection sets for O(1) lookup instead of O(n) checks
   const selectedRowIds = useMemo(() => {
