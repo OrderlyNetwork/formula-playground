@@ -25,7 +25,8 @@
       "Bash(npm run build)",
       "Bash(npm run dev)",
       "Bash(pnpm run lint)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(pnpm run dev)"
     ],
     "deny": [],
     "ask": []

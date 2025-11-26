@@ -3,6 +3,7 @@ import {
   BetweenHorizontalStart,
   BetweenVerticalStart,
   Globe,
+  Logs,
   Webhook,
 } from "lucide-react";
 import type { FlattenedPath } from "@/utils/formulaTableUtils";
@@ -92,7 +93,8 @@ const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
           onClick={togglePanel}
           title="Toggle Execution Logs"
         >
-          <BetweenVerticalStart size={20} className="rotate-90" />
+          <Logs size={20} />
+          {/* <BetweenVerticalStart size={20} className="rotate-90" /> */}
         </Button>
       </div>
     </div>

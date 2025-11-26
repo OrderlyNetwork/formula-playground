@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useFormulaLogStore } from "@/store/formulaLogStore";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { sanitizeJsonStringify, sanitizeStackTrace } from "@/utils/sanitization";
 import {
     Table,
     TableBody,
@@ -111,7 +112,7 @@ export const FormulaLogPanel: React.FC = () => {
                                                 </TableCell>
                                                 <TableCell className="py-4 max-w-[150px]">
                                                     <div className="text-xs font-mono text-zinc-600 truncate">
-                                                        {JSON.stringify(log.inputs)}
+                                                        {sanitizeJsonStringify(log.inputs)}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="py-4 max-w-[150px]">
@@ -121,7 +122,7 @@ export const FormulaLogPanel: React.FC = () => {
                                                             log.error ? "text-red-600" : "text-green-600"
                                                         )}
                                                     >
-                                                        {log.error || JSON.stringify(log.result)}
+                                                        {log.error || sanitizeJsonStringify(log.result)}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="py-4 text-xs text-zinc-500 text-right whitespace-nowrap">
@@ -139,7 +140,7 @@ export const FormulaLogPanel: React.FC = () => {
                                                                 <div className="text-xs font-semibold text-zinc-500">Inputs</div>
                                                                 <div className="bg-white border rounded p-2">
                                                                     <pre className="text-xs font-mono text-zinc-700">
-                                                                        {JSON.stringify(log.inputs, null, 2)}
+                                                                        {sanitizeJsonStringify(log.inputs, null, 2)}
                                                                     </pre>
                                                                 </div>
                                                             </div>
@@ -155,13 +156,13 @@ export const FormulaLogPanel: React.FC = () => {
                                                                         "text-xs font-mono",
                                                                         log.error ? "text-red-600" : "text-green-600"
                                                                     )}>
-                                                                        {log.error || JSON.stringify(log.result, null, 2)}
+                                                                        {log.error || sanitizeJsonStringify(log.result, null, 2)}
                                                                     </pre>
                                                                     {log.error && log.stack && (
                                                                         <div className="mt-2 pt-2 border-t border-red-200">
                                                                             <div className="text-[10px] font-semibold text-red-800 mb-1">Stack Trace:</div>
                                                                             <pre className="text-[10px] font-mono text-red-700 whitespace-pre-wrap">
-                                                                                {log.stack}
+                                                                                {sanitizeStackTrace(log.stack)}
                                                                             </pre>
                                                                         </div>
                                                                     )}

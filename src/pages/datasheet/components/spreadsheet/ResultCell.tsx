@@ -6,6 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { sanitizeJsonStringify, sanitizeErrorMessage } from "@/utils/sanitization";
 
 export interface ResultCellProps {
   rowId: string;
@@ -46,7 +47,7 @@ const ResultCell: React.FC<ResultCellProps> = ({
     ) {
       return calculationResult.result;
     }
-    return JSON.stringify(calculationResult.result);
+    return sanitizeJsonStringify(calculationResult.result);
   }, [calculationResult]);
 
   // Handle click to update selection
@@ -84,7 +85,7 @@ const ResultCell: React.FC<ResultCellProps> = ({
               Error Message:
             </span>
             <p className="text-sm text-red-700 mt-1 p-2 bg-red-50 rounded border border-red-200">
-              {calculationResult.error}
+              {sanitizeErrorMessage(calculationResult.error)}
             </p>
           </div>
 

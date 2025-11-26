@@ -87,8 +87,15 @@ export const toCellValue = (value: unknown): CellValue => {
   if (value === null || value === undefined) return null;
   if (typeof value === "string" || typeof value === "number") return value;
   if (typeof value === "boolean") return String(value);
-  // For objects and arrays, convert to JSON string
-  return JSON.stringify(value);
+  // For objects and arrays, convert to JSON string with cleanup
+  const jsonString = JSON.stringify(value);
+  // Clean up common over-escaped Unicode sequences
+  return jsonString
+    .replace(/\\u0022/g, '"')
+    .replace(/\\u0027/g, "'")
+    .replace(/\\u003c/g, "<")
+    .replace(/\\u003e/g, ">")
+    .replace(/\\u0026/g, "&");
 };
 
 /**
