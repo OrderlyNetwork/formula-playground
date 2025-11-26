@@ -34,11 +34,10 @@ const SpreadsheetHeader: React.FC<SpreadsheetHeaderProps> = ({
           <div
             key={col.id}
             onClick={() => onColHeaderClick(col.id)}
-            className={`bg-gray-100 border-r border-b border-gray-300 px-2 py-2 flex items-center justify-between group font-semibold text-xs uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors ${
-              isSelected
-                ? "bg-blue-200 text-blue-900 border-blue-300"
-                : "text-gray-600"
-            } ${className}`}
+            className={`bg-gray-100 [&:not(:last-child)]:border-r border-b border-gray-300 px-2 py-2 flex items-center justify-between group font-semibold text-xs uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors ${isSelected
+              ? "bg-blue-200 text-blue-900 border-blue-300"
+              : "text-gray-600"
+              } ${className}`}
             style={{ width: col.width, minWidth: col.width, ...style }}
           >
             <div className="flex items-center gap-1 truncate">

@@ -9,7 +9,7 @@ interface LogPanelHeaderProps {
 
 export const LogPanelHeader: React.FC<LogPanelHeaderProps> = ({ onClear, onClose }) => {
     return (
-        <div className="px-4 py-2 h-[45px] border-b border-zinc-200 flex items-center justify-between bg-zinc-50">
+        <div className="px-4 py-2 h-[45px] border-b border-zinc-200 flex items-center justify-between bg-gray-50">
             <h3 className="font-semibold text-sm text-zinc-700">Execution Logs</h3>
             <div className="flex items-center gap-2">
                 <Button

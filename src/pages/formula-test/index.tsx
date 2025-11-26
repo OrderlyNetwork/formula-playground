@@ -93,10 +93,7 @@ export function FormulaTestPage() {
   return (
     <div className="flex flex-1 flex-col min-w-0 bg-[#1e1e1e]">
       {/* Tabs */}
-      <TabBar
-        tabs={tabs}
-        onCloseTab={handleCloseTab}
-      />
+      <TabBar tabs={tabs} onCloseTab={handleCloseTab} />
 
       {/* Split View: Formula Sheet & Results */}
       <ResizablePanelGroup direction="vertical" className="flex-1">
@@ -117,7 +114,6 @@ export function FormulaTestPage() {
       <StatusBar
         onDownload={handleDownloadResults}
         executionTime={getMetrics(id || "")?.averageTime || 0}
-        rowCount={getMetrics(id || "")?.calculatedRows || 0}
       />
     </div>
   );
