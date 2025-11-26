@@ -4,6 +4,8 @@ import {
   BetweenVerticalStart,
   Globe,
   Logs,
+  PanelRightClose,
+  PanelRightOpen,
   Webhook,
 } from "lucide-react";
 import type { FlattenedPath } from "@/utils/formulaTableUtils";
@@ -42,21 +44,22 @@ const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
 
   return (
     <div className="flex items-center gap-1 px-3 py-2 border-b border-gray-200 bg-gray-50">
-      <div className="flex flex-1"><Button
-        onClick={onAddRow}
-        variant="ghost"
-        size="icon"
-        className="p-1 w-7 h-7"
-        title={
-          selection?.type === "row"
-            ? "Add Row After Selected"
-            : "Add Row at Bottom"
-        }
-      >
-        <BetweenHorizontalStart size={20} />
-        {/* <ArrowDown size={14} className="text-blue-600" />
+      <div className="flex flex-1">
+        <Button
+          onClick={onAddRow}
+          variant="ghost"
+          size="icon"
+          className="p-1 w-7 h-7"
+          title={
+            selection?.type === "row"
+              ? "Add Row After Selected"
+              : "Add Row at Bottom"
+          }
+        >
+          <BetweenHorizontalStart size={20} />
+          {/* <ArrowDown size={14} className="text-blue-600" />
         <span>Add Row {selection?.type === "row" ? "(Insert)" : ""}</span> */}
-      </Button>
+        </Button>
         <Button
           onClick={onAddColumn}
           variant="ghost"
@@ -66,8 +69,8 @@ const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
             flattenedPaths && flattenedPaths.length > 0
               ? "Columns are defined by formula inputs"
               : selection?.type === "column"
-                ? "Add Column After Selected"
-                : "Add Column at End"
+              ? "Add Column After Selected"
+              : "Add Column at End"
           }
         >
           <BetweenVerticalStart size={20} />
@@ -83,17 +86,23 @@ const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
             <Webhook size={20} />
           </Button>
           {/* <div className="h-6 w-px bg-gray-300 mx-2"></div> */}
-
-        </div></div>
+        </div>
+      </div>
       <div>
         <Button
-          variant={isLogPanelOpen ? "secondary" : "ghost"}
+          variant={"ghost"}
           size="icon"
-          className="p-1 w-7 h-7"
+          className="w-7 h-7"
           onClick={togglePanel}
           title="Toggle Execution Logs"
         >
-          <Logs size={20} />
+          {isLogPanelOpen ? (
+            <PanelRightClose size={20} />
+          ) : (
+            <PanelRightOpen size={20} />
+          )}
+
+          {/* <Logs size={20} className={isLogPanelOpen ? "text-purple-600" : ""} /> */}
           {/* <BetweenVerticalStart size={20} className="rotate-90" /> */}
         </Button>
       </div>
