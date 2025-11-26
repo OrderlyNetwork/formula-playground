@@ -14,7 +14,6 @@ import { FormulaDataSheet } from "@/modules/formula-datasheet/formulaDataSheet";
 import { useParams } from "react-router";
 import { useFormulaStore } from "@/store/formulaStore";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
-import { useCalculationStatusStore } from "@/store/calculationStatusStore";
 import { useEffect } from "react";
 
 // Mock Data
@@ -67,9 +66,7 @@ export function FormulaTestPage() {
     (state) => state.setCurrentFormula
   );
 
-  // Access global calculation status store
-  const { getMetrics } = useCalculationStatusStore();
-
+  
   // Get current formula definition based on URL parameter
   const currentFormula = id ? getFormulaDefinition(id) : undefined;
 
@@ -78,10 +75,7 @@ export function FormulaTestPage() {
     setCurrentFormula(currentFormula);
   }, [currentFormula, setCurrentFormula]);
 
-  const handleDownloadResults = () => {
-    console.log("Downloading results...");
-  };
-
+  
   const handleAddTab = () => {
     console.log("Adding new tab...");
   };
@@ -111,10 +105,7 @@ export function FormulaTestPage() {
       </ResizablePanelGroup>
 
       {/* Status Bar */}
-      <StatusBar
-        onDownload={handleDownloadResults}
-        executionTime={getMetrics(id || "")?.averageTime || 0}
-      />
+      <StatusBar />
     </div>
   );
 }

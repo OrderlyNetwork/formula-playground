@@ -3,6 +3,7 @@ import { flattenFormulaInputs } from "@/utils/formulaTableUtils";
 import { NoFormulaState } from "./components/EmptyState";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 import Spreadsheet from "@/pages/datasheet/components/spreadsheet/Spreadsheet";
+import { usePreArgsCheckStore } from "@/store/preArgsCheckStore";
 
 interface FormulaDataSheetProps {
   className?: string;
@@ -25,6 +26,7 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   const formula = useSpreadsheetStore((state) => state.currentFormula);
   const reset = useSpreadsheetStore((state) => state.reset);
   const clearAllResults = useSpreadsheetStore((state) => state.clearAllResults);
+  const clearPreArgsCheckMessages = usePreArgsCheckStore((state) => state.clearPreArgsCheckMessages);
 
   // Flatten formula inputs for column generation
   const flattenedPaths = useMemo(() => {
@@ -42,13 +44,14 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
     previousFormulaIdRef.current = formula?.id;
 
     if (formula && formulaChanged) {
-      // Clear previous calculation results when formula changes
+      // Clear previous calculation results and validation messages when formula changes
       clearAllResults();
-      console.log("🔄 Formula changed, cleared calculation results");
+      clearPreArgsCheckMessages(formula.id);
+      console.log("🔄 Formula changed, cleared calculation results and validation messages");
     } else if (!formula) {
       reset();
     }
-  }, [formula, clearAllResults, reset]);
+  }, [formula, clearAllResults, clearPreArgsCheckMessages, reset]);
 
   if (!formula) {
     return <NoFormulaState className={className} />;

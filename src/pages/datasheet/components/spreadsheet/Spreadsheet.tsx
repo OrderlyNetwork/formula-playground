@@ -1,10 +1,4 @@
-import React, {
-  useRef,
-  useEffect,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import React, { useRef, useEffect, useCallback, useMemo } from "react";
 import { GridStore } from "@/store/spreadsheet";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -76,12 +70,6 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
    */
   const handleCalculateRow = useCallback(
     async (rowId: string, colId: string) => {
-      console.log(
-        "------->>>handleCalculateRow--------",
-        rowId,
-        colId,
-        currentFormula
-      );
       // Guard: Check if formula exists
       if (!currentFormula) {
         console.warn("No formula available for calculation");
@@ -128,20 +116,17 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
           return;
         }
 
-
-
         // Reconstruct formula inputs for tracking
         const inputs = reconstructFormulaInputs(currentRowData, currentFormula);
 
         console.log("------->>>inputs", inputs, currentRowData);
 
-
-        // if args are valid, proceed to calculate,else ignore
         if (!dataSheetCalculator.preArgsCheck(currentFormula, inputs)) {
           return;
         }
 
         // Execute formula calculation with fresh data from GridStore
+        // calculateRow now handles preArgsCheck internally
         const result = await dataSheetCalculator.calculateRow(
           currentFormula,
           inputs

@@ -1,40 +1,54 @@
 "use client";
-import { Table2, RefreshCw, ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { RefreshCw, AlertTriangle } from "lucide-react";
+import { useMemo } from "react";
+import { useCalculationStatusStore } from "@/store/calculationStatusStore";
+import { useFormulaTabStore } from "@/store/formulaTabStore";
+import {
+  usePreArgsCheckStore,
+  createPreArgsCheckMessageSelector,
+} from "@/store/preArgsCheckStore";
 
-interface StatusBarProps {
-  connection?: string;
-  database?: string;
-  result?: string;
-  executionTime?: number;
-  onDownload?: () => void;
-}
+export function StatusBar() {
+  const activeTab = useFormulaTabStore((state) => state.getActiveTab());
+  const formulaId = activeTab?.id;
 
-export function StatusBar({ executionTime = 45, onDownload }: StatusBarProps) {
+  // Method 1: Use helper function with useMemo to create a stable selector
+  // This ensures re-render only when the specific formulaId's data changes
+  // Zustand will only re-render when the selected value actually changes
+  const latestMessage = usePreArgsCheckStore(
+    useMemo(() => createPreArgsCheckMessageSelector(formulaId), [formulaId])
+  );
+
+  // Method 2: Subscribe to specific formulaId's metrics
+  const executionTime = useCalculationStatusStore(
+    useMemo(
+      () => (state) => {
+        if (!formulaId) return 0;
+        return state.metrics.get(formulaId)?.averageTime || 0;
+      },
+      [formulaId]
+    )
+  );
+
   return (
     <div className="h-8 bg-gray-100 flex items-center justify-between px-2 text-xs text-white select-none border-t border-gray-200">
-      <div className="flex items-center h-full">
-        <div className="flex items-center gap-2 px-2 h-full bg-[#007acc] hover:bg-white/10 cursor-pointer"></div>
-        <div className="flex items-center gap-2 px-2 h-full bg-gray-200 text-zinc-400 hover:bg-white/10 cursor-pointer ml-0.5"></div>
-        <div className="flex items-center gap-2 px-2 h-full bg-gray-200 text-zinc-400 hover:bg-white/10 cursor-pointer ml-0.5">
-          <ChevronDown className="h-3 w-3" />
-        </div>
-        <div className="flex items-center gap-4 px-4 h-full bg-gray-200 text-zinc-400 ml-0.5">
-          <div className="flex items-center gap-1.5">
-            <RefreshCw className="h-3 w-3" />
-            <span>{executionTime || 0}ms</span>
+      <div className="flex items-center flex-1">
+        {latestMessage ? (
+          <div className="flex items-center gap-1.5 text-amber-600">
+            <AlertTriangle className="h-3 w-3" />
+            <span className="truncate">{latestMessage.message}</span>
           </div>
-        </div>
+        ) : (
+          <div className="text-gray-500">
+            <span>All required fields present</span>
+          </div>
+        )}
       </div>
       <div className="flex items-center h-full bg-gray-200 ml-0.5 px-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 text-xs text-zinc-300 hover:text-white hover:bg-zinc-700"
-          onClick={onDownload}
-        >
-          Download
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <RefreshCw className="h-3 w-3" />
+          <span>{executionTime || 0}ms</span>
+        </div>
       </div>
     </div>
   );

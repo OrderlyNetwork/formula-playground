@@ -1,7 +1,12 @@
-import type { FactorType, FormulaDefinition, FormulaScalar } from "@/types/formula";
+import type {
+  FactorType,
+  FormulaDefinition,
+  FormulaScalar,
+} from "@/types/formula";
 import type { FormulaExecutionResult } from "@/types/executor";
 import { SyncFormulaExecutor } from "../../formula-executor/sync-executor";
 import { useFormulaLogStore } from "@/store/formulaLogStore";
+import { usePreArgsCheckStore } from "@/store/preArgsCheckStore";
 
 /**
  * Result of calculating a single row
@@ -29,12 +34,19 @@ class DataSheetCalculator {
    * Pre-check arguments before calculation
    * Validates that all required (non-nullable) input fields are present
    * Supports recursive validation for nested objects
-   * 
+   *
    * @param formula - Formula definition with input specifications
    * @param inputs - Formatted input data (already converted to proper types)
    * @returns true if all required fields are present, false otherwise
    */
-  preArgsCheck(formula: FormulaDefinition, inputs: Record<string, FormulaScalar>): boolean {
+  preArgsCheck(
+    formula: FormulaDefinition,
+    inputs: Record<string, FormulaScalar>
+  ): boolean {
+    // Clear previous validation messages for this formula before starting new validation
+    // This ensures old error messages don't persist when validation passes
+    usePreArgsCheckStore.getState().clearPreArgsCheckMessages(formula.id);
+
     // Check each input parameter defined in the formula
     for (const inputDef of formula.inputs) {
       const { key, factorType } = inputDef;
@@ -47,13 +59,29 @@ class DataSheetCalculator {
       // Check if the required field exists and is not null/undefined
       const value = inputs[key];
       if (value === null || value === undefined) {
-        console.log(`[preArgsCheck] Missing required field: ${key}`);
+        const message = `Missing required field: ${key}`;
+        console.log(`[preArgsCheck] ${message}`);
+        // Add message to the store for display in StatusBar
+        usePreArgsCheckStore
+          .getState()
+          .addPreArgsCheckMessage(formula.id, key, message);
         return false;
       }
 
       // For object types with properties, recursively check nested fields
-      if (factorType.baseType === "object" && factorType.properties && Array.isArray(factorType.properties)) {
-        if (!this.validateNestedObject(value, factorType.properties, key)) {
+      if (
+        factorType.baseType === "object" &&
+        factorType.properties &&
+        Array.isArray(factorType.properties)
+      ) {
+        if (
+          !this.validateNestedObject(
+            value,
+            factorType.properties,
+            key,
+            formula.id
+          )
+        ) {
           return false;
         }
       }
@@ -64,20 +92,27 @@ class DataSheetCalculator {
 
   /**
    * Recursively validate nested object properties
-   * 
+   *
    * @param obj - The object value to validate
    * @param properties - Property definitions from factorType
    * @param path - Current path for error logging (e.g., "user.profile")
+   * @param formulaId - Formula ID for storing messages in the store
    * @returns true if all required nested fields are present, false otherwise
    */
   private validateNestedObject(
     obj: FormulaScalar,
     properties: FactorType["properties"],
-    path: string
+    path: string,
+    formulaId: string
   ): boolean {
     // Ensure obj is actually an object
     if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
-      console.log(`[preArgsCheck] Expected object at path: ${path}, got: ${typeof obj}`);
+      const message = `Expected object at path: ${path}, got: ${typeof obj}`;
+      console.log(`[preArgsCheck] ${message}`);
+      // Add message to the store for display in StatusBar
+      usePreArgsCheckStore
+        .getState()
+        .addPreArgsCheckMessage(formulaId, path, message, path);
       return false;
     }
 
@@ -96,13 +131,29 @@ class DataSheetCalculator {
       // Check if required property exists
       const propValue = objRecord[key];
       if (propValue === null || propValue === undefined) {
-        console.log(`[preArgsCheck] Missing required nested field: ${propPath}`);
+        const message = `Missing required nested field: ${propPath}`;
+        console.log(`[preArgsCheck] ${message}`);
+        // Add message to the store for display in StatusBar
+        usePreArgsCheckStore
+          .getState()
+          .addPreArgsCheckMessage(formulaId, key, message, propPath);
         return false;
       }
 
       // Recursively validate nested objects
-      if (factorType.baseType === "object" && factorType.properties && Array.isArray(factorType.properties)) {
-        if (!this.validateNestedObject(propValue, factorType.properties, propPath)) {
+      if (
+        factorType.baseType === "object" &&
+        factorType.properties &&
+        Array.isArray(factorType.properties)
+      ) {
+        if (
+          !this.validateNestedObject(
+            propValue,
+            factorType.properties,
+            propPath,
+            formulaId
+          )
+        ) {
           return false;
         }
       }
@@ -114,9 +165,10 @@ class DataSheetCalculator {
   /**
    * Calculate formula result for a single row
    * Converts flattened row data to formula input format and executes
+   * Assumes inputs have already been validated
    *
    * @param formula - Formula definition to execute
-   * @param rowData - Flattened row data (using dot-notation keys)
+   * @param inputs - Pre-validated input data (properly structured)
    * @returns Calculation result with result value, execution time, and error (if any)
    */
   async calculateRow(
@@ -124,14 +176,9 @@ class DataSheetCalculator {
     inputs: Record<string, FormulaScalar>
   ): Promise<RowCalculationResult> {
     const startTime = Date.now();
-    // let inputs: Record<string, FormulaScalar> = {};
 
     try {
-      // Convert flattened data back to formula input format
-      // Pass formula definition to ensure correct structure reconstruction
-      // inputs = reconstructFormulaInputs(rowData, formula);
-
-      // Execute formula using sync executor
+      // Execute formula using sync executor (inputs should already be validated)
       const executionResult: FormulaExecutionResult =
         await this.executor.execute(formula, inputs);
 
@@ -173,7 +220,8 @@ class DataSheetCalculator {
         };
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       const stack = error instanceof Error ? error.stack : undefined;
 
       // Log unexpected error

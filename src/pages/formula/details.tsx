@@ -45,8 +45,6 @@ export const FormulaDetails = () => {
   const { loadFormulasFromAllSources, formulaDefinitions, loading } =
     useFormulaStore();
 
-  const { getMetrics } = useCalculationStatusStore();
-
   const { tabs, activeTabId, addTab, closeTab, setActiveTab } =
     useFormulaTabStore();
 
@@ -100,13 +98,9 @@ export const FormulaDetails = () => {
   }, [activeTabId, formulaDefinitions]);
 
   useEffect(() => {
+    console.log("------->>>currentFormula", currentFormula);
     setCurrentFormula(currentFormula);
   }, [currentFormula, setCurrentFormula]);
-
-  const handleDownloadResults = useCallback(() => {
-    console.log("Downloading results...");
-    // TODO: Implement CSV/Excel export functionality
-  }, []);
 
   const handleCloseTab = useCallback(
     (label: string) => {
@@ -194,7 +188,10 @@ export const FormulaDetails = () => {
                 <ResizableHandle className="bg-zinc-200" />
 
                 <ResizablePanel defaultSize={20} minSize={10}>
-                  <ResizablePanelGroup direction="horizontal" className="h-full">
+                  <ResizablePanelGroup
+                    direction="horizontal"
+                    className="h-full"
+                  >
                     <ResizablePanel defaultSize={50} minSize={20}>
                       <FormulaDocs formula={currentFormula} />
                     </ResizablePanel>
@@ -205,7 +202,6 @@ export const FormulaDetails = () => {
                   </ResizablePanelGroup>
                 </ResizablePanel>
               </ResizablePanelGroup>
-
             </ResizablePanel>
             <ResizableHandle className="bg-zinc-200" />
             <ResizablePanel
@@ -220,11 +216,7 @@ export const FormulaDetails = () => {
               <FormulaLogPanel />
             </ResizablePanel>
           </ResizablePanelGroup>
-          <StatusBar
-            onDownload={handleDownloadResults}
-            executionTime={getMetrics(activeTabId || "")?.averageTime || 0}
-            rowCount={getMetrics(activeTabId || "")?.calculatedRows || 0}
-          />
+          <StatusBar />
         </>
       )}
     </div>

@@ -38,7 +38,7 @@ export const performRowCalculation = async (
   const inputs = reconstructFormulaInputs(rowData, formula);
 
   try {
-    const calcResult = await dataSheetCalculator.calculateRow(formula, rowData);
+    const calcResult = await dataSheetCalculator.calculateRow(formula, inputs);
 
     // Record calculation event
     dataSheetStateTracker.recordCalculation(formula.id, {

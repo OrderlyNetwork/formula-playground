@@ -172,7 +172,6 @@ export function generateTableColumns(
   onCellUpdate?: (rowId: string, path: string, value: FormulaScalar) => void
 ): ColumnDef<TableRow>[] {
   const columns: ColumnDef<TableRow>[] = [
-
     {
       id: "index",
       header: "#",
@@ -462,16 +461,17 @@ export function reconstructFormulaInputs(
       // Only create empty object/array structures if they don't exist
       if (!(input.key in result)) {
         if (input.type === "object" && input.factorType.properties) {
-          // Only create empty object if there are nested values in flattenedData
-          const hasNestedValues = Object.keys(flattenedData).some(key =>
+          // For required object fields, always create empty object structure
+          // For nullable object fields, only create if there are nested values
+          const hasNestedValues = Object.keys(flattenedData).some((key) =>
             key.startsWith(`${input.key}.`)
           );
-          if (hasNestedValues) {
+          if (!input.factorType.nullable || hasNestedValues) {
             result[input.key] = {};
           }
         } else if (input.factorType?.array) {
           // Only create empty array if there are array values in flattenedData
-          const hasArrayValues = Object.keys(flattenedData).some(key =>
+          const hasArrayValues = Object.keys(flattenedData).some((key) =>
             key.startsWith(`${input.key}.`)
           );
           if (hasArrayValues) {
