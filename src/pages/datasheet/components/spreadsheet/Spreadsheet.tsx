@@ -128,13 +128,23 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
           return;
         }
 
+
+
         // Reconstruct formula inputs for tracking
         const inputs = reconstructFormulaInputs(currentRowData, currentFormula);
+
+        console.log("------->>>inputs", inputs, currentRowData);
+
+
+        // if args are valid, proceed to calculate,else ignore
+        if (!dataSheetCalculator.preArgsCheck(currentFormula, inputs)) {
+          return;
+        }
 
         // Execute formula calculation with fresh data from GridStore
         const result = await dataSheetCalculator.calculateRow(
           currentFormula,
-          currentRowData
+          inputs
         );
 
         // Update calculation result in SpreadsheetStore (map-based: key -> result)

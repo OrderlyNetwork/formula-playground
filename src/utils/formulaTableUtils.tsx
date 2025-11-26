@@ -172,34 +172,7 @@ export function generateTableColumns(
   onCellUpdate?: (rowId: string, path: string, value: FormulaScalar) => void
 ): ColumnDef<TableRow>[] {
   const columns: ColumnDef<TableRow>[] = [
-    // Row actions column
-    // {
-    //   id: "actions",
-    //   header: "Actions",
-    //   size: 100,
-    //   cell: ({ row, table }) => (
-    //     <div className="flex gap-2">
-    //       <button
-    //         onClick={() => {
-    //           const meta = table.options.meta as any;
-    //           meta?.deleteRow?.(row.id);
-    //         }}
-    //         className="text-red-600 hover:text-red-800 text-sm"
-    //       >
-    //         Delete
-    //       </button>
-    //       <button
-    //         onClick={() => {
-    //           const meta = table.options.meta as any;
-    //           meta?.duplicateRow?.(row.id);
-    //         }}
-    //         className="text-blue-600 hover:text-blue-800 text-sm"
-    //       >
-    //         Duplicate
-    //       </button>
-    //     </div>
-    //   ),
-    // },
+
     {
       id: "index",
       header: "#",
@@ -444,90 +417,68 @@ export function reconstructFormulaInputs(
 
   // Step 1: Build structure from flattened paths (handles arrays and nested objects)
   for (const [path, value] of Object.entries(flattenedData)) {
-    // Skip undefined and null, but allow empty string (for clearing fields)
+    // Skip undefined and null
     if (value === undefined || value === null) {
       continue;
     }
 
     // Convert value to the correct type if formula type info is available
-    let convertedValue = value;
+    let convertedValue: FormulaScalar | undefined = value;
     const factorType = pathTypeMap.get(path);
 
-    if (factorType && value !== "") {
-      // Convert string numbers to actual numbers for number types
-      if (factorType.baseType === "number" && typeof value === "string") {
+    // Convert empty strings to undefined for string types
+    if (factorType?.baseType === "string" && value === "") {
+      convertedValue = undefined;
+    }
+    // Convert string numbers to actual numbers for number types
+    else if (factorType?.baseType === "number" && typeof value === "string") {
+      if (value === "") {
+        convertedValue = undefined;
+      } else {
         const numValue = Number(value);
         if (!isNaN(numValue)) {
           convertedValue = numValue;
         }
       }
-      // Convert string booleans to actual booleans for boolean types
-      else if (factorType.baseType === "boolean" && typeof value === "string") {
+    }
+    // Convert string booleans to actual booleans for boolean types
+    else if (factorType?.baseType === "boolean" && typeof value === "string") {
+      if (value === "") {
+        convertedValue = undefined;
+      } else {
         convertedValue = value === "true" || value === "1";
       }
     }
 
-    // Only set non-empty values to avoid overwriting with empty strings
-    // But if it's an empty string and the field needs to be cleared, set it
-    if (convertedValue !== "") {
+    // Only set values that are not undefined
+    if (convertedValue !== undefined) {
       setNestedValue(result, path, convertedValue);
     }
   }
 
-  // Step 2: If formula is provided, ensure all required fields are present
+  // Step 2: If formula is provided, ensure object/array structure exists (but don't set defaults)
   if (formula) {
     for (const input of formula.inputs) {
-      // Ensure top-level input key exists
+      // Only create empty object/array structures if they don't exist
       if (!(input.key in result)) {
         if (input.type === "object" && input.factorType.properties) {
-          result[input.key] = {};
+          // Only create empty object if there are nested values in flattenedData
+          const hasNestedValues = Object.keys(flattenedData).some(key =>
+            key.startsWith(`${input.key}.`)
+          );
+          if (hasNestedValues) {
+            result[input.key] = {};
+          }
         } else if (input.factorType?.array) {
-          result[input.key] = [];
-        } else {
-          // Set default based on type
-          if (input.default !== undefined) {
-            result[input.key] = input.default;
-          } else if (input.type === "number") {
-            result[input.key] = input.factorType?.nullable ? null : 0;
-          } else if (input.type === "boolean") {
-            result[input.key] = false;
-          } else {
-            result[input.key] = input.factorType?.nullable ? null : "";
+          // Only create empty array if there are array values in flattenedData
+          const hasArrayValues = Object.keys(flattenedData).some(key =>
+            key.startsWith(`${input.key}.`)
+          );
+          if (hasArrayValues) {
+            result[input.key] = [];
           }
         }
-      }
-
-      // For object types, ensure all properties exist
-      if (input.type === "object" && input.factorType.properties) {
-        const obj = result[input.key] as Record<string, FormulaScalar>;
-        if (typeof obj === "object" && obj !== null && !Array.isArray(obj)) {
-          for (const prop of input.factorType.properties) {
-            const propPath = `${input.key}.${prop.key}`;
-            // Check if property exists in flattened data or in the object
-            if (!(prop.key in obj)) {
-              // Try to get from flattened data first
-              const flattenedValue = flattenedData[propPath];
-              if (
-                flattenedValue !== undefined &&
-                flattenedValue !== null &&
-                flattenedValue !== ""
-              ) {
-                obj[prop.key] = flattenedValue;
-              } else if (prop.default !== undefined) {
-                obj[prop.key] = prop.default;
-              } else {
-                // Use appropriate default
-                if (prop.type === "number") {
-                  obj[prop.key] = prop.factorType?.nullable ? null : 0;
-                } else if (prop.type === "boolean") {
-                  obj[prop.key] = false;
-                } else {
-                  obj[prop.key] = prop.factorType?.nullable ? null : "";
-                }
-              }
-            }
-          }
-        }
+        // Don't set any default values for primitive types - leave as undefined
       }
     }
   }
@@ -544,7 +495,7 @@ export function createInitialRow(
   rowIndex: number
 ): TableRow {
   const flattenedPaths = flattenFormulaInputs(formula.inputs);
-  
+
   // Start with base row structure
   const row: TableRow = {
     id: `row-${Date.now()}-${rowIndex}`,
