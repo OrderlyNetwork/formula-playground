@@ -2,17 +2,17 @@ import React from "react";
 import { TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export const LogTableHeader: React.FC = () => {
-    return (
-        <TableHeader>
-            <TableRow>
-                <TableHead className="w-[30px]"></TableHead>
-                <TableHead className="w-[40px]"></TableHead>
-                <TableHead className="w-[80px]">Time</TableHead>
-                <TableHead className="w-[60px]">Row</TableHead>
-                <TableHead>Inputs</TableHead>
-                <TableHead>Result / Error</TableHead>
-                <TableHead className="w-[60px] text-right">Dur.</TableHead>
-            </TableRow>
-        </TableHeader>
-    );
+  return (
+    <TableHeader className="h-[33px]">
+      <TableRow>
+        <TableHead className="w-[30px] h-[33px]"></TableHead>
+        <TableHead className="w-[40px] h-[33px]"></TableHead>
+        <TableHead className="w-[80px] h-[33px]">Time</TableHead>
+        <TableHead className="w-[60px] h-[33px]">Row</TableHead>
+        <TableHead className="h-[33px]">Inputs</TableHead>
+        <TableHead className="h-[33px]">Result / Error</TableHead>
+        <TableHead className="w-[60px] text-right h-[33px]">Dur.</TableHead>
+      </TableRow>
+    </TableHeader>
+  );
 };

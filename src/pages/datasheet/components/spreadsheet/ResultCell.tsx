@@ -6,7 +6,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { sanitizeJsonStringify, sanitizeErrorMessage } from "@/utils/sanitization";
+import {
+  sanitizeJsonStringify,
+  sanitizeErrorMessage,
+} from "@/utils/sanitization";
 
 export interface ResultCellProps {
   rowId: string;
@@ -153,7 +156,7 @@ const ResultCell: React.FC<ResultCellProps> = ({
               : undefined
           }
         >
-          {displayValue || "-"}
+          {displayValue ?? "-"}
         </div>
       </PopoverTrigger>
 

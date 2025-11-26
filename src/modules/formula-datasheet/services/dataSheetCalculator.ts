@@ -31,9 +31,84 @@ class DataSheetCalculator {
   }
 
   /**
+   * Recursively check if a value is truly valid (not null/undefined/empty)
+   * Handles nested objects and arrays
+   *
+   * @param value - Value to check
+   * @returns true if value has actual content
+   */
+  private hasValidValue(value: FormulaScalar): boolean {
+    // Null or undefined values are invalid
+    if (value === null || value === undefined) {
+      return false;
+    }
+
+    // Primitive types (number, string, boolean) are valid if not null/undefined
+    const primitiveTypes = ["number", "string", "boolean"] as const;
+    if (
+      primitiveTypes.includes(typeof value as (typeof primitiveTypes)[number])
+    ) {
+      return true;
+    }
+
+    // Check arrays - must have at least one valid element
+    if (Array.isArray(value)) {
+      return value.length > 0 && value.some((item) => this.hasValidValue(item));
+    }
+
+    // Check objects - must have at least one valid property value
+    if (typeof value === "object" && value !== null) {
+      const obj = value as Record<string, unknown>;
+      const keys = Object.keys(obj);
+      // Empty object is invalid
+      if (keys.length === 0) {
+        return false;
+      }
+      // Check if at least one property has a valid value
+      return keys.some((key) => this.hasValidValue(obj[key] as FormulaScalar));
+    }
+
+    // For any other type, consider it valid if not null/undefined
+    return true;
+  }
+
+  /**
+   * Check if there's at least one valid (non-null/undefined/empty) input value
+   * Recursively checks nested objects and arrays
+   *
+   * @param inputs - Input data to check
+   * @returns true if at least one input has a valid value
+   */
+  private hasAnyValidInput(inputs: Record<string, FormulaScalar>): boolean {
+    return Object.values(inputs).some((value) => this.hasValidValue(value));
+  }
+
+  /**
+   * Add validation error message to the store
+   * Centralized error reporting to avoid code duplication
+   *
+   * @param formulaId - Formula ID for storing messages
+   * @param field - Field name that failed validation
+   * @param message - Error message
+   * @param path - Optional nested path (e.g., "user.profile")
+   */
+  private addValidationError(
+    formulaId: string,
+    field: string,
+    message: string,
+    path?: string
+  ): void {
+    console.log(`[preArgsCheck] ${message}`);
+    usePreArgsCheckStore
+      .getState()
+      .addPreArgsCheckMessage(formulaId, field, message, path);
+  }
+
+  /**
    * Pre-check arguments before calculation
    * Validates that all required (non-nullable) input fields are present
    * Supports recursive validation for nested objects
+   * Only shows validation errors if at least one input field has a value
    *
    * @param formula - Formula definition with input specifications
    * @param inputs - Formatted input data (already converted to proper types)
@@ -47,6 +122,12 @@ class DataSheetCalculator {
     // This ensures old error messages don't persist when validation passes
     usePreArgsCheckStore.getState().clearPreArgsCheckMessages(formula.id);
 
+    // Only validate and show errors if at least one input has a value
+    // If all inputs are empty, return false (validation fails) but don't show any validation messages
+    if (!this.hasAnyValidInput(inputs)) {
+      return false;
+    }
+
     // Check each input parameter defined in the formula
     for (const inputDef of formula.inputs) {
       const { key, factorType } = inputDef;
@@ -59,19 +140,17 @@ class DataSheetCalculator {
       // Check if the required field exists and is not null/undefined
       const value = inputs[key];
       if (value === null || value === undefined) {
-        const message = `Missing required field: ${key}`;
-        console.log(`[preArgsCheck] ${message}`);
-        // Add message to the store for display in StatusBar
-        usePreArgsCheckStore
-          .getState()
-          .addPreArgsCheckMessage(formula.id, key, message);
+        this.addValidationError(
+          formula.id,
+          key,
+          `Missing required field: ${key}`
+        );
         return false;
       }
 
       // For object types with properties, recursively check nested fields
       if (
         factorType.baseType === "object" &&
-        factorType.properties &&
         Array.isArray(factorType.properties)
       ) {
         if (
@@ -94,32 +173,32 @@ class DataSheetCalculator {
    * Recursively validate nested object properties
    *
    * @param obj - The object value to validate
-   * @param properties - Property definitions from factorType
+   * @param properties - Property definitions from factorType (must be non-null array)
    * @param path - Current path for error logging (e.g., "user.profile")
    * @param formulaId - Formula ID for storing messages in the store
    * @returns true if all required nested fields are present, false otherwise
    */
   private validateNestedObject(
     obj: FormulaScalar,
-    properties: FactorType["properties"],
+    properties: NonNullable<FactorType["properties"]>,
     path: string,
     formulaId: string
   ): boolean {
     // Ensure obj is actually an object
     if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
-      const message = `Expected object at path: ${path}, got: ${typeof obj}`;
-      console.log(`[preArgsCheck] ${message}`);
-      // Add message to the store for display in StatusBar
-      usePreArgsCheckStore
-        .getState()
-        .addPreArgsCheckMessage(formulaId, path, message, path);
+      this.addValidationError(
+        formulaId,
+        path,
+        `Expected object at path: ${path}, got: ${typeof obj}`,
+        path
+      );
       return false;
     }
 
     const objRecord = obj as Record<string, unknown>;
 
     // Check each property definition
-    for (const propDef of properties!) {
+    for (const propDef of properties) {
       const { key, factorType } = propDef;
       const propPath = `${path}.${key}`;
 
@@ -131,19 +210,18 @@ class DataSheetCalculator {
       // Check if required property exists
       const propValue = objRecord[key];
       if (propValue === null || propValue === undefined) {
-        const message = `Missing required nested field: ${propPath}`;
-        console.log(`[preArgsCheck] ${message}`);
-        // Add message to the store for display in StatusBar
-        usePreArgsCheckStore
-          .getState()
-          .addPreArgsCheckMessage(formulaId, key, message, propPath);
+        this.addValidationError(
+          formulaId,
+          key,
+          `Missing required nested field: ${propPath}`,
+          propPath
+        );
         return false;
       }
 
       // Recursively validate nested objects
       if (
         factorType.baseType === "object" &&
-        factorType.properties &&
         Array.isArray(factorType.properties)
       ) {
         if (
@@ -160,6 +238,45 @@ class DataSheetCalculator {
     }
 
     return true;
+  }
+
+  /**
+   * Extract error message from an unknown error type
+   *
+   * @param error - Error object of unknown type
+   * @returns Error message string
+   */
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : "Unknown error";
+  }
+
+  /**
+   * Log formula execution to the log store
+   *
+   * @param formulaId - Formula identifier
+   * @param inputs - Input values used
+   * @param result - Optional result value
+   * @param error - Optional error message
+   * @param executionTime - Execution time in milliseconds
+   * @param stack - Optional stack trace
+   */
+  private logExecution(
+    formulaId: string,
+    inputs: Record<string, FormulaScalar>,
+    result?: FormulaScalar,
+    error?: string,
+    executionTime?: number,
+    stack?: string
+  ): void {
+    useFormulaLogStore.getState().addLog({
+      formulaId,
+      rowId: "unknown",
+      inputs,
+      result,
+      error,
+      executionTime,
+      stack,
+    });
   }
 
   /**
@@ -182,62 +299,57 @@ class DataSheetCalculator {
       const executionResult: FormulaExecutionResult =
         await this.executor.execute(formula, inputs);
 
-      if (executionResult.success) {
+      const { success, outputs, error, durationMs } = executionResult;
+
+      if (success) {
         // Extract result from outputs (use first output value for compatibility)
-        const resultValue = executionResult.outputs
-          ? Object.values(executionResult.outputs)[0]
-          : undefined;
+        const resultValue = outputs ? Object.values(outputs)[0] : undefined;
 
         // Log successful execution
-        useFormulaLogStore.getState().addLog({
-          formulaId: formula.id,
-          rowId: "unknown",
+        this.logExecution(
+          formula.id,
           inputs,
-          result: resultValue,
-          executionTime: executionResult.durationMs,
-        });
+          resultValue,
+          undefined,
+          durationMs
+        );
 
         return {
           success: true,
           result: resultValue,
-          executionTime: executionResult.durationMs,
-        };
-      } else {
-        // Log failed execution
-        useFormulaLogStore.getState().addLog({
-          formulaId: formula.id,
-          rowId: "unknown",
-          inputs,
-          error: executionResult.error,
-          executionTime: executionResult.durationMs,
-        });
-
-        // Execution failed, return error
-        return {
-          success: false,
-          error: executionResult.error,
-          executionTime: executionResult.durationMs,
+          executionTime: durationMs,
         };
       }
+
+      // Log failed execution
+      this.logExecution(formula.id, inputs, undefined, error, durationMs);
+
+      // Execution failed, return error
+      return {
+        success: false,
+        error,
+        executionTime: durationMs,
+      };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = this.getErrorMessage(error);
       const stack = error instanceof Error ? error.stack : undefined;
+      const executionTime = Date.now() - startTime;
 
       // Log unexpected error
-      useFormulaLogStore.getState().addLog({
-        formulaId: formula.id,
-        rowId: "unknown",
+      this.logExecution(
+        formula.id,
         inputs,
-        error: errorMessage,
-        stack,
-        executionTime: Date.now() - startTime,
-      });
+        undefined,
+        errorMessage,
+        executionTime,
+        stack
+      );
 
       // Handle unexpected errors
       return {
         success: false,
         error: errorMessage,
+        executionTime,
       };
     }
   }
