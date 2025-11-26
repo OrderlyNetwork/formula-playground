@@ -3,6 +3,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import type { ImperativePanelHandle } from "react-resizable-panels";
 import { TabBar } from "../datasheet/components/TabBar";
 import { FormulaDataSheet } from "@/modules/formula-datasheet/formulaDataSheet";
 import { StatusBar } from "../datasheet/components/StatusBar";
@@ -11,11 +12,13 @@ import { useFormulaStore } from "@/store/formulaStore";
 import { useFormulaTabStore } from "@/store/formulaTabStore";
 import { useCalculationStatusStore } from "@/store/calculationStatusStore";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
+import { useFormulaLogStore } from "@/store/formulaLogStore";
 import { useParams, useNavigate } from "react-router";
 import { useEffect, useMemo, useCallback, useRef } from "react";
 import { FormulaDocs } from "../playground/components/FormulaDocs";
 import { FormulaCode } from "../playground/components/FormulaCode";
 import { Progress } from "@/components/ui/progress";
+import { FormulaLogPanel } from "../datasheet/components/FormulaLogPanel";
 
 const LoadingState = () => (
   <div className="flex-1 flex flex-col items-center justify-center gap-4 text-zinc-600">
@@ -51,7 +54,11 @@ export const FormulaDetails = () => {
     (state) => state.setCurrentFormula
   );
 
+  const isLogPanelOpen = useFormulaLogStore((state) => state.isOpen);
+  const setLogPanelOpen = useFormulaLogStore((state) => state.setIsOpen);
+
   const formulasLoadedRef = useRef(false);
+  const logPanelRef = useRef<ImperativePanelHandle>(null);
 
   useEffect(() => {
     if (!formulasLoadedRef.current) {
@@ -59,6 +66,17 @@ export const FormulaDetails = () => {
       loadFormulasFromAllSources();
     }
   }, [loadFormulasFromAllSources]);
+
+  // Sync log panel collapse state with store
+  useEffect(() => {
+    if (logPanelRef.current) {
+      if (isLogPanelOpen) {
+        logPanelRef.current.expand();
+      } else {
+        logPanelRef.current.collapse();
+      }
+    }
+  }, [isLogPanelOpen]);
 
   useEffect(() => {
     if (!id || loading) return;
@@ -166,26 +184,42 @@ export const FormulaDetails = () => {
         <EmptyState />
       ) : (
         <>
-          <ResizablePanelGroup direction="vertical" className="flex-1">
+          <ResizablePanelGroup direction="horizontal" className="flex-1">
             <ResizablePanel defaultSize={80} minSize={20}>
-              <FormulaDataSheet />
-            </ResizablePanel>
-
-            <ResizableHandle className="bg-zinc-200" />
-
-            <ResizablePanel defaultSize={20}>
-              <ResizablePanelGroup direction="horizontal" className="h-full">
-                <ResizablePanel defaultSize={50} minSize={20}>
-                  <FormulaDocs formula={currentFormula} />
+              <ResizablePanelGroup direction="vertical" className="flex-1">
+                <ResizablePanel defaultSize={80} minSize={20}>
+                  <FormulaDataSheet />
                 </ResizablePanel>
-                <ResizableHandle />
-                <ResizablePanel defaultSize={50} minSize={20}>
-                  <FormulaCode formula={currentFormula} />
+
+                <ResizableHandle className="bg-zinc-200" />
+
+                <ResizablePanel defaultSize={20} minSize={10}>
+                  <ResizablePanelGroup direction="horizontal" className="h-full">
+                    <ResizablePanel defaultSize={50} minSize={20}>
+                      <FormulaDocs formula={currentFormula} />
+                    </ResizablePanel>
+                    <ResizableHandle />
+                    <ResizablePanel defaultSize={50} minSize={20}>
+                      <FormulaCode formula={currentFormula} />
+                    </ResizablePanel>
+                  </ResizablePanelGroup>
                 </ResizablePanel>
               </ResizablePanelGroup>
+
+            </ResizablePanel>
+            <ResizableHandle className="bg-zinc-200" />
+            <ResizablePanel
+              ref={logPanelRef}
+              defaultSize={20}
+              minSize={10}
+              collapsible={true}
+              collapsedSize={0}
+              onCollapse={() => setLogPanelOpen(false)}
+              onExpand={() => setLogPanelOpen(true)}
+            >
+              <FormulaLogPanel />
             </ResizablePanel>
           </ResizablePanelGroup>
-
           <StatusBar
             onDownload={handleDownloadResults}
             executionTime={getMetrics(activeTabId || "")?.averageTime || 0}

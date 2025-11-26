@@ -2,6 +2,7 @@ import type { FormulaDefinition, FormulaScalar } from "@/types/formula";
 import type { FormulaExecutionResult } from "@/types/executor";
 import { SyncFormulaExecutor } from "../../formula-executor/sync-executor";
 import { reconstructFormulaInputs } from "@/utils/formulaTableUtils";
+import { useFormulaLogStore } from "@/store/formulaLogStore";
 
 /**
  * Result of calculating a single row
@@ -37,10 +38,13 @@ class DataSheetCalculator {
     formula: FormulaDefinition,
     rowData: Record<string, FormulaScalar>
   ): Promise<RowCalculationResult> {
+    const startTime = Date.now();
+    let inputs: Record<string, FormulaScalar> = {};
+
     try {
       // Convert flattened data back to formula input format
       // Pass formula definition to ensure correct structure reconstruction
-      const inputs = reconstructFormulaInputs(rowData, formula);
+      inputs = reconstructFormulaInputs(rowData, formula);
 
       // Execute formula using sync executor
       const executionResult: FormulaExecutionResult =
@@ -52,12 +56,30 @@ class DataSheetCalculator {
           ? Object.values(executionResult.outputs)[0]
           : undefined;
 
+        // Log successful execution
+        useFormulaLogStore.getState().addLog({
+          formulaId: formula.id,
+          rowId: rowData.id as string || "unknown",
+          inputs,
+          result: resultValue,
+          executionTime: executionResult.durationMs,
+        });
+
         return {
           success: true,
           result: resultValue,
           executionTime: executionResult.durationMs,
         };
       } else {
+        // Log failed execution
+        useFormulaLogStore.getState().addLog({
+          formulaId: formula.id,
+          rowId: rowData.id as string || "unknown",
+          inputs,
+          error: executionResult.error,
+          executionTime: executionResult.durationMs,
+        });
+
         // Execution failed, return error
         return {
           success: false,
@@ -66,10 +88,23 @@ class DataSheetCalculator {
         };
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const stack = error instanceof Error ? error.stack : undefined;
+
+      // Log unexpected error
+      useFormulaLogStore.getState().addLog({
+        formulaId: formula.id,
+        rowId: rowData.id as string || "unknown",
+        inputs,
+        error: errorMessage,
+        stack,
+        executionTime: Date.now() - startTime,
+      });
+
       // Handle unexpected errors
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: errorMessage,
       };
     }
   }

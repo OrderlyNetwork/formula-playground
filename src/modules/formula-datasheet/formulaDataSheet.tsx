@@ -55,7 +55,7 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col relative">
       <div className="flex-1 overflow-hidden">
         <Spreadsheet flattenedPaths={flattenedPaths} />
       </div>

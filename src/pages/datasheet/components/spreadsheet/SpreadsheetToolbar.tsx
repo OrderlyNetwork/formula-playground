@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import type { FlattenedPath } from "@/utils/formulaTableUtils";
 import { Button } from "@/components/ui/button";
+import { useFormulaLogStore } from "@/store/formulaLogStore";
 
 /**
  * Selection type used in the toolbar
@@ -35,9 +36,12 @@ const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
   onAddRow,
   onAddColumn,
 }) => {
+  const togglePanel = useFormulaLogStore((state) => state.togglePanel);
+  const isLogPanelOpen = useFormulaLogStore((state) => state.isOpen);
+
   return (
     <div className="flex items-center gap-1 px-3 py-2 border-b border-gray-200 bg-gray-50">
-      <Button
+      <div className="flex flex-1"><Button
         onClick={onAddRow}
         variant="ghost"
         size="icon"
@@ -52,30 +56,43 @@ const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
         {/* <ArrowDown size={14} className="text-blue-600" />
         <span>Add Row {selection?.type === "row" ? "(Insert)" : ""}</span> */}
       </Button>
-      <Button
-        onClick={onAddColumn}
-        variant="ghost"
-        size="icon"
-        className="p-1 w-7 h-7"
-        title={
-          flattenedPaths && flattenedPaths.length > 0
-            ? "Columns are defined by formula inputs"
-            : selection?.type === "column"
-            ? "Add Column After Selected"
-            : "Add Column at End"
-        }
-      >
-        <BetweenVerticalStart size={20} />
-        {/* <ArrowRight size={14} className="text-green-600" />
+        <Button
+          onClick={onAddColumn}
+          variant="ghost"
+          size="icon"
+          className="p-1 w-7 h-7"
+          title={
+            flattenedPaths && flattenedPaths.length > 0
+              ? "Columns are defined by formula inputs"
+              : selection?.type === "column"
+                ? "Add Column After Selected"
+                : "Add Column at End"
+          }
+        >
+          <BetweenVerticalStart size={20} />
+          {/* <ArrowRight size={14} className="text-green-600" />
         <span>Add Column {selection?.type === "column" ? "(Insert)" : ""}</span> */}
-      </Button>
-      <div className="h-6 w-px bg-gray-300 mx-2"></div>
-      <div className="flex gap-1">
-        <Button variant="ghost" size="icon" className="p-1 w-7 h-7">
-          <Globe size={20} />
         </Button>
-        <Button variant="ghost" size="icon" className="p-1 w-7 h-7">
-          <Webhook size={20} />
+        <div className="h-6 w-px bg-gray-300 mx-2"></div>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="icon" className="p-1 w-7 h-7">
+            <Globe size={20} />
+          </Button>
+          <Button variant="ghost" size="icon" className="p-1 w-7 h-7">
+            <Webhook size={20} />
+          </Button>
+          {/* <div className="h-6 w-px bg-gray-300 mx-2"></div> */}
+
+        </div></div>
+      <div>
+        <Button
+          variant={isLogPanelOpen ? "secondary" : "ghost"}
+          size="icon"
+          className="p-1 w-7 h-7"
+          onClick={togglePanel}
+          title="Toggle Execution Logs"
+        >
+          <BetweenVerticalStart size={20} className="rotate-90" />
         </Button>
       </div>
     </div>

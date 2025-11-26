@@ -111,8 +111,8 @@ const Cell: React.FC<CellProps> = ({
   const bgClass = isSelected
     ? "bg-blue-50"
     : !isEditable
-    ? "bg-gray-50"
-    : "bg-white";
+      ? "bg-gray-50"
+      : "bg-white";
 
   // const baseClasses = `relative border-r border-b border-grid-border box-border ${bgClass}`;
 
@@ -127,7 +127,7 @@ const Cell: React.FC<CellProps> = ({
   }, [rowId, column, store]);
 
   const containerClass = cn(
-    "relative border-r border-b border-grid-border box-border overflow-hidden p-1 transition-colors focus-within:inset-ring-2 focus-within:inset-ring-blue-500 focus-within:z-10 ",
+    "relative [&:not(:last-child)]:border-r border-b border-grid-border box-border overflow-hidden p-1 transition-colors focus-within:inset-ring-2 focus-within:inset-ring-blue-500 focus-within:z-10 ",
     bgClass,
     className
     // containerClass
