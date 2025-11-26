@@ -38,12 +38,10 @@ class DataSheetCalculator {
    * @returns true if value has actual content
    */
   private hasValidValue(value: FormulaScalar): boolean {
-    // Null or undefined values are invalid
     if (value === null || value === undefined) {
       return false;
     }
 
-    // Primitive types (number, string, boolean) are valid if not null/undefined
     const primitiveTypes = ["number", "string", "boolean"] as const;
     if (
       primitiveTypes.includes(typeof value as (typeof primitiveTypes)[number])
@@ -51,24 +49,19 @@ class DataSheetCalculator {
       return true;
     }
 
-    // Check arrays - must have at least one valid element
     if (Array.isArray(value)) {
       return value.length > 0 && value.some((item) => this.hasValidValue(item));
     }
 
-    // Check objects - must have at least one valid property value
     if (typeof value === "object" && value !== null) {
       const obj = value as Record<string, unknown>;
       const keys = Object.keys(obj);
-      // Empty object is invalid
       if (keys.length === 0) {
         return false;
       }
-      // Check if at least one property has a valid value
       return keys.some((key) => this.hasValidValue(obj[key] as FormulaScalar));
     }
 
-    // For any other type, consider it valid if not null/undefined
     return true;
   }
 
@@ -128,16 +121,13 @@ class DataSheetCalculator {
       return false;
     }
 
-    // Check each input parameter defined in the formula
     for (const inputDef of formula.inputs) {
       const { key, factorType } = inputDef;
 
-      // Skip nullable fields - they are optional
       if (factorType.nullable === true) {
         continue;
       }
 
-      // Check if the required field exists and is not null/undefined
       const value = inputs[key];
       if (value === null || value === undefined) {
         this.addValidationError(
@@ -148,7 +138,6 @@ class DataSheetCalculator {
         return false;
       }
 
-      // For object types with properties, recursively check nested fields
       if (
         factorType.baseType === "object" &&
         Array.isArray(factorType.properties)
@@ -184,7 +173,6 @@ class DataSheetCalculator {
     path: string,
     formulaId: string
   ): boolean {
-    // Ensure obj is actually an object
     if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
       this.addValidationError(
         formulaId,
@@ -197,17 +185,14 @@ class DataSheetCalculator {
 
     const objRecord = obj as Record<string, unknown>;
 
-    // Check each property definition
     for (const propDef of properties) {
       const { key, factorType } = propDef;
       const propPath = `${path}.${key}`;
 
-      // Skip nullable properties
       if (factorType.nullable === true) {
         continue;
       }
 
-      // Check if required property exists
       const propValue = objRecord[key];
       if (propValue === null || propValue === undefined) {
         this.addValidationError(
@@ -219,7 +204,6 @@ class DataSheetCalculator {
         return false;
       }
 
-      // Recursively validate nested objects
       if (
         factorType.baseType === "object" &&
         Array.isArray(factorType.properties)
@@ -295,20 +279,19 @@ class DataSheetCalculator {
     const startTime = Date.now();
 
     try {
-      // Execute formula using sync executor (inputs should already be validated)
+      const cleanedInputs = this.clearArgs(formula, inputs);
+
       const executionResult: FormulaExecutionResult =
-        await this.executor.execute(formula, inputs);
+        await this.executor.execute(formula, cleanedInputs);
 
       const { success, outputs, error, durationMs } = executionResult;
 
       if (success) {
-        // Extract result from outputs (use first output value for compatibility)
         const resultValue = outputs ? Object.values(outputs)[0] : undefined;
 
-        // Log successful execution
         this.logExecution(
           formula.id,
-          inputs,
+          cleanedInputs,
           resultValue,
           undefined,
           durationMs
@@ -321,10 +304,14 @@ class DataSheetCalculator {
         };
       }
 
-      // Log failed execution
-      this.logExecution(formula.id, inputs, undefined, error, durationMs);
+      this.logExecution(
+        formula.id,
+        cleanedInputs,
+        undefined,
+        error,
+        durationMs
+      );
 
-      // Execution failed, return error
       return {
         success: false,
         error,
@@ -335,17 +322,17 @@ class DataSheetCalculator {
       const stack = error instanceof Error ? error.stack : undefined;
       const executionTime = Date.now() - startTime;
 
-      // Log unexpected error
+      const cleanedInputs = this.clearArgs(formula, inputs);
+
       this.logExecution(
         formula.id,
-        inputs,
+        cleanedInputs,
         undefined,
         errorMessage,
         executionTime,
         stack
       );
 
-      // Handle unexpected errors
       return {
         success: false,
         error: errorMessage,
@@ -353,7 +340,147 @@ class DataSheetCalculator {
       };
     }
   }
+
+  /**
+   * Clean nested object by removing fields not defined in properties
+   * Recursively handles nested objects
+   *
+   * @param obj - The object value to clean
+   * @param properties - Property definitions from factorType
+   * @returns Cleaned object with only defined fields
+   */
+  private cleanNestedObject(
+    obj: Record<string, unknown>,
+    properties: NonNullable<FactorType["properties"]>
+  ): Record<string, unknown> {
+    const cleaned: Record<string, unknown> = {};
+
+    for (const propDef of properties) {
+      const { key, factorType } = propDef;
+      const value = obj[key];
+
+      if (value === undefined) {
+        continue;
+      }
+
+      if (value === null) {
+        cleaned[key] = value;
+        continue;
+      }
+
+      if (
+        factorType.baseType === "object" &&
+        Array.isArray(factorType.properties) &&
+        typeof value === "object" &&
+        !Array.isArray(value)
+      ) {
+        cleaned[key] = this.cleanNestedObject(
+          value as Record<string, unknown>,
+          factorType.properties
+        );
+        continue;
+      }
+
+      if (Array.isArray(value) && factorType.array === true) {
+        if (
+          factorType.baseType === "object" &&
+          Array.isArray(factorType.properties)
+        ) {
+          cleaned[key] = value.map((item) => {
+            if (
+              typeof item === "object" &&
+              item !== null &&
+              !Array.isArray(item)
+            ) {
+              return this.cleanNestedObject(
+                item as Record<string, unknown>,
+                factorType.properties!
+              );
+            }
+            return item;
+          });
+        } else {
+          cleaned[key] = value;
+        }
+        continue;
+      }
+
+      cleaned[key] = value;
+    }
+
+    return cleaned;
+  }
+
+  /**
+   * Clean arguments based on formula definition
+   * Removes fields that are not defined in the formula inputs
+   * Handles nested objects recursively
+   *
+   * @param formula - Formula definition with input specifications
+   * @param inputs - Input data to clean
+   * @returns Cleaned input data with only defined fields
+   */
+  private clearArgs(
+    formula: FormulaDefinition,
+    inputs: Record<string, FormulaScalar>
+  ): Record<string, FormulaScalar> {
+    const cleaned: Record<string, FormulaScalar> = {};
+
+    for (const inputDef of formula.inputs) {
+      const { key, factorType } = inputDef;
+      const value = inputs[key];
+
+      if (value === undefined) {
+        continue;
+      }
+
+      if (value === null) {
+        cleaned[key] = value;
+        continue;
+      }
+
+      if (
+        factorType.baseType === "object" &&
+        Array.isArray(factorType.properties) &&
+        typeof value === "object" &&
+        !Array.isArray(value)
+      ) {
+        cleaned[key] = this.cleanNestedObject(
+          value as Record<string, unknown>,
+          factorType.properties
+        ) as FormulaScalar;
+        continue;
+      }
+
+      if (Array.isArray(value) && factorType.array === true) {
+        if (
+          factorType.baseType === "object" &&
+          Array.isArray(factorType.properties)
+        ) {
+          cleaned[key] = value.map((item) => {
+            if (
+              typeof item === "object" &&
+              item !== null &&
+              !Array.isArray(item)
+            ) {
+              return this.cleanNestedObject(
+                item as Record<string, unknown>,
+                factorType.properties!
+              );
+            }
+            return item;
+          }) as FormulaScalar;
+        } else {
+          cleaned[key] = value;
+        }
+        continue;
+      }
+
+      cleaned[key] = value;
+    }
+
+    return cleaned;
+  }
 }
 
-// Export singleton instance
 export const dataSheetCalculator = new DataSheetCalculator();
