@@ -16,4 +16,6 @@ export interface TabItem {
   label: string;
   type: "code" | "grid";
   active?: boolean;
+  isLoading?: boolean;
+  isDirty?: boolean;
 }

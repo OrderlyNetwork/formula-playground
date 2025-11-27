@@ -12,10 +12,10 @@ interface FormulaDataSheetProps {
 /**
  * FormulaDataSheet Component
  * Displays formula parameters in an editable table with automatic calculation
- * 
+ *
  * Note: currentFormula is now managed by spreadsheetStore and should be set
  * by parent components via setCurrentFormula()
- * 
+ *
  * Row structure is managed by GridStore in Spreadsheet component.
  * Calculation results are stored in SpreadsheetStore as a map {rowId: result}.
  */
@@ -24,9 +24,10 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
 }) => {
   // Get formula from store (set by parent components)
   const formula = useSpreadsheetStore((state) => state.currentFormula);
-  const reset = useSpreadsheetStore((state) => state.reset);
-  const clearAllResults = useSpreadsheetStore((state) => state.clearAllResults);
-  const clearPreArgsCheckMessages = usePreArgsCheckStore((state) => state.clearPreArgsCheckMessages);
+  const clearTabResults = useSpreadsheetStore((state) => state.clearTabResults);
+  const clearPreArgsCheckMessages = usePreArgsCheckStore(
+    (state) => state.clearPreArgsCheckMessages
+  );
 
   // Flatten formula inputs for column generation
   const flattenedPaths = useMemo(() => {
@@ -44,14 +45,14 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
     previousFormulaIdRef.current = formula?.id;
 
     if (formula && formulaChanged) {
-      // Clear previous calculation results and validation messages when formula changes
-      clearAllResults();
+      // Clear only this tab's calculation results and validation messages when formula changes
+      clearTabResults(formula.id);
       clearPreArgsCheckMessages(formula.id);
-      console.log("🔄 Formula changed, cleared calculation results and validation messages");
-    } else if (!formula) {
-      reset();
+      console.log(
+        `🔄 Formula changed to ${formula.id}, cleared its calculation results and validation messages`
+      );
     }
-  }, [formula, clearAllResults, clearPreArgsCheckMessages, reset]);
+  }, [formula, clearTabResults, clearPreArgsCheckMessages]);
 
   if (!formula) {
     return <NoFormulaState className={className} />;
@@ -60,7 +61,9 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   return (
     <div className="h-full flex flex-col relative">
       <div className="flex-1 overflow-hidden">
-        <Spreadsheet flattenedPaths={flattenedPaths} />
+        {/* Key prop forces Spreadsheet to remount when formula changes,
+            ensuring complete per-tab isolation */}
+        <Spreadsheet key={formula.id} flattenedPaths={flattenedPaths} />
       </div>
     </div>
   );

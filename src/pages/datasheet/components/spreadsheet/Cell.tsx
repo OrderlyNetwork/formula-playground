@@ -40,9 +40,13 @@ const Cell: React.FC<CellProps> = ({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_forceUpdateCounter, setForceUpdate] = useState(0);
 
-  // Subscribe to calculation result for result column (O(1) lookup by rowId)
+  // Get current formula ID for per-tab lookup
+  const currentFormula = useSpreadsheetStore((state) => state.currentFormula);
+  const formulaId = currentFormula?.id || "default";
+
+  // Subscribe to calculation result for result column (O(1) lookup by formulaId -> rowId)
   const calculationResult = useSpreadsheetStore((state) =>
-    column.id === "result" ? state.calculationResults[rowId] : undefined
+    column.id === "result" ? state.getTabRowResult(formulaId, rowId) : undefined
   );
 
   useEffect(() => {
@@ -111,8 +115,8 @@ const Cell: React.FC<CellProps> = ({
   const bgClass = isSelected
     ? "bg-blue-50"
     : !isEditable
-      ? "bg-gray-50"
-      : "bg-white";
+    ? "bg-gray-50"
+    : "bg-white";
 
   // const baseClasses = `relative border-r border-b border-grid-border box-border ${bgClass}`;
 

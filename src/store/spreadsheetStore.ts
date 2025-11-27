@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { shallow } from "zustand/shallow";
 import type { ColumnDef, RowDef } from "@/types/spreadsheet";
 import type { FormulaDefinition, FormulaScalar } from "@/types/formula";
-import type { GridStore } from "./spreadsheet";
+import { GridStore } from "./spreadsheet";
 
 /**
  * Calculation result for a single row
@@ -39,19 +39,35 @@ export { shallow };
  * Spreadsheet State managed by Zustand
  * Handles UI state and calculation results only
  * Input data and row structure are stored in GridStore (single source of truth)
+ *
+ * Now supports per-tab state management for multi-tab formula editing
  */
 interface SpreadsheetState {
-  // UI State
-  columns: ColumnDef[];
-  /** Row definitions managed by Zustand store */
-  rows: RowDef[];
-  /** Calculation results by rowId. Row structure is managed by this store */
-  calculationResults: CalculationResults;
-  selection: Selection;
-  isColumnsReady: boolean;
+  // UI State (per-tab)
+  /** Column definitions by tab (formulaId -> columns) */
+  tabColumns: Record<string, ColumnDef[]>;
+  /** Columns ready state by tab (formulaId -> isReady) */
+  tabColumnsReady: Record<string, boolean>;
 
-  // Formula context
+  // Selection (global - only one selection at a time)
+  selection: Selection;
+
+  // Formula context (global)
   currentFormula?: FormulaDefinition;
+
+  // Per-tab state
+  /** Row definitions by tab (formulaId -> rows) */
+  tabRows: Record<string, RowDef[]>;
+  /** Calculation results by tab (formulaId -> results) */
+  tabCalculationResults: Record<string, CalculationResults>;
+  /** GridStore instances by tab (formulaId -> GridStore) */
+  tabGridStores: Record<string, GridStore>;
+
+  // Legacy global state (for backward compatibility)
+  columns: ColumnDef[];
+  rows: RowDef[];
+  calculationResults: CalculationResults;
+  isColumnsReady: boolean;
 
   // Actions for managing state
   setColumns: (columns: ColumnDef[]) => void;
@@ -60,23 +76,81 @@ interface SpreadsheetState {
   setIsColumnsReady: (ready: boolean) => void;
   setCurrentFormula: (formula?: FormulaDefinition) => void;
 
+  // Per-tab actions
+  /** Set columns for a specific tab */
+  setTabColumns: (formulaId: string, columns: ColumnDef[]) => void;
+  /** Get columns for a specific tab */
+  getTabColumns: (formulaId: string) => ColumnDef[];
+  /** Set columns ready state for a specific tab */
+  setTabColumnsReady: (formulaId: string, ready: boolean) => void;
+  /** Get columns ready state for a specific tab */
+  getTabColumnsReady: (formulaId: string) => boolean;
+  /** Set rows for a specific tab */
+  setTabRows: (formulaId: string, rows: RowDef[]) => void;
+  /** Get rows for a specific tab */
+  getTabRows: (formulaId: string) => RowDef[];
+  /** Set calculation results for a specific tab */
+  setTabCalculationResults: (
+    formulaId: string,
+    results: CalculationResults
+  ) => void;
+  /** Get calculation results for a specific tab */
+  getTabCalculationResults: (formulaId: string) => CalculationResults;
+  /** Get or create GridStore for a specific tab */
+  getOrCreateTabGridStore: (
+    formulaId: string,
+    initialRows: RowDef[],
+    initialColumns: ColumnDef[],
+    onCalculateRow?: (rowId: string, colId: string) => void
+  ) => GridStore;
+  /** Get GridStore for a specific tab */
+  getTabGridStore: (formulaId: string) => GridStore | undefined;
+  /** Clear all data for a specific tab */
+  clearTab: (formulaId: string) => void;
+
   // Calculation result operations
   /** Set calculation result for a single row */
   setRowResult: (rowId: string, result: RowCalculationResult) => void;
+  /** Set calculation result for a single row in a specific tab */
+  setTabRowResult: (
+    formulaId: string,
+    rowId: string,
+    result: RowCalculationResult
+  ) => void;
   /** Set calculation results for multiple rows at once */
   setCalculationResults: (results: CalculationResults) => void;
   /** Get calculation result for a row */
   getRowResult: (rowId: string) => RowCalculationResult | undefined;
+  /** Get calculation result for a row in a specific tab */
+  getTabRowResult: (
+    formulaId: string,
+    rowId: string
+  ) => RowCalculationResult | undefined;
   /** Clear calculation result for a row */
   clearRowResult: (rowId: string) => void;
   /** Clear all calculation results */
   clearAllResults: () => void;
+  /** Clear all results for a specific tab */
+  clearTabResults: (formulaId: string) => void;
 
   // Row operations
-  /** Add a new row after a specific row or at the end */
-  addRow: (afterRowId?: string, gridStore?: GridStore, columns?: ColumnDef[]) => void;
-  /** Delete a row by ID */
+  /** Add a new row after a specific row or at the end (legacy - uses global rows) */
+  addRow: (
+    afterRowId?: string,
+    gridStore?: GridStore,
+    columns?: ColumnDef[]
+  ) => void;
+  /** Delete a row by ID (legacy - uses global rows) */
   deleteRow: (rowId: string) => void;
+  /** Add a new row for a specific tab */
+  addTabRow: (
+    formulaId: string,
+    afterRowId?: string,
+    gridStore?: GridStore,
+    columns?: ColumnDef[]
+  ) => void;
+  /** Delete a row for a specific tab */
+  deleteTabRow: (formulaId: string, rowId: string) => void;
 
   // Column operations
   addColumn: (afterColId?: string) => void;
@@ -107,11 +181,17 @@ const initialState = {
   selection: null as Selection,
   isColumnsReady: false,
   currentFormula: undefined as FormulaDefinition | undefined,
+  tabColumns: {} as Record<string, ColumnDef[]>,
+  tabColumnsReady: {} as Record<string, boolean>,
+  tabRows: {} as Record<string, RowDef[]>,
+  tabCalculationResults: {} as Record<string, CalculationResults>,
+  tabGridStores: {} as Record<string, GridStore>,
 };
 
 /**
  * Zustand store for Spreadsheet state (UI + Calculation Results + Row Structure)
  * Row structure and calculation results are managed by this store
+ * Now supports per-tab state management for multi-tab formula editing
  */
 export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
   ...initialState,
@@ -123,7 +203,136 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
   setIsColumnsReady: (isColumnsReady) => set({ isColumnsReady }),
   setCurrentFormula: (currentFormula) => set({ currentFormula }),
 
-  // Calculation result operations
+  // Per-tab setters and getters
+  setTabColumns: (formulaId, columns) =>
+    set((state) => ({
+      tabColumns: {
+        ...state.tabColumns,
+        [formulaId]: columns,
+      },
+    })),
+
+  getTabColumns: (formulaId) => {
+    const state = get();
+    return state.tabColumns[formulaId] || [];
+  },
+
+  setTabColumnsReady: (formulaId, ready) =>
+    set((state) => ({
+      tabColumnsReady: {
+        ...state.tabColumnsReady,
+        [formulaId]: ready,
+      },
+    })),
+
+  getTabColumnsReady: (formulaId) => {
+    const state = get();
+    return state.tabColumnsReady[formulaId] || false;
+  },
+
+  setTabRows: (formulaId, rows) =>
+    set((state) => ({
+      tabRows: {
+        ...state.tabRows,
+        [formulaId]: rows,
+      },
+    })),
+
+  getTabRows: (formulaId) => {
+    const state = get();
+    return state.tabRows[formulaId] || [];
+  },
+
+  setTabCalculationResults: (formulaId, results) =>
+    set((state) => ({
+      tabCalculationResults: {
+        ...state.tabCalculationResults,
+        [formulaId]: results,
+      },
+    })),
+
+  getTabCalculationResults: (formulaId) => {
+    const state = get();
+    return state.tabCalculationResults[formulaId] || {};
+  },
+
+  /**
+   * Get or create GridStore for a specific tab
+   * @param formulaId - Formula/tab identifier
+   * @param initialRows - Initial rows for new GridStore
+   * @param initialColumns - Initial columns for new GridStore
+   * @param onCalculateRow - Callback for row calculation
+   * @returns GridStore instance for the tab
+   */
+  getOrCreateTabGridStore: (
+    formulaId,
+    initialRows,
+    initialColumns,
+    onCalculateRow
+  ) => {
+    const state = get();
+
+    // Return existing GridStore if it exists
+    if (state.tabGridStores[formulaId]) {
+      return state.tabGridStores[formulaId];
+    }
+
+    // Create new GridStore
+    const newGridStore = new GridStore(
+      initialRows,
+      initialColumns,
+      onCalculateRow
+    );
+
+    // Store it
+    set((state) => ({
+      tabGridStores: {
+        ...state.tabGridStores,
+        [formulaId]: newGridStore,
+      },
+    }));
+
+    return newGridStore;
+  },
+
+  /**
+   * Get GridStore for a specific tab
+   * @param formulaId - Formula/tab identifier
+   * @returns GridStore instance or undefined if not found
+   */
+  getTabGridStore: (formulaId) => {
+    const state = get();
+    return state.tabGridStores[formulaId];
+  },
+
+  /**
+   * Clear all data for a specific tab
+   * @param formulaId - Formula/tab identifier
+   */
+  clearTab: (formulaId) =>
+    set((state) => {
+      const newTabRows = { ...state.tabRows };
+      const newTabColumns = { ...state.tabColumns };
+      const newTabColumnsReady = { ...state.tabColumnsReady };
+      const newTabResults = { ...state.tabCalculationResults };
+      const newTabGridStores = { ...state.tabGridStores };
+
+      delete newTabRows[formulaId];
+      delete newTabColumns[formulaId];
+      delete newTabColumnsReady[formulaId];
+      delete newTabResults[formulaId];
+      delete newTabGridStores[formulaId];
+
+      return {
+        tabRows: newTabRows,
+        tabColumns: newTabColumns,
+        tabColumnsReady: newTabColumnsReady,
+        tabCalculationResults: newTabResults,
+        tabGridStores: newTabGridStores,
+      };
+    }),
+
+  // Calculation result operations (legacy - for backward compatibility)
 
   /**
    * Set calculation result for a single row
@@ -137,6 +346,26 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
         [rowId]: result,
       },
     })),
+
+  /**
+   * Set calculation result for a single row in a specific tab
+   * @param formulaId - Formula/tab identifier
+   * @param rowId - Row identifier
+   * @param result - Calculation result data
+   */
+  setTabRowResult: (formulaId, rowId, result) =>
+    set((state) => {
+      const tabResults = state.tabCalculationResults[formulaId] || {};
+      return {
+        tabCalculationResults: {
+          ...state.tabCalculationResults,
+          [formulaId]: {
+            ...tabResults,
+            [rowId]: result,
+          },
+        },
+      };
+    }),
 
   /**
    * Set calculation results for multiple rows at once
@@ -159,6 +388,18 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
   getRowResult: (rowId) => get().calculationResults[rowId],
 
   /**
+   * Get calculation result for a row in a specific tab
+   * @param formulaId - Formula/tab identifier
+   * @param rowId - Row identifier
+   * @returns Calculation result or undefined if not found
+   */
+  getTabRowResult: (formulaId, rowId) => {
+    const state = get();
+    const tabResults = state.tabCalculationResults[formulaId] || {};
+    return tabResults[rowId];
+  },
+
+  /**
    * Clear calculation result for a single row
    * @param rowId - Row identifier
    */
@@ -173,6 +414,17 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
    * Clear all calculation results
    */
   clearAllResults: () => set({ calculationResults: {} }),
+
+  /**
+   * Clear all results for a specific tab
+   * @param formulaId - Formula/tab identifier
+   */
+  clearTabResults: (formulaId) =>
+    set((state) => {
+      const newTabResults = { ...state.tabCalculationResults };
+      delete newTabResults[formulaId];
+      return { tabCalculationResults: newTabResults };
+    }),
 
   // Row operations
 
@@ -211,7 +463,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
         gridStore.syncStructure(newRows, columns);
 
         // Set index for new row (silent mode)
-        const newIndex = newRows.findIndex(r => r.id === newRowId) + 1;
+        const newIndex = newRows.findIndex((r) => r.id === newRowId) + 1;
         gridStore.setValue(newRowId, "index", String(newIndex), true);
       }
 
@@ -237,7 +489,86 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
       return {
         rows: newRows,
         selection: newSelection,
-        calculationResults: remainingResults
+        calculationResults: remainingResults,
+      };
+    }),
+
+  /**
+   * Add a new row for a specific tab
+   * @param formulaId - Formula/tab identifier
+   * @param afterRowId - Optional row ID after which to insert the new row
+   * @param gridStore - Optional GridStore instance to sync with
+   * @param columns - Optional columns array for GridStore sync
+   */
+  addTabRow: (formulaId, afterRowId, gridStore?, columns?) =>
+    set((state) => {
+      const newId = generateId();
+      const newRowId = `${formulaId}_${newId}`;
+      const newRow: RowDef = { id: newRowId };
+
+      const currentTabRows = state.tabRows[formulaId] || [];
+      let newRows: RowDef[];
+
+      if (afterRowId) {
+        const index = currentTabRows.findIndex((r) => r.id === afterRowId);
+        if (index !== -1) {
+          newRows = [...currentTabRows];
+          newRows.splice(index + 1, 0, newRow);
+        } else {
+          // If afterRowId not found, append at end
+          newRows = [...currentTabRows, newRow];
+        }
+      } else {
+        // Default: append at the end
+        newRows = [...currentTabRows, newRow];
+      }
+
+      // Sync with GridStore if provided
+      if (gridStore && columns) {
+        gridStore.syncStructure(newRows, columns);
+
+        // Set index for new row (silent mode)
+        const newIndex = newRows.findIndex((r) => r.id === newRowId) + 1;
+        gridStore.setValue(newRowId, "index", String(newIndex), true);
+      }
+
+      return {
+        tabRows: {
+          ...state.tabRows,
+          [formulaId]: newRows,
+        },
+      };
+    }),
+
+  /**
+   * Delete a row for a specific tab
+   * @param formulaId - Formula/tab identifier
+   * @param rowId - Row ID to delete
+   */
+  deleteTabRow: (formulaId, rowId) =>
+    set((state) => {
+      const currentTabRows = state.tabRows[formulaId] || [];
+      const newRows = currentTabRows.filter((r) => r.id !== rowId);
+      const newSelection =
+        state.selection?.type === "row" && state.selection.id === rowId
+          ? null
+          : state.selection;
+
+      // Clear calculation results for the deleted row
+      const tabResults = state.tabCalculationResults[formulaId] || {};
+      const newTabResults = { ...tabResults };
+      delete newTabResults[rowId];
+
+      return {
+        tabRows: {
+          ...state.tabRows,
+          [formulaId]: newRows,
+        },
+        tabCalculationResults: {
+          ...state.tabCalculationResults,
+          [formulaId]: newTabResults,
+        },
+        selection: newSelection,
       };
     }),
 

@@ -6,6 +6,7 @@ export interface FormulaTab {
   label: string; // 显示的标签名称
   type: "code" | "grid"; // 标签类型
   isDirty?: boolean; // 是否有未保存的修改
+  isLoading?: boolean; // 是否正在加载数据
 }
 
 interface FormulaTabState {
@@ -15,7 +16,7 @@ interface FormulaTabState {
   // 当前活动的标签页 ID
   activeTabId: string | null;
 
-  // 添加新标签页
+  // 添加新标签页 (with deduplication)
   addTab: (
     formulaId: string,
     formulaName: string,
@@ -30,6 +31,12 @@ interface FormulaTabState {
 
   // 更新标签页信息
   updateTab: (formulaId: string, updates: Partial<FormulaTab>) => void;
+
+  // 设置标签页loading状态
+  setTabLoading: (formulaId: string, isLoading: boolean) => void;
+
+  // 设置标签页dirty状态
+  setTabDirty: (formulaId: string, isDirty: boolean) => void;
 
   // 关闭所有标签页
   closeAllTabs: () => void;
@@ -57,24 +64,28 @@ export const useFormulaTabStore = create<FormulaTabState>()(
       ) => {
         const { tabs, isTabOpen } = get();
 
-        // 如果标签页已存在,只需激活它
+        // Deduplication: If tab already exists, just activate it
         if (isTabOpen(formulaId)) {
           set({ activeTabId: formulaId });
+          console.log(`Tab already open, activating: ${formulaId}`);
           return;
         }
 
-        // 创建新标签页
+        // Create new tab
         const newTab: FormulaTab = {
           id: formulaId,
           label: formulaName,
           type,
           isDirty: false,
+          isLoading: false,
         };
 
         set({
           tabs: [...tabs, newTab],
           activeTabId: formulaId,
         });
+
+        console.log(`New tab created: ${formulaId}`);
       },
 
       closeTab: (formulaId: string) => {
@@ -117,6 +128,22 @@ export const useFormulaTabStore = create<FormulaTabState>()(
         set((state) => ({
           tabs: state.tabs.map((tab) =>
             tab.id === formulaId ? { ...tab, ...updates } : tab
+          ),
+        }));
+      },
+
+      setTabLoading: (formulaId: string, isLoading: boolean) => {
+        set((state) => ({
+          tabs: state.tabs.map((tab) =>
+            tab.id === formulaId ? { ...tab, isLoading } : tab
+          ),
+        }));
+      },
+
+      setTabDirty: (formulaId: string, isDirty: boolean) => {
+        set((state) => ({
+          tabs: state.tabs.map((tab) =>
+            tab.id === formulaId ? { ...tab, isDirty } : tab
           ),
         }));
       },

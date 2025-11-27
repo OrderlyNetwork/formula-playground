@@ -279,7 +279,7 @@ class DataSheetCalculator {
     const startTime = Date.now();
 
     try {
-      const cleanedInputs = this.clearArgs(formula, inputs);
+      const cleanedInputs = this.hydration(formula, inputs);
 
       const executionResult: FormulaExecutionResult =
         await this.executor.execute(formula, cleanedInputs);
@@ -322,7 +322,7 @@ class DataSheetCalculator {
       const stack = error instanceof Error ? error.stack : undefined;
       const executionTime = Date.now() - startTime;
 
-      const cleanedInputs = this.clearArgs(formula, inputs);
+      const cleanedInputs = this.hydration(formula, inputs);
 
       this.logExecution(
         formula.id,
@@ -420,7 +420,7 @@ class DataSheetCalculator {
    * @param inputs - Input data to clean
    * @returns Cleaned input data with only defined fields
    */
-  private clearArgs(
+  private hydration(
     formula: FormulaDefinition,
     inputs: Record<string, FormulaScalar>
   ): Record<string, FormulaScalar> {

@@ -21,7 +21,7 @@ export interface ResultCellProps {
  * ResultCell Component
  *
  * Specialized cell renderer for displaying calculation results.
- * Gets value from SpreadsheetStore.calculationResults by rowId (O(1) lookup).
+ * Gets value from SpreadsheetStore per-tab calculation results by formulaId -> rowId (O(1) lookup).
  * This is a read-only cell that displays formula execution results.
  * When there's an error, clicking on the cell shows detailed error information.
  *
@@ -35,9 +35,13 @@ const ResultCell: React.FC<ResultCellProps> = ({
   // State for controlling error details popover
   const [showErrorDetails, setShowErrorDetails] = useState(false);
 
-  // Subscribe to calculation result by rowId (O(1) lookup from map)
-  const calculationResult = useSpreadsheetStore(
-    (state) => state.calculationResults[rowId]
+  // Get current formula ID for per-tab lookup
+  const currentFormula = useSpreadsheetStore((state) => state.currentFormula);
+  const formulaId = currentFormula?.id || "default";
+
+  // Subscribe to calculation result by formulaId -> rowId (O(1) lookup from per-tab map)
+  const calculationResult = useSpreadsheetStore((state) =>
+    state.getTabRowResult(formulaId, rowId)
   );
 
   // Derive display value from calculation result

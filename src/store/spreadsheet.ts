@@ -151,4 +151,15 @@ export class GridStore {
     this.rows = rows;
     this.columns = cols;
   }
+
+  /**
+   * Update the calculation callback
+   * This is needed when the formula changes to ensure the callback has the latest formula reference
+   * @param onCalculateRow - New calculation callback
+   */
+  public updateCalculateCallback(
+    onCalculateRow: (rowId: string, colId: string) => void
+  ) {
+    this.onCalculateRow = onCalculateRow;
+  }
 }
