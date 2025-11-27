@@ -121,7 +121,7 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
             columns={columns}
             selectedColIds={selectedColIds}
             onColHeaderClick={handleColHeaderClick}
-            onDeleteColumn={deleteColumnAction}
+            onDeleteColumn={(colId) => deleteColumnAction(formulaId, colId)}
           />
 
           {/* Virtualized Data Rows */}

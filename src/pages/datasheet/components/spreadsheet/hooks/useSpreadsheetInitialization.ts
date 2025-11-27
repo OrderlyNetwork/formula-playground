@@ -158,9 +158,8 @@ export const useSpreadsheetInitialization = ({
       setTabRows(currentFormulaId, newRows);
 
       // Update GridStore with new row structure
+      // Note: syncStructure will be called by the separate sync effect
       if (storeRef.current) {
-        storeRef.current.syncStructure(newRows, columns);
-
         // Set index column values (silent mode)
         newRows.forEach((row, index) => {
           storeRef.current!.setValue(row.id, "index", String(index + 1), true);
@@ -171,7 +170,7 @@ export const useSpreadsheetInitialization = ({
         "✅ Rows initialized. GridStore is the single source of truth for input data."
       );
     }
-  }, [currentFormula, columns, generateRows, setTabRows]);
+  }, [currentFormula, generateRows, setTabRows]);
 
   return {
     storeRef,

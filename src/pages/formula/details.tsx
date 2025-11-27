@@ -77,7 +77,11 @@ export const FormulaDetails = () => {
   }, [isLogPanelOpen]);
 
   useEffect(() => {
+    // Don't process if no ID or still loading
     if (!id || loading) return;
+
+    // Don't process if formulas haven't been loaded yet
+    if (formulaDefinitions.length === 0) return;
 
     const formula = formulaDefinitions.find((f) => f.id === id);
     if (!formula) {

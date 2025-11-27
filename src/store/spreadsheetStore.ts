@@ -155,6 +155,10 @@ interface SpreadsheetState {
   // Column operations
   addColumn: (afterColId?: string) => void;
   deleteColumn: (colId: string) => void;
+  /** Add a column for a specific tab */
+  addTabColumn: (formulaId: string, afterColId?: string) => void;
+  /** Delete a column for a specific tab */
+  deleteTabColumn: (formulaId: string, colId: string) => void;
 
   // Selection operations
   toggleRowSelection: (rowId: string) => void;
@@ -617,6 +621,79 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
           : state.selection;
 
       return { columns: newColumns, selection: newSelection };
+    }),
+
+  /**
+   * Add a column for a specific tab after a specific column or before the result column
+   */
+  addTabColumn: (formulaId, afterColId) =>
+    set((state) => {
+      const currentColumns = state.tabColumns[formulaId] || [];
+      const newId = generateId();
+      const newCol: ColumnDef = {
+        id: `col_${newId}`,
+        title: "New Column",
+        width: 150,
+        type: "text",
+      };
+
+      let newCols: ColumnDef[];
+
+      if (afterColId) {
+        const index = currentColumns.findIndex((c) => c.id === afterColId);
+        if (index !== -1) {
+          newCols = [...currentColumns];
+          newCols.splice(index + 1, 0, newCol);
+        } else {
+          // If afterColId not found, insert before result column
+          const resultIndex = currentColumns.findIndex(
+            (c) => c.id === "result"
+          );
+          if (resultIndex !== -1) {
+            newCols = [...currentColumns];
+            newCols.splice(resultIndex, 0, newCol);
+          } else {
+            newCols = [...currentColumns, newCol];
+          }
+        }
+      } else {
+        // Default: insert before the result column if it exists, else append
+        const resultIndex = currentColumns.findIndex((c) => c.id === "result");
+        if (resultIndex !== -1) {
+          newCols = [...currentColumns];
+          newCols.splice(resultIndex, 0, newCol);
+        } else {
+          newCols = [...currentColumns, newCol];
+        }
+      }
+
+      return {
+        tabColumns: {
+          ...state.tabColumns,
+          [formulaId]: newCols,
+        },
+      };
+    }),
+
+  /**
+   * Delete a column for a specific tab
+   */
+  deleteTabColumn: (formulaId, colId) =>
+    set((state) => {
+      const currentColumns = state.tabColumns[formulaId] || [];
+      const newColumns = currentColumns.filter((c) => c.id !== colId);
+      const newSelection =
+        state.selection?.type === "column" && state.selection.id === colId
+          ? null
+          : state.selection;
+
+      return {
+        tabColumns: {
+          ...state.tabColumns,
+          [formulaId]: newColumns,
+        },
+        selection: newSelection,
+      };
     }),
 
   // Toggle row selection

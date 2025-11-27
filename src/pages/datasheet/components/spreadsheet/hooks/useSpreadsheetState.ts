@@ -32,8 +32,10 @@ export const useSpreadsheetState = (
   );
 
   // Get selection and column actions (still global)
-  const addColumnAction = useSpreadsheetStore((state) => state.addColumn);
-  const deleteColumnAction = useSpreadsheetStore((state) => state.deleteColumn);
+  const addColumnAction = useSpreadsheetStore((state) => state.addTabColumn);
+  const deleteColumnAction = useSpreadsheetStore(
+    (state) => state.deleteTabColumn
+  );
   const toggleRowSelection = useSpreadsheetStore(
     (state) => state.toggleRowSelection
   );

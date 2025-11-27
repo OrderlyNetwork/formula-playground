@@ -16,7 +16,7 @@ export const useSpreadsheetActions = (
   toggleRowSelection: (id: string) => void,
   toggleColumnSelection: (id: string) => void,
   updateSelectionOnCellClick: (rowId: string, colId: string) => void,
-  addColumnAction: (afterColId?: string) => void
+  addColumnAction: (formulaId: string, afterColId?: string) => void
 ) => {
   /**
    * Add a new row to the spreadsheet (per-tab)
@@ -32,8 +32,8 @@ export const useSpreadsheetActions = (
 
   const addColumn = useCallback(() => {
     const afterColId = selection?.type === "column" ? selection.id : undefined;
-    addColumnAction(afterColId);
-  }, [selection, addColumnAction]);
+    addColumnAction(formulaId, afterColId);
+  }, [selection, addColumnAction, formulaId]);
 
   // --- Selection Handlers ---
   const handleRowHeaderClick = useCallback(
