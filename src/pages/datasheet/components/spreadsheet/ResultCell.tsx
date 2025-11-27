@@ -33,8 +33,6 @@ const ResultCell: React.FC<ResultCellProps> = ({
     return tabResults ? tabResults[rowId] : undefined;
   });
 
-  console.log("******", formulaId, rowId, calculationResult);
-
   const displayValue = useMemo(() => {
     if (typeof calculationResult === "undefined") return "";
     if (

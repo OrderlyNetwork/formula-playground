@@ -4,8 +4,9 @@ import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 import type { ColumnDef, CellValue } from "@/types/spreadsheet";
 import InputCell from "./InputCell";
 import { cn } from "@/lib/utils";
+import { CELL_REGISTRY } from "./cellRegistry";
 
-interface CellProps {
+export interface CellProps {
   rowId: string;
   column: ColumnDef;
   store: GridStore;
@@ -52,18 +53,6 @@ const Cell: React.FC<CellProps> = ({
   });
 
   useEffect(() => {
-    // For result column, use calculation result from SpreadsheetStore
-    if (column.id === "result" && inputRef.current) {
-      if (calculationResult?.error) {
-        inputRef.current.value = `Error: ${calculationResult.error}`;
-      } else if (calculationResult?.result !== undefined) {
-        inputRef.current.value = String(calculationResult.result);
-      } else {
-        inputRef.current.value = "";
-      }
-      return; // Skip GridStore subscription for result column
-    }
-
     // 1. Initial Value from GridStore (for non-result columns)
     const initialVal = store.getValue(rowId, column.id);
     if (inputRef.current) {
@@ -111,11 +100,23 @@ const Cell: React.FC<CellProps> = ({
     if (typeof column.render === "function") {
       return column.render(rowId, column, store);
     }
+    if (CELL_REGISTRY.has(column.type)) {
+      const CellComponent = CELL_REGISTRY.get(column.type)!;
+      return (
+        <CellComponent
+          rowId={rowId}
+          column={column}
+          store={store}
+          isSelected={isSelected}
+          onCellClick={onCellClick}
+        />
+      );
+    }
     return null;
-  }, [rowId, column, store]);
+  }, [rowId, column, store, isSelected, onCellClick]);
 
   const containerClass = cn(
-    "relative [&:not(:last-child)]:border-r border-b border-grid-border box-border overflow-hidden p-1 transition-colors focus-within:inset-ring-2 focus-within:inset-ring-blue-500 focus-within:z-10 ",
+    "relative [&:not(:last-child)]:border-r border-b border-grid-border box-border overflow-hidden transition-colors focus-within:inset-ring-2 focus-within:inset-ring-blue-500 focus-within:z-10 [&:has([data-popover-open])]:inset-ring-2 [&:has([data-popover-open])]:inset-ring-blue-500 [&:has([data-popover-open])]:z-10",
     bgClass,
     className
   );

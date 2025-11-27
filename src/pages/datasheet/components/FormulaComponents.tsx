@@ -2,7 +2,7 @@
 import { SquareFunction, Code2, Download, X, Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePinnedStore } from "@/store/usePinnedStore";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { useFormulaTabStore } from "@/store/formulaTabStore";
 
 export interface Formula {
@@ -49,7 +49,11 @@ export function FormulaItem({ formula }: { formula: Formula }) {
   const { isPinned, togglePin } = usePinnedStore();
   const { addTab } = useFormulaTabStore();
   const navigate = useNavigate();
+  const params = useParams<{ id?: string }>();
   const pinned = isPinned(formula.id);
+
+  // Check if this formula is currently active based on route params
+  const isActive = params.id === formula.id;
 
   const getCreationIcon = (creationType: string) => {
     switch (creationType) {
@@ -80,12 +84,17 @@ export function FormulaItem({ formula }: { formula: Formula }) {
     <div
       className={cn(
         "group flex items-center justify-between px-2 py-1.5 rounded cursor-pointer text-xs",
-        formula.active ? "bg-[#37373d] text-white" : " hover:bg-gray-200"
+        isActive ? "bg-gray-100 " : "hover:bg-gray-200 text-gray-900"
       )}
       onClick={handleFormulaClick}
     >
       <div className="flex items-center gap-1.5 overflow-hidden flex-1 min-w-0">
-        <div className="shrink-0 text-zinc-400">
+        <div
+          className={cn(
+            "shrink-0",
+            isActive ? "text-gray-900" : "text-zinc-400"
+          )}
+        >
           <CreationIcon strokeWidth={1.5} size={16} />
         </div>
         <div className="truncate flex-1 min-w-0">{formula.name}</div>

@@ -26,13 +26,21 @@ export const generateColumnsFromFormula = (
       object: 250,
     };
 
-    const width = widthMap[path.factorType.baseType] || 150;
+    // Use wider column for arrays
+    const baseWidth = widthMap[path.factorType.baseType] || 150;
+    const width = path.factorType.array ? 300 : baseWidth;
+
+    // Map base types to column types
+    let columnType: "text" | "number" | "array" = "text";
+    if (path.factorType.array) {
+      columnType = "array";
+    }
 
     columns.push({
       id: path.path,
       title: path.header,
       width,
-      type: path.factorType.baseType === "number" ? "number" : "text",
+      type: columnType,
       locked: true,
       editable: true,
     });

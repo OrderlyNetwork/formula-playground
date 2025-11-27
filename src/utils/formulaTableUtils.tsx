@@ -73,59 +73,31 @@ export function flattenFormulaInputs(
   for (const input of inputs) {
     const inputPath = parentPath ? `${parentPath}.${input.key}` : input.key;
 
-    if (input.type === "object" && input.factorType.properties) {
-      // Handle object type
-      if (input.factorType.array) {
-        // Handle array of objects
-        for (let i = 0; i < Math.min(maxArrayItems, 3); i++) {
-          // Generate a few default array items
-          const arrayItemPath = `${inputPath}[${i}]`;
-          const nestedPaths = flattenFormulaInputs(
-            input.factorType.properties.map((prop) => ({
-              ...prop,
-              key: prop.key,
-              type: prop.type,
-              factorType: prop.factorType,
-            })),
-            arrayItemPath,
-            maxArrayItems
-          );
-
-          paths.push(
-            ...nestedPaths.map((path) => ({
-              ...path,
-              path: path.path.replace(
-                `${arrayItemPath}.`,
-                `${inputPath}.${i}.`
-              ),
-              header: path.header.replace(arrayItemPath, `${input.key} [${i}]`),
-              isArray: true,
-              arrayIndex: i,
-            }))
-          );
-        }
-      } else {
-        // Handle single object
-        const nestedPaths = flattenFormulaInputs(
-          input.factorType.properties.map((prop) => ({
-            ...prop,
-            key: prop.key,
-            type: prop.type,
-            factorType: prop.factorType,
-          })),
-          inputPath,
-          maxArrayItems
-        );
-        paths.push(...nestedPaths);
-      }
+    if (
+      input.type === "object" &&
+      input.factorType.properties &&
+      !input.factorType.array
+    ) {
+      // Handle single object (non-array)
+      const nestedPaths = flattenFormulaInputs(
+        input.factorType.properties.map((prop) => ({
+          ...prop,
+          key: prop.key,
+          type: prop.type,
+          factorType: prop.factorType,
+        })),
+        inputPath,
+        maxArrayItems
+      );
+      paths.push(...nestedPaths);
     } else {
-      // Handle primitive types
+      // Handle primitive types and arrays (keep arrays as single column)
       paths.push({
         path: inputPath,
         header: generateHeaderFromPath(inputPath),
         factorType: input.factorType,
         depth: parentPath.split(".").length - 1,
-        isArray: false,
+        isArray: input.factorType.array || false,
         description: input.description,
       });
     }

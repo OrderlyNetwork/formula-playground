@@ -3,7 +3,7 @@ import type { GridStore } from "@/store/spreadsheet";
 
 export type CellValue = string | number | null;
 
-export type ColumnType = "text" | "number" | "custom" | "result";
+export type ColumnType = "text" | "number" | "array" | "custom" | "result";
 
 export interface ColumnDef {
   id: string;
@@ -19,7 +19,11 @@ export interface ColumnDef {
    * @param store - GridStore for accessing cell values
    * @returns React node to render in cell
    */
-  render?: (rowId: string, column: ColumnDef, store: GridStore) => React.ReactNode;
+  render?: (
+    rowId: string,
+    column: ColumnDef,
+    store: GridStore
+  ) => React.ReactNode;
   sticky?: "left" | "right"; // Fixed position
 }
 

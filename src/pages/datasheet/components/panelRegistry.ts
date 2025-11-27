@@ -1,7 +1,6 @@
 import { LocalFormulasPanel } from "./FormulasPanel";
 import { DataSourcePanelWrapper } from "./DataSourcePanel";
 import {
-  DataSourcePanel as BaseDataSourcePanel,
   HistoryPanel,
   SettingsPanel,
 } from "@/pages/playground/components/panels";
