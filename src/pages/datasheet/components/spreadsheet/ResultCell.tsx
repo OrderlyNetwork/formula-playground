@@ -17,34 +17,24 @@ export interface ResultCellProps {
   onCellClick?: (rowId: string, colId: string) => void;
 }
 
-/**
- * ResultCell Component
- *
- * Specialized cell renderer for displaying calculation results.
- * Gets value from SpreadsheetStore per-tab calculation results by formulaId -> rowId (O(1) lookup).
- * This is a read-only cell that displays formula execution results.
- * When there's an error, clicking on the cell shows detailed error information.
- *
- * Note: Cell container handles styling/positioning, this only renders content.
- */
 const ResultCell: React.FC<ResultCellProps> = ({
   rowId,
   column,
   onCellClick,
 }) => {
-  // State for controlling error details popover
   const [showErrorDetails, setShowErrorDetails] = useState(false);
 
-  // Get current formula ID for per-tab lookup
   const currentFormula = useSpreadsheetStore((state) => state.currentFormula);
   const formulaId = currentFormula?.id || "default";
 
-  // Subscribe to calculation result by formulaId -> rowId (O(1) lookup from per-tab map)
-  const calculationResult = useSpreadsheetStore((state) =>
-    state.getTabRowResult(formulaId, rowId)
-  );
+  // Direct state access for proper reactivity instead of using getter method
+  const calculationResult = useSpreadsheetStore((state) => {
+    const tabResults = state.tabCalculationResults[formulaId];
+    return tabResults ? tabResults[rowId] : undefined;
+  });
 
-  // Derive display value from calculation result
+  console.log("******", formulaId, rowId, calculationResult);
+
   const displayValue = useMemo(() => {
     if (typeof calculationResult === "undefined") return "";
     if (
@@ -57,18 +47,15 @@ const ResultCell: React.FC<ResultCellProps> = ({
     return sanitizeJsonStringify(calculationResult.result);
   }, [calculationResult]);
 
-  // Handle click to update selection
   const handleClick = () => {
     onCellClick?.(rowId, column.id);
   };
 
-  // Handle error click to show details
   const handleErrorClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering the regular cell click
+    e.stopPropagation();
     setShowErrorDetails(true);
   };
 
-  // Get text color based on result status
   const getTextClass = () => {
     if (calculationResult?.error)
       return "text-red-600 cursor-pointer hover:text-red-700";
@@ -76,7 +63,6 @@ const ResultCell: React.FC<ResultCellProps> = ({
     return "text-gray-400";
   };
 
-  // Generate error details content
   const getErrorDetails = () => {
     if (!calculationResult?.error) return null;
 

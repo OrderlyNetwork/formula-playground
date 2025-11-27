@@ -1,9 +1,8 @@
-import React, { useMemo, useEffect, useRef } from "react";
+import React, { useMemo } from "react";
 import { flattenFormulaInputs } from "@/utils/formulaTableUtils";
 import { NoFormulaState } from "./components/EmptyState";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 import Spreadsheet from "@/pages/datasheet/components/spreadsheet/Spreadsheet";
-import { usePreArgsCheckStore } from "@/store/preArgsCheckStore";
 
 interface FormulaDataSheetProps {
   className?: string;
@@ -24,10 +23,6 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
 }) => {
   // Get formula from store (set by parent components)
   const formula = useSpreadsheetStore((state) => state.currentFormula);
-  const clearTabResults = useSpreadsheetStore((state) => state.clearTabResults);
-  const clearPreArgsCheckMessages = usePreArgsCheckStore(
-    (state) => state.clearPreArgsCheckMessages
-  );
 
   // Flatten formula inputs for column generation
   const flattenedPaths = useMemo(() => {
@@ -36,23 +31,12 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formula?.id]);
 
-  // Track the previous formula ID to detect formula changes
-  const previousFormulaIdRef = useRef<string | undefined>(undefined);
-
-  // Clear calculation results when formula changes
-  useEffect(() => {
-    const formulaChanged = previousFormulaIdRef.current !== formula?.id;
-    previousFormulaIdRef.current = formula?.id;
-
-    if (formula && formulaChanged) {
-      // Clear only this tab's calculation results and validation messages when formula changes
-      clearTabResults(formula.id);
-      clearPreArgsCheckMessages(formula.id);
-      console.log(
-        `🔄 Formula changed to ${formula.id}, cleared its calculation results and validation messages`
-      );
-    }
-  }, [formula, clearTabResults, clearPreArgsCheckMessages]);
+  // Note: Removed auto-clear logic on formula change
+  // In multi-tab mode, switching between tabs should preserve each tab's data
+  // Results are only cleared when:
+  // 1. User explicitly clears them
+  // 2. Tab is closed (handled by tab management)
+  // 3. Formula definition itself changes (not implemented yet)
 
   if (!formula) {
     return <NoFormulaState className={className} />;

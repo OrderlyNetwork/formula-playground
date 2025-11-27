@@ -37,7 +37,6 @@ const Cell: React.FC<CellProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Local state ONLY for custom rendering triggers.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_forceUpdateCounter, setForceUpdate] = useState(0);
 
   // Get current formula ID for per-tab lookup
@@ -45,9 +44,12 @@ const Cell: React.FC<CellProps> = ({
   const formulaId = currentFormula?.id || "default";
 
   // Subscribe to calculation result for result column (O(1) lookup by formulaId -> rowId)
-  const calculationResult = useSpreadsheetStore((state) =>
-    column.id === "result" ? state.getTabRowResult(formulaId, rowId) : undefined
-  );
+  // Direct state access for proper reactivity instead of using getter method
+  const calculationResult = useSpreadsheetStore((state) => {
+    if (column.id !== "result") return undefined;
+    const tabResults = state.tabCalculationResults[formulaId];
+    return tabResults ? tabResults[rowId] : undefined;
+  });
 
   useEffect(() => {
     // For result column, use calculation result from SpreadsheetStore
@@ -88,19 +90,6 @@ const Cell: React.FC<CellProps> = ({
     return () => unsubscribe();
   }, [rowId, column.id, store, column.type, calculationResult]);
 
-  const handleBlur = () => {
-    if (inputRef.current && column.editable !== false) {
-      const val = inputRef.current.value;
-      store.setValue(rowId, column.id, val);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      inputRef.current?.blur();
-    }
-  };
-
   const handleFocus = () => {
     if (onCellClick) {
       onCellClick(rowId, column.id);
@@ -118,11 +107,6 @@ const Cell: React.FC<CellProps> = ({
     ? "bg-gray-50"
     : "bg-white";
 
-  // const baseClasses = `relative border-r border-b border-grid-border box-border ${bgClass}`;
-
-  // Combine props className with base classes
-  // const containerClass = `${baseClasses} ${className || ""}`;
-
   const innerElement = useMemo(() => {
     if (typeof column.render === "function") {
       return column.render(rowId, column, store);
@@ -134,12 +118,9 @@ const Cell: React.FC<CellProps> = ({
     "relative [&:not(:last-child)]:border-r border-b border-grid-border box-border overflow-hidden p-1 transition-colors focus-within:inset-ring-2 focus-within:inset-ring-blue-500 focus-within:z-10 ",
     bgClass,
     className
-    // containerClass
   );
 
-  // Custom Render Strategy
   if (innerElement) {
-    // const currentValue = store.getValue(rowId, column.id);
     return (
       <div
         className={containerClass}
@@ -164,28 +145,10 @@ const Cell: React.FC<CellProps> = ({
         isSelected={isSelected}
         onCellClick={onCellClick}
       />
-      {/* <input
-        ref={inputRef}
-        // type={column.type === "number" ? "number" : "text"}
-        type="text"
-        className={`w-full h-full px-2 outline-none focus:inset-ring-2 focus:inset-ring-blue-500 focus:z-10 absolute inset-0 bg-transparent text-sm text-gray-700 ${
-          !isEditable
-            ? "cursor-not-allowed text-gray-500 font-mono text-right"
-            : ""
-        }`}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        onFocus={handleFocus}
-        readOnly={!isEditable}
-      /> */}
     </div>
   );
 };
 
-/**
- * Custom comparison function for memo
- * Only re-render if these props actually changed
- */
 const areEqual = (prevProps: CellProps, nextProps: CellProps) => {
   return (
     prevProps.rowId === nextProps.rowId &&
@@ -195,8 +158,6 @@ const areEqual = (prevProps: CellProps, nextProps: CellProps) => {
     prevProps.column.locked === nextProps.column.locked &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.store === nextProps.store
-    // onCellClick is stable (useCallback), no need to compare
-    // style and className are derived from column, handled above
   );
 };
 

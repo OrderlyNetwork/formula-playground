@@ -388,6 +388,10 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
    * Get calculation result for a row (sync getter)
    * @param rowId - Row identifier
    * @returns Calculation result or undefined
+   *
+   * Note: For reactive use in components, prefer direct state access:
+   * useSpreadsheetStore((state) => state.calculationResults[rowId])
+   * This method is for non-reactive scenarios (e.g., within actions)
    */
   getRowResult: (rowId) => get().calculationResults[rowId],
 
@@ -396,6 +400,10 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
    * @param formulaId - Formula/tab identifier
    * @param rowId - Row identifier
    * @returns Calculation result or undefined if not found
+   *
+   * Note: For reactive use in components, prefer direct state access:
+   * useSpreadsheetStore((state) => state.tabCalculationResults[formulaId]?.[rowId])
+   * This method is for non-reactive scenarios (e.g., within actions)
    */
   getTabRowResult: (formulaId, rowId) => {
     const state = get();
