@@ -98,7 +98,7 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-white shadow-sm overflow-hidden">
+    <div className="flex flex-col h-full shadow-sm overflow-hidden">
       {/* Toolbar */}
       <SpreadsheetToolbar
         selection={selection}
@@ -114,7 +114,7 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
       >
         <div
           className="inline-block min-w-full"
-          style={{ height: `${rowVirtualizer.getTotalSize() + 40}px` }}
+          style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
         >
           {/* Header Row - Sticky */}
           <SpreadsheetHeader

@@ -23,7 +23,7 @@ export function FormulaDocs({ formula: propFormula }: FormulaDocsProps) {
   }
 
   return (
-    <ScrollArea className="h-full w-full p-4 bg-gray-50">
+    <ScrollArea className="h-full w-full p-4">
       <div className="space-y-4">
         <div className="space-y-3 text-sm text-gray-700">
           {selectedFormula.formula && (

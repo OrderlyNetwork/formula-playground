@@ -420,6 +420,34 @@ export function reconstructFormulaInputs(
         convertedValue = value === "true" || value === "1";
       }
     }
+    // Parse JSON for object/array fields provided as string
+    else if (
+      factorType?.baseType === "object" &&
+      typeof value === "string" &&
+      value !== ""
+    ) {
+      try {
+        const parsed = JSON.parse(value as string);
+        // Ensure parsed type matches expected (array vs object)
+        if (factorType.array) {
+          if (Array.isArray(parsed)) {
+            convertedValue = parsed as unknown as FormulaScalar;
+          } else {
+            // If expecting array but got single object, wrap it
+            convertedValue = [parsed] as unknown as FormulaScalar;
+          }
+        } else {
+          if (typeof parsed === "object" && !Array.isArray(parsed)) {
+            convertedValue = parsed as unknown as FormulaScalar;
+          } else {
+            // If expecting object but got array, still assign parsed for downstream validation
+            convertedValue = parsed as unknown as FormulaScalar;
+          }
+        }
+      } catch {
+        // Leave as original string if JSON.parse fails
+      }
+    }
 
     // Only set values that are not undefined
     if (convertedValue !== undefined) {

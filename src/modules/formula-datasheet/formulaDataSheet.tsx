@@ -43,7 +43,7 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col relative">
+    <div className="h-full flex flex-col relative bg-gray-100">
       <div className="flex-1 overflow-hidden">
         {/* Key prop forces Spreadsheet to remount when formula changes,
             ensuring complete per-tab isolation */}

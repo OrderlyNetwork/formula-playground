@@ -143,10 +143,12 @@ export const ArrayCell: React.FC<ArrayCellProps> = ({
             </div>
 
             <div className="flex gap-2 justify-end pt-2 border-t">
-              <Button variant="secondary" onClick={handleCancel}>
+              <Button variant="ghost" size={"sm"} onClick={handleCancel}>
                 Cancel
               </Button>
-              <Button onClick={handleSave}>Save</Button>
+              <Button size={"sm"} onClick={handleSave}>
+                Save
+              </Button>
             </div>
           </div>
         </PopoverContent>
