@@ -34,7 +34,7 @@ const SpreadsheetHeader: React.FC<SpreadsheetHeaderProps> = ({
           <div
             key={col.id}
             onClick={() => onColHeaderClick(col.id)}
-            className={`bg-gray-100 [&:not(:last-child)]:border-r border-b border-gray-300 px-2 py-2 flex items-center justify-between group font-semibold text-xs uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors ${
+            className={`bg-gray-100 [&:not(:last-child)]:border-r border-b border-gray-300 px-2 h-[33px] flex items-center justify-between group font-semibold text-xs uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors ${
               isSelected
                 ? "bg-blue-200 text-blue-900 border-blue-300"
                 : "text-gray-600"
@@ -54,7 +54,7 @@ const SpreadsheetHeader: React.FC<SpreadsheetHeaderProps> = ({
                 className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded text-red-500 transition-all"
                 title="Delete Column"
               >
-                <Trash2 size={10} />
+                <Trash2 size={12} />
               </button>
             )}
           </div>

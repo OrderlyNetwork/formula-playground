@@ -1,91 +1,5 @@
 [
   {
-    "id": "total_value",
-    "name": "totalValue",
-    "version": "1.0.0",
-    "description": "User's total asset value (denominated in USDC), including assets that cannot be used as collateral.",
-    "formula": "Total Value = total_holding + total unsettlement PNL, total_holding = usdc balance.holding + SUM(non-usdc balance.holding * mark price)",
-    "inputs": [
-      {
-        "key": "inputs",
-        "type": "object",
-        "factorType": {
-          "baseType": "object",
-          "constraints": {},
-          "nullable": false,
-          "array": false,
-          "properties": [
-            {
-              "key": "totalUnsettlementPnL",
-              "type": "number",
-              "factorType": {
-                "baseType": "number",
-                "nullable": false,
-                "array": false
-              }
-            },
-            {
-              "key": "USDCHolding",
-              "type": "number",
-              "factorType": {
-                "baseType": "number",
-                "nullable": false,
-                "array": false
-              }
-            },
-            {
-              "key": "nonUSDCHolding",
-              "type": "object",
-              "factorType": {
-                "baseType": "object",
-                "nullable": false,
-                "array": true,
-                "properties": [
-                  {
-                    "key": "holding",
-                    "type": "number",
-                    "factorType": {
-                      "baseType": "number",
-                      "nullable": false,
-                      "array": false
-                    }
-                  },
-                  {
-                    "key": "indexPrice",
-                    "type": "number",
-                    "factorType": {
-                      "baseType": "number",
-                      "nullable": false,
-                      "array": false
-                    }
-                  }
-                ]
-              }
-            }
-          ]
-        }
-      }
-    ],
-    "outputs": [
-      {
-        "key": "result",
-        "type": "number",
-        "factorType": {
-          "baseType": "number",
-          "nullable": false,
-          "array": false
-        }
-      }
-    ],
-    "formulaText": "{\n  const { totalUnsettlementPnL, USDCHolding, nonUSDCHolding } = inputs;\n  const nonUSDCHoldingValue = nonUSDCHolding.reduce((acc, cur) => {\n    return new Decimal(cur.holding).mul(cur.indexPrice).add(acc);\n  }, zero);\n  return nonUSDCHoldingValue.add(USDCHolding).add(totalUnsettlementPnL);\n}",
-    "sourceCode": "export function totalValue(inputs: TotalValueInputs): Decimal {\n  const { totalUnsettlementPnL, USDCHolding, nonUSDCHolding } = inputs;\n  const nonUSDCHoldingValue = nonUSDCHolding.reduce((acc, cur) => {\n    return new Decimal(cur.holding).mul(cur.indexPrice).add(acc);\n  }, zero);\n  return nonUSDCHoldingValue.add(USDCHolding).add(totalUnsettlementPnL);\n}",
-    "localNpmInfo": {
-      "packageName": "@orderly.network/perp",
-      "functionName": "totalValue",
-      "enabled": true
-    }
-  },
-  {
     "id": "imr",
     "name": "IMR",
     "version": "1.0.0",
@@ -151,7 +65,7 @@
               "type": "number",
               "factorType": {
                 "baseType": "number",
-                "nullable": false,
+                "nullable": true,
                 "array": false
               }
             }
@@ -186,9 +100,9 @@
     "inputs": [
       {
         "key": "side",
-        "type": "string",
+        "type": "number",
         "factorType": {
-          "baseType": "string",
+          "baseType": "number",
           "constraints": {},
           "nullable": false,
           "array": false
@@ -321,19 +235,8 @@
         "factorType": {
           "baseType": "object",
           "constraints": {},
-          "nullable": false,
-          "array": false,
-          "properties": [
-            {
-              "key": "dp",
-              "type": "number",
-              "factorType": {
-                "baseType": "number",
-                "nullable": false,
-                "array": false
-              }
-            }
-          ]
+          "nullable": true,
+          "array": false
         }
       }
     ],
