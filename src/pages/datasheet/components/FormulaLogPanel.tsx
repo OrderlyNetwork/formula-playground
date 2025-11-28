@@ -9,56 +9,53 @@ import { ExpandedLogDetails } from "./log-panel/ExpandedLogDetails";
 import { EmptyLogState } from "./log-panel/EmptyLogState";
 
 export const FormulaLogPanel: React.FC = () => {
-    const { logs, isOpen, togglePanel, clearLogs } = useFormulaLogStore();
-    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const { logs, isOpen, togglePanel, clearLogs } = useFormulaLogStore();
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
-    if (!isOpen) {
-        return null;
+  if (!isOpen) {
+    return null;
+  }
+
+  const toggleRow = (id: string) => {
+    const newExpanded = new Set(expandedRows);
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id);
+    } else {
+      newExpanded.add(id);
     }
+    setExpandedRows(newExpanded);
+  };
 
-    const toggleRow = (id: string) => {
-        const newExpanded = new Set(expandedRows);
-        if (newExpanded.has(id)) {
-            newExpanded.delete(id);
-        } else {
-            newExpanded.add(id);
-        }
-        setExpandedRows(newExpanded);
-    };
+  return (
+    <div className="w-full bg-white flex flex-col h-full shadow-sm relative z-10">
+      <LogPanelHeader onClear={clearLogs} onClose={togglePanel} />
 
-    return (
-        <div className="w-full bg-white flex flex-col h-full shadow-sm relative z-10">
-            <LogPanelHeader onClear={clearLogs} onClose={togglePanel} />
-
-            <ScrollArea className="flex-1">
-                {logs.length === 0 ? (
-                    <EmptyLogState />
-                ) : (
-                    <Table>
-                        <LogTableHeader />
-                        <TableBody>
-                            {logs.map((log) => {
-                                const isExpanded = expandedRows.has(log.id);
-                                return (
-                                    <React.Fragment key={log.id}>
-                                        <LogRow
-                                            log={log}
-                                            isExpanded={isExpanded}
-                                            onToggle={() => toggleRow(log.id)}
-                                        />
-                                        {isExpanded && (
-                                            <ExpandedLogDetails
-                                                log={log}
-                                                isError={!!log.error}
-                                            />
-                                        )}
-                                    </React.Fragment>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-                )}
-            </ScrollArea>
-        </div>
-    );
+      <ScrollArea className="flex-1">
+        {logs.length === 0 ? (
+          <EmptyLogState />
+        ) : (
+          <Table>
+            <LogTableHeader />
+            <TableBody>
+              {logs.map((log) => {
+                const isExpanded = expandedRows.has(log.id);
+                return (
+                  <React.Fragment key={log.id}>
+                    <LogRow
+                      log={log}
+                      isExpanded={isExpanded}
+                      onToggle={() => toggleRow(log.id)}
+                    />
+                    {isExpanded && (
+                      <ExpandedLogDetails log={log} isError={!!log.error} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
+      </ScrollArea>
+    </div>
+  );
 };

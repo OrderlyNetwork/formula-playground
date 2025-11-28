@@ -10,6 +10,7 @@ import {
   sanitizeJsonStringify,
   sanitizeErrorMessage,
 } from "@/utils/sanitization";
+import { Decimal } from "@orderly.network/utils";
 
 export interface ResultCellProps {
   rowId: string;
@@ -35,6 +36,12 @@ const ResultCell: React.FC<ResultCellProps> = ({
 
   const displayValue = useMemo(() => {
     if (typeof calculationResult === "undefined") return "";
+    if (
+      typeof calculationResult?.result === "object" &&
+      calculationResult.result instanceof Decimal
+    ) {
+      return calculationResult.result.toString();
+    }
     if (
       typeof calculationResult.result === "string" ||
       typeof calculationResult.result === "number" ||

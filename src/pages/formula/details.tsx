@@ -183,7 +183,7 @@ export const FormulaDetails = () => {
       ) : (
         <>
           <ResizablePanelGroup direction="horizontal" className="flex-1">
-            <ResizablePanel defaultSize={80} minSize={20}>
+            <ResizablePanel defaultSize={100} minSize={20}>
               <ResizablePanelGroup direction="vertical" className="flex-1">
                 <ResizablePanel defaultSize={80} minSize={20}>
                   <FormulaDataSheet />
@@ -210,8 +210,8 @@ export const FormulaDetails = () => {
             <ResizableHandle className="bg-zinc-200" />
             <ResizablePanel
               ref={logPanelRef}
-              defaultSize={20}
-              minSize={10}
+              defaultSize={0}
+              minSize={20}
               collapsible={true}
               collapsedSize={0}
               onCollapse={() => setLogPanelOpen(false)}
