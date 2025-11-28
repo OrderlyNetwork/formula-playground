@@ -2,10 +2,11 @@ import type {
   FactorType,
   FormulaDefinition,
   FormulaScalar,
+  FormulaInputType,
 } from "@/types/formula";
 import type { FormulaExecutionResult } from "@/types/executor";
 import { SyncFormulaExecutor } from "../../formula-executor/sync-executor";
-import { useFormulaLogStore } from "@/store/formulaLogStore";
+import { useFormulaLogStore, type LogLevel } from "@/store/formulaLogStore";
 import { usePreArgsCheckStore } from "@/store/preArgsCheckStore";
 
 /**
@@ -50,7 +51,10 @@ class DataSheetCalculator {
     }
 
     if (Array.isArray(value)) {
-      return value.length > 0 && value.some((item) => this.hasValidValue(item));
+      return (
+        value.length > 0 &&
+        value.some((item) => this.hasValidValue(item as FormulaScalar))
+      );
     }
 
     if (typeof value === "object" && value !== null) {
@@ -100,7 +104,7 @@ class DataSheetCalculator {
   /**
    * Pre-check arguments before calculation
    * Validates that all required (non-nullable) input fields are present
-   * Supports recursive validation for nested objects
+   * Supports recursive validation for nested objects and arrays
    * Only shows validation errors if at least one input field has a value
    *
    * @param formula - Formula definition with input specifications
@@ -124,11 +128,14 @@ class DataSheetCalculator {
     for (const inputDef of formula.inputs) {
       const { key, factorType } = inputDef;
 
+      // Skip validation if field is nullable
       if (factorType.nullable === true) {
         continue;
       }
 
       const value = inputs[key];
+
+      // Check if required field is missing
       if (value === null || value === undefined) {
         this.addValidationError(
           formula.id,
@@ -138,21 +145,191 @@ class DataSheetCalculator {
         return false;
       }
 
-      if (
-        factorType.baseType === "object" &&
-        Array.isArray(factorType.properties)
-      ) {
+      // Validate based on whether it's an array or single value
+      if (!this.validateValue(value, factorType, key, formula.id, key)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Validate a single value against its factor type
+   * Handles arrays, objects, and primitive types
+   *
+   * @param value - The value to validate
+   * @param factorType - Type definition for validation
+   * @param field - Field name for error reporting
+   * @param formulaId - Formula ID for storing messages
+   * @param path - Current path for nested error logging
+   * @returns true if validation passes, false otherwise
+   */
+  private validateValue(
+    value: FormulaScalar,
+    factorType: FactorType,
+    field: string,
+    formulaId: string,
+    path: string
+  ): boolean {
+    // Handle array types
+    if (factorType.array === true) {
+      if (!Array.isArray(value)) {
+        this.addValidationError(
+          formulaId,
+          field,
+          `Expected array at path: ${path}, got: ${typeof value}`,
+          path
+        );
+        return false;
+      }
+
+      // For non-nullable arrays, check if array is empty
+      if (factorType.nullable !== true && value.length === 0) {
+        this.addValidationError(
+          formulaId,
+          field,
+          `Array cannot be empty at path: ${path}`,
+          path
+        );
+        return false;
+      }
+
+      // Validate each array element
+      for (let i = 0; i < value.length; i++) {
+        const element = value[i];
+        const elementPath = `${path}[${i}]`;
+
+        // Check for null/undefined elements in non-nullable arrays
         if (
-          !this.validateNestedObject(
-            value,
-            factorType.properties,
-            key,
-            formula.id
-          )
+          factorType.nullable !== true &&
+          (element === null || element === undefined)
         ) {
+          this.addValidationError(
+            formulaId,
+            field,
+            `Array element cannot be null/undefined at: ${elementPath}`,
+            elementPath
+          );
           return false;
         }
+
+        // Skip null elements in nullable arrays
+        if (element === null || element === undefined) {
+          continue;
+        }
+
+        // Validate object array elements
+        if (
+          factorType.baseType === "object" &&
+          Array.isArray(factorType.properties)
+        ) {
+          if (
+            !this.validateNestedObject(
+              element,
+              factorType.properties,
+              elementPath,
+              formulaId
+            )
+          ) {
+            return false;
+          }
+        } else {
+          // Validate primitive array elements type
+          if (
+            !this.validatePrimitiveType(
+              element,
+              factorType.baseType,
+              elementPath,
+              field,
+              formulaId
+            )
+          ) {
+            return false;
+          }
+        }
       }
+
+      return true;
+    }
+
+    // Handle non-array object types
+    if (
+      factorType.baseType === "object" &&
+      Array.isArray(factorType.properties)
+    ) {
+      return this.validateNestedObject(
+        value,
+        factorType.properties,
+        path,
+        formulaId
+      );
+    }
+
+    // Handle primitive types (number, string, boolean)
+    return this.validatePrimitiveType(
+      value,
+      factorType.baseType,
+      path,
+      field,
+      formulaId
+    );
+  }
+
+  /**
+   * Validate primitive type values
+   *
+   * @param value - The value to validate
+   * @param expectedType - Expected primitive type
+   * @param path - Current path for error logging
+   * @param field - Field name for error reporting
+   * @param formulaId - Formula ID for storing messages
+   * @returns true if type matches, false otherwise
+   */
+  private validatePrimitiveType(
+    value: FormulaScalar,
+    expectedType: FormulaInputType,
+    path: string,
+    field: string,
+    formulaId: string
+  ): boolean {
+    const actualType = typeof value;
+
+    // Special handling for object type (could be plain object, but NOT array)
+    if (expectedType === "object") {
+      // Arrays should not be validated as primitive objects
+      // They should be handled by the array validation logic
+      if (Array.isArray(value)) {
+        this.addValidationError(
+          formulaId,
+          field,
+          `Expected object at path: ${path}, got: array`,
+          path
+        );
+        return false;
+      }
+
+      if (typeof value !== "object" || value === null) {
+        this.addValidationError(
+          formulaId,
+          field,
+          `Expected object at path: ${path}, got: ${actualType}`,
+          path
+        );
+        return false;
+      }
+      return true;
+    }
+
+    // Validate number, string, boolean
+    if (actualType !== expectedType) {
+      this.addValidationError(
+        formulaId,
+        field,
+        `Expected ${expectedType} at path: ${path}, got: ${actualType}`,
+        path
+      );
+      return false;
     }
 
     return true;
@@ -204,20 +381,17 @@ class DataSheetCalculator {
         return false;
       }
 
+      // Use validateValue to handle arrays, nested objects, and primitives uniformly
       if (
-        factorType.baseType === "object" &&
-        Array.isArray(factorType.properties)
+        !this.validateValue(
+          propValue as FormulaScalar,
+          factorType,
+          key,
+          formulaId,
+          propPath
+        )
       ) {
-        if (
-          !this.validateNestedObject(
-            propValue,
-            factorType.properties,
-            propPath,
-            formulaId
-          )
-        ) {
-          return false;
-        }
+        return false;
       }
     }
 
@@ -250,12 +424,14 @@ class DataSheetCalculator {
     result?: FormulaScalar,
     error?: string,
     executionTime?: number,
-    stack?: string
+    stack?: string,
+    level: LogLevel = "info"
   ): void {
     useFormulaLogStore.getState().addLog({
       formulaId,
       rowId: "unknown",
       inputs,
+      level,
       result,
       error,
       executionTime,
@@ -294,7 +470,9 @@ class DataSheetCalculator {
           cleanedInputs,
           resultValue,
           undefined,
-          durationMs
+          durationMs,
+          undefined,
+          "info"
         );
 
         return {

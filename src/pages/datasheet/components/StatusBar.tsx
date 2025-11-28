@@ -7,6 +7,7 @@ import {
   usePreArgsCheckStore,
   createPreArgsCheckMessageSelector,
 } from "@/store/preArgsCheckStore";
+import { cn } from "@/lib/utils";
 
 export function StatusBar() {
   const activeTab = useFormulaTabStore((state) => state.getActiveTab());
@@ -34,9 +35,16 @@ export function StatusBar() {
     <div className="h-8 bg-gray-100 flex items-center justify-between px-2 text-xs text-white select-none border-t border-gray-200">
       <div className="flex items-center flex-1">
         {latestMessage ? (
-          <div className="flex items-center gap-1.5 text-amber-600">
+          <div
+            className={cn(
+              "flex items-center gap-1.5",
+              latestMessage.message?.level === "warning"
+                ? "text-amber-600"
+                : "text-red-600"
+            )}
+          >
             <AlertTriangle className="h-3 w-3" />
-            <span className="truncate">{latestMessage.message}</span>
+            <span className="truncate">{latestMessage.message?.message}</span>
           </div>
         ) : (
           <div className="text-gray-500">

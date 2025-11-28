@@ -1,14 +1,17 @@
 import { create } from "zustand";
+import type { LogLevel } from "./formulaLogStore";
 
 export interface PreArgsCheckMessage {
   field: string;
   message: string;
   timestamp: number;
+  level: LogLevel;
   path?: string; // For nested object paths like "user.profile"
 }
 
 export interface PreArgsCheckStatus {
   message: PreArgsCheckMessage | null; // Only store the latest message
+
   lastUpdated?: number;
 }
 
@@ -21,7 +24,8 @@ interface PreArgsCheckState {
     formulaId: string,
     field: string,
     message: string,
-    path?: string
+    path?: string,
+    level?: LogLevel
   ) => void;
 
   // Get the latest preArgsCheck message for a formula
@@ -44,12 +48,14 @@ export const usePreArgsCheckStore = create<PreArgsCheckState>((set, get) => ({
     formulaId: string,
     field: string,
     message: string,
-    path?: string
+    path?: string,
+    level: LogLevel = "warning"
   ) => {
     const newMessage: PreArgsCheckMessage = {
       field,
       message,
       timestamp: Date.now(),
+      level,
       path,
     };
 
@@ -109,6 +115,6 @@ export function createPreArgsCheckMessageSelector(
 ) {
   return (state: PreArgsCheckState) => {
     if (!formulaId) return null;
-    return state.preArgsCheckStatus[formulaId]?.message || null;
+    return state.preArgsCheckStatus[formulaId] || null;
   };
 }
