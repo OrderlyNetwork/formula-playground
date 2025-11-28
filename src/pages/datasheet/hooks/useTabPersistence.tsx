@@ -3,11 +3,33 @@ import { useFormulaTabStore } from "@/store/formulaTabStore";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 import { tabPersistenceService } from "@/services/TabPersistenceService";
 import type { GridStore } from "@/store/spreadsheet";
+import ResultCell from "@/pages/datasheet/components/spreadsheet/ResultCell";
+import type { ColumnDef } from "@/types/spreadsheet";
 
 /**
  * Hook to integrate tab persistence with spreadsheet
  * Handles automatic saving and loading of tab state
  */
+
+/**
+ * Restore render functions for columns that need them
+ * This re-attaches JSX render functions that were removed for IndexedDB storage
+ */
+const restoreColumnRenderFunctions = (columns: ColumnDef[]): ColumnDef[] => {
+  return columns.map(column => {
+    const restoredColumn = { ...column };
+
+    // Re-attach ResultCell render function for result columns
+    if (column.type === "result" || column.id === "result") {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      restoredColumn.render = (rowId: string, column: ColumnDef, _gridStore: GridStore) => {
+        return <ResultCell rowId={rowId} column={column} />;
+      };
+    }
+
+    return restoredColumn;
+  });
+};
 export function useTabPersistence(
   formulaId: string | undefined,
   gridStore: GridStore | null
@@ -110,14 +132,17 @@ export function useTabPersistence(
         );
 
         if (state) {
+          // Restore render functions before setting columns
+          const restoredColumns = restoreColumnRenderFunctions(state.columns);
+
           // Restore to per-tab store
           setTabRows(targetFormulaId, state.rows);
-          setTabColumns(targetFormulaId, state.columns);
+          setTabColumns(targetFormulaId, restoredColumns);
           setTabCalculationResults(targetFormulaId, state.calculationResults);
 
           // Also update global state for backward compatibility
           setRows(state.rows);
-          setColumns(state.columns);
+          setColumns(restoredColumns);
           setCalculationResults(state.calculationResults);
 
           // Sync GridStore if available

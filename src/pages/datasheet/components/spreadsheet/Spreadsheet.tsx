@@ -22,6 +22,9 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
   // Get current formula first (needed for per-tab state)
   const currentFormula = useSpreadsheetStore((state) => state.currentFormula);
 
+  // Get clear results action from store
+  const clearTabResults = useSpreadsheetStore((state) => state.clearTabResults);
+
   // Use custom hooks for state management
   const {
     formulaId,
@@ -87,6 +90,20 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
   // Use virtualization hook
   const { parentRef, rowVirtualizer } = useSpreadsheetVirtualization(rowIds);
 
+  /**
+   * Clear all data in the current spreadsheet
+   * Clears both cell input data and calculation results
+   */
+  const handleClearDataSheet = () => {
+    // Clear all cell data in GridStore
+    if (storeRef.current) {
+      storeRef.current.clearAllData();
+    }
+
+    // Clear all calculation results for this tab
+    clearTabResults(formulaId);
+  };
+
   // Show loading state until columns are determined
   if (!isColumnsReady) {
     return (
@@ -109,6 +126,7 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
         flattenedPaths={flattenedPaths}
         onAddRow={addRow}
         onAddColumn={addColumn}
+        onClearDataSheet={handleClearDataSheet}
       />
 
       {/* Grid Container with Virtual Scrolling */}

@@ -2,11 +2,9 @@ import React from "react";
 import {
   BetweenHorizontalStart,
   BetweenVerticalStart,
-  Globe,
-  Logs,
+  ListX,
   PanelRightClose,
   PanelRightOpen,
-  Webhook,
 } from "lucide-react";
 import type { FlattenedPath } from "@/utils/formulaTableUtils";
 import { Button } from "@/components/ui/button";
@@ -28,6 +26,7 @@ interface SpreadsheetToolbarProps {
   flattenedPaths?: FlattenedPath[];
   onAddRow: () => void;
   onAddColumn: () => void;
+  onClearDataSheet: () => void;
 }
 
 /**
@@ -38,6 +37,7 @@ const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
   flattenedPaths,
   onAddRow,
   onAddColumn,
+  onClearDataSheet,
 }) => {
   const togglePanel = useFormulaLogStore((state) => state.togglePanel);
   const isLogPanelOpen = useFormulaLogStore((state) => state.isOpen);
@@ -79,13 +79,18 @@ const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
         </Button>
         <div className="h-6 w-px bg-gray-300 mx-2"></div>
         <div className="flex gap-1">
-          <Button variant="ghost" size="icon" className="p-1 w-7 h-7">
-            <Globe size={20} />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="p-1 w-7 h-7"
+            onClick={onClearDataSheet}
+            title="Clear all data in current spreadsheet"
+          >
+            <ListX size={20} />
           </Button>
-          <Button variant="ghost" size="icon" className="p-1 w-7 h-7">
+          {/* <Button variant="ghost" size="icon" className="p-1 w-7 h-7">
             <Webhook size={20} />
-          </Button>
-          {/* <div className="h-6 w-px bg-gray-300 mx-2"></div> */}
+          </Button> */}
         </div>
       </div>
       <div>

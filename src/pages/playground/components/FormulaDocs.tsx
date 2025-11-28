@@ -29,7 +29,7 @@ export function FormulaDocs({ formula: propFormula }: FormulaDocsProps) {
           {selectedFormula.formula && (
             <>
               <div className="font-medium text-gray-900 mb-1">Formula</div>
-              <p className="leading-6 bg-amber-100 p-2 rounded-md font-bold font-mono">
+              <p className="leading-6 bg-sky-100 p-2 rounded-md font-bold font-mono">
                 {selectedFormula.formula}
               </p>
             </>

@@ -162,4 +162,16 @@ export class GridStore {
   ) {
     this.onCalculateRow = onCalculateRow;
   }
+
+  public clearAllData() {
+    // Clear all data first
+    this.data.clear();
+
+    // Notify all active listeners (only subscribed cells)
+    // This is straightforward and works well with virtual scrolling
+    // since only visible cells are typically subscribed
+    this.listeners.forEach((listenerSet, key) => {
+      listenerSet.forEach((fn) => fn(""));
+    });
+  }
 }

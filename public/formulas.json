@@ -1,5 +1,214 @@
 [
   {
+    "id": "totalValue",
+    "name": "Total Value",
+    "version": "1.0.0",
+    "description": "## Definition\n\n**Total Value** = User's total asset value (denominated in USDC), including assets that cannot be used as collateral\n\n**Total holding** = Sum of all holding quantities in the user's account\n\n**usdc balance.holding** = USDC holding quantity\n\n**non-usdc balance.holding * mark price** = Value of non-USDC asset holdings (denominated in USDC)\n\n**holding**: Asset quantity held by the user, from `/v1/client/holding` or v2 Websocket API | Balance\n\n**mark price**: Current price of the asset, from v2 Websocket API | Balance\n\n**total unsettlement PNL** = Sum of user's account unsettled PNL\n\n## Example\n\n```\ntotal_holding = 2000 + 1000 * 1.001 = 3001\nTotal Value = 3001 - 18.34 = 2982.66\ntotal unsettlement PNL = -18.34\n```",
+    "formula": "Total Value = total_holding + total unsettlement PNL, total_holding = usdc balance.holding + SUM(non-usdc balance.holding * mark price)",
+    "inputs": [
+      {
+        "key": "inputs",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": false,
+          "properties": [
+            {
+              "key": "totalUnsettlementPnL",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "USDCHolding",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "nonUSDCHolding",
+              "type": "object",
+              "factorType": {
+                "baseType": "object",
+                "nullable": false,
+                "array": true,
+                "properties": [
+                  {
+                    "key": "holding",
+                    "type": "number",
+                    "factorType": {
+                      "baseType": "number",
+                      "nullable": false,
+                      "array": false
+                    }
+                  },
+                  {
+                    "key": "indexPrice",
+                    "type": "number",
+                    "factorType": {
+                      "baseType": "number",
+                      "nullable": false,
+                      "array": false
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number",
+          "nullable": false,
+          "array": false
+        }
+      }
+    ],
+    "formulaText": "{\n  const { totalUnsettlementPnL, USDCHolding, nonUSDCHolding } = inputs;\n  const nonUSDCHoldingValue = nonUSDCHolding.reduce((acc, cur) => {\n    return new Decimal(cur.holding).mul(cur.indexPrice).add(acc);\n  }, zero);\n  return nonUSDCHoldingValue.add(USDCHolding).add(totalUnsettlementPnL);\n}",
+    "sourceCode": "export function totalValue(inputs: TotalValueInputs): Decimal {\n  const { totalUnsettlementPnL, USDCHolding, nonUSDCHolding } = inputs;\n  const nonUSDCHoldingValue = nonUSDCHolding.reduce((acc, cur) => {\n    return new Decimal(cur.holding).mul(cur.indexPrice).add(acc);\n  }, zero);\n  return nonUSDCHoldingValue.add(USDCHolding).add(totalUnsettlementPnL);\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "totalValue",
+      "enabled": true
+    }
+  },
+  {
+    "id": "freeCollateral",
+    "name": "Free Collateral",
+    "version": "1.0.0",
+    "description": "## Definition\n\n**Free collateral**: Total value of available margin in the user's account (denominated in USDC)\n\n**Total_collateral_value**: Total value of collateral assets in the user's account (denominated in USDC)\n\n**total_initial_margin_with_orders**: Total initial margin used by the user (including positions and orders)\n\n**initial_margin_i with order**: Initial margin for symbol i (considering both positions and orders)\n\n**IMR_i (with_orders)**: Initial margin rate for a single symbol (considering both position and order notional)\n\n**Max Account Leverage**: Maximum leverage set by the user, from `/v1/client/info.max_leverage`\n\n**Base IMR i**: Base initial margin rate for a single symbol, from `/v1/public/info`\n\n**IMR Factor i**: IMR calculation factor for a single symbol, from `v1/client/info`\n\n**Position Notional i**: Sum of position notional for a single symbol\n\n**Order Notional i**: Sum of order notional for a single symbol\n\n**position_notional_with_orders_i**: Sum of position and order notional for a single symbol\n\n**mark_price_i**: Mark price for a single symbol\n\n**position_qty_with_orders_i**: Sum of position and order quantity for a single symbol\n\n**position_qty_i**: Position quantity for a single symbol\n\n**sum_position_qty_buy_orders_i**: Sum of long order quantity for a single symbol [algo orders should be ignored]\n\n**sum_position_qty_sell_orders_i**: Sum of short order quantity for a single symbol [algo orders should be ignored]\n\n## Example\n\n```\nBTC-PERP position_qty_with_orders_i = max[ abs(0.2+0.3) , abs(0.2-0.5) ] = 0.5\nETH-PERP position_qty_with_orders_i = max[ abs(-3+0), abs(-3+0)] = 3\n\nBTC-PERP position_notional_with_orders_i = 0.5 * 25986.2 = 12993.1\nETH-PERP position_notional_with_orders_i = 3 * 1638.41 = 4915.23\n\nBTC-PERP IMR_i (with_orders) = Max(\n  1 / Max Account Leverage = 1 / 10 = 0.1\n  Base IMR i = 0.1\n  IMR Factor i * Abs(Position Notional i + Order Notional i)^(4/5)) = 0.0000002512 * Abs(5197.2 + 7200 - 14000)^(4/5) = 9.20286609e-5\n) = 0.1\n\nETH-PERP IMR_i (with_orders) = Max(\n  1 / Max Account Leverage = 1 / 10 = 0.1\n  Base IMR i = 0.1\n  IMR Factor i * Abs(Position Notional i + Order Notional i)^(4/5)) = 0.0000003754 * Abs(-4915.23)^(4/5) = 0.00649875988\n) = 0.1\n\ntotal_initial_margin_with_orders = 12993.1 * 0.1 + 4915.23 * 0.1 = 1790.833\nTotal_collateral_value = 1981.66\nFree Collateral = 1981.66 - 1790.833 = 190.82700\n```",
+    "formula": "Free Collateral = Total_collateral_value - total_initial_margin_with_orders,Total_collateral_value,\ntotal_initial_margin_with_orders = sum ( position_notional_with_orders_i * IMR_i (with_orders)),\nIMR_i (with_orders) = Max(1 / Max Account Leverage, Base IMR i, IMR Factor i * Abs(Position Notional i + Order Notional i)^(4/5)),\nposition_notional_with_orders_i = abs( mark_price_i * position_qty_with_orders_i),\nposition_qty_with_orders_i = max[ abs(position_qty_i + sum_position_qty_buy_orders_i), abs(position_qty_i - sum_position_qty_sell_orders_i)]",
+    "inputs": [
+      {
+        "key": "inputs",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": false,
+          "properties": [
+            {
+              "key": "totalCollateral",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "totalInitialMarginWithOrders",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number",
+          "nullable": false,
+          "array": false
+        }
+      }
+    ],
+    "formulaText": "{\n  const value = inputs.totalCollateral.sub(inputs.totalInitialMarginWithOrders);\n  // free collateral cannot be less than 0\n  return value.isNegative() ? zero : value;\n}",
+    "sourceCode": "export function freeCollateral(inputs: FreeCollateralInputs): Decimal {\n  const value = inputs.totalCollateral.sub(inputs.totalInitialMarginWithOrders);\n  // free collateral cannot be less than 0\n  return value.isNegative() ? zero : value;\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "freeCollateral",
+      "enabled": true
+    }
+  },
+  {
+    "id": "totalCollateral",
+    "name": "Total Collateral",
+    "version": "1.0.0",
+    "description": "## Definition\n\n**discount**: Collateral substitution rate\n\n**Total collateral**: Total value of collateral assets in the user's account (denominated in USDC)\n\n**usdc balance.holding**: USDC holding quantity\n\n**non-usdc balance.holding * mark price**: Value of non-USDC asset holdings (denominated in USDC)\n\n**holding**: Asset quantity held by the user, from `/v1/client/holding` or v2 Websocket API | Balance\n\n**mark price**: Current price of the asset, from v2 Websocket API | Balance\n\n**total unsettlement PNL**: Sum of user's account unsettled PNL\n\n## Example\n\n```\nTotal collateral = 2000 + 1000 * 1.001 * 0 - 18.34 = 1981.66\ntotal unsettlement PNL = -18.34\n```",
+    "formula": "Total collateral = usdc balance.holding + SUM(non-usdc balance.holding * mark price * discount) + total unsettlement PNL",
+    "inputs": [
+      {
+        "key": "inputs",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": false,
+          "properties": [
+            {
+              "key": "USDCHolding",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "nonUSDCHolding",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": true
+              }
+            },
+            {
+              "key": "unsettlementPnL",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number",
+          "nullable": false,
+          "array": false
+        }
+      }
+    ],
+    "formulaText": "{\n  const { USDCHolding, nonUSDCHolding, unsettlementPnL } = inputs;\n  const nonUSDCHoldingValue = nonUSDCHolding.reduce<Decimal>((acc, cur) => {\n    const finalHolding = Math.min(cur.holding, cur.collateralCap);\n    const value = new Decimal(finalHolding)\n      .mul(cur.collateralRatio)\n      .mul(cur.indexPrice);\n    return acc.add(value);\n  }, zero);\n\n  return new Decimal(USDCHolding).add(nonUSDCHoldingValue).add(unsettlementPnL);\n}",
+    "sourceCode": "export function totalCollateral(inputs: TotalCollateralValueInputs): Decimal {\n  const { USDCHolding, nonUSDCHolding, unsettlementPnL } = inputs;\n  const nonUSDCHoldingValue = nonUSDCHolding.reduce<Decimal>((acc, cur) => {\n    const finalHolding = Math.min(cur.holding, cur.collateralCap);\n    const value = new Decimal(finalHolding)\n      .mul(cur.collateralRatio)\n      .mul(cur.indexPrice);\n    return acc.add(value);\n  }, zero);\n\n  return new Decimal(USDCHolding).add(nonUSDCHoldingValue).add(unsettlementPnL);\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "totalCollateral",
+      "enabled": true
+    }
+  },
+  {
     "id": "imr",
     "name": "IMR",
     "version": "1.0.0",
@@ -776,6 +985,299 @@
     "localNpmInfo": {
       "packageName": "@orderly.network/perp",
       "functionName": "unsettlementPnL",
+      "enabled": true
+    }
+  },
+  {
+    "id": "totalUnsettlementPnL",
+    "name": "Total Unsettlement PNL",
+    "version": "1.0.0",
+    "description": "## Term Definitions\n\n- **total unsettlement PNL**: Sum of user account's unsettled PNL\n- **mark_price_i**: Single symbol mark price\n- **position_qty_i**: Single symbol position quantity\n- **cost_position_i**: Single symbol notional snapshot from last settlement, `/v1/position`\n- **sum_unitary_funding_i**: Single symbol current cumulative unit funding fee, `/v1/public/funding_rate`\n- **last_sum_unitary_funding_i**: Single symbol cumulative unit funding fee from last settlement, `/v1/position`\n\n## Example\n\n**BTC-PERP Unsettlement PNL** = 0.2 * 25986.2 - 5197.2 - 0.2 * (-1585.92 + 1583.92) = 0.44\n\n**ETH-PERP Unsettlement PNL** = -3 * 1638.41 + 4902.45 + 3 * (-52.728 + 50.728) = -18.78\n\n**Total Unsettlement PNL** = 0.44 - 18.78 = -18.34",
+    "formula": "Unsettlement PNL = position_qty_i * mark_price_i - cost_position_i - position_qty_i * (sum_unitary_funding_i - last_sum_unitary_funding_i)",
+    "inputs": [
+      {
+        "key": "positions",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": true,
+          "properties": [
+            {
+              "key": "account_id",
+              "type": "string",
+              "factorType": {
+                "baseType": "string",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "symbol",
+              "type": "string",
+              "factorType": {
+                "baseType": "string",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "position_qty",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "cost_position",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "last_sum_unitary_funding",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "pending_long_qty",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "pending_short_qty",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "settle_price",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "average_open_price",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "unrealized_pnl",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "unrealized_pnl_index",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "unrealized_pnl_ROI",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "unsettled_pnl",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "unsettled_pnl_ROI",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "unrealized_pnl_ROI_index",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "mark_price",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "index_price",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "est_liq_price",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "timestamp",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "mmr",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              },
+              "description": "\nMaintenance margin ratio"
+            },
+            {
+              "key": "imr",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "IMR_withdraw_orders",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "MMR_with_orders",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "pnl_24_h",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "fee_24_h",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "fundingFee",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "leverage",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "sum_unitary_funding",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number",
+          "nullable": false,
+          "array": false
+        },
+        "description": "The total unrealized profit or loss of all positions."
+      }
+    ],
+    "formulaText": "{\n  if (!Array.isArray(positions) || positions.length === 0) {\n    return 0;\n  }\n\n  return positions.reduce((acc, cur) => {\n    return (\n      acc +\n      unsettlementPnL({\n        positionQty: cur.position_qty,\n        markPrice: cur.mark_price,\n        costPosition: cur.cost_position,\n        sumUnitaryFunding: cur.sum_unitary_funding,\n        lastSumUnitaryFunding: cur.last_sum_unitary_funding,\n      })\n    );\n  }, 0);\n}",
+    "sourceCode": "export function totalUnsettlementPnL(\n  positions: (API.Position & { sum_unitary_funding: number })[],\n): number {\n  if (!Array.isArray(positions) || positions.length === 0) {\n    return 0;\n  }\n\n  return positions.reduce((acc, cur) => {\n    return (\n      acc +\n      unsettlementPnL({\n        positionQty: cur.position_qty,\n        markPrice: cur.mark_price,\n        costPosition: cur.cost_position,\n        sumUnitaryFunding: cur.sum_unitary_funding,\n        lastSumUnitaryFunding: cur.last_sum_unitary_funding,\n      })\n    );\n  }, 0);\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "totalUnsettlementPnL",
       "enabled": true
     }
   },

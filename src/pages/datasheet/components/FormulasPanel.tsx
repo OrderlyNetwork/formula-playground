@@ -76,7 +76,7 @@ export function LocalFormulasPanel() {
             placeholder="Filter"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-7 h-7 bg-gray-50 border-gray-300 text-xs text-gray-900 focus-visible:ring-1 focus-visible:ring-gray-400 focus-visible:border-gray-400 placeholder:text-gray-500"
+            className="pl-7 h-7 bg-gray-50 border-gray-300 text-xs text-gray-900 focus-visible:ring-1 focus-visible:ring-gray-400 focus-visible:border-gray-400 focus-visible:bg-white placeholder:text-gray-500"
           />
         </div>
       </div>

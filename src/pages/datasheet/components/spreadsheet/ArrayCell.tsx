@@ -100,7 +100,7 @@ export const ArrayCell: React.FC<ArrayCellProps> = ({
           )}
           onClick={handleClick}
           tabIndex={0}
-          data-popover-open={isPopoverOpen ? "true" : undefined}
+          // data-popover-open={isPopoverOpen ? "true" : undefined}
           title={
             isValidArray
               ? `Click to edit array (${arrayData.length} items)`
@@ -109,35 +109,49 @@ export const ArrayCell: React.FC<ArrayCellProps> = ({
         >
           {displayText}
 
-          <Maximize2
+          {/* <Maximize2
             size={12}
             className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/array-cell:opacity-100 transition-opacity"
-          />
+          /> */}
         </div>
       </PopoverTrigger>
 
       {isValidArray && (
-        <PopoverContent className="w-96" align="start" side="bottom">
+        <PopoverContent
+          className="w-96 rounded-none inset-ring-2 inset-ring-blue-500 !animate-none h-[323px] !shadow-none"
+          align="start"
+          side="top"
+          sideOffset={-40}
+          alignOffset={-1}
+        >
+          {/* <textarea
+            value={editValue}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+              setEditValue(e.target.value)
+            }
+            className="font-mono text-sm min-h-[200px] max-h-[400px] w-full bg-gray-100"
+            placeholder='["item1", "item2", ...]'
+          /> */}
           <div className="space-y-3">
             <div>
               <h4 className="font-semibold text-sm text-gray-700">
-                Edit Array Data
+                {column.title || column.id}
               </h4>
-              <p className="text-xs text-gray-500 mt-1">
+              {/* <p className="text-xs text-gray-500 mt-1">
                 Row: {rowId} | Column: {column.title || column.id}
-              </p>
-            </div>
-
-            <div>
+              </p> */}
               <label className="text-xs font-medium text-gray-500 block mb-1">
                 Array Content (JSON format):
               </label>
+            </div>
+
+            <div>
               <Textarea
                 value={editValue}
                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                   setEditValue(e.target.value)
                 }
-                className="font-mono text-sm min-h-[200px] max-h-[400px]"
+                className="font-mono text-sm min-h-[188px] max-h-[400px]"
                 placeholder='["item1", "item2", ...]'
               />
             </div>

@@ -78,7 +78,7 @@ export const ColInfo = () => {
   // If no active cell or column, show placeholder
   if (!activeCell || !activeColumn) {
     return (
-      <div className="text-xs text-gray-400 h-full flex items-center px-3 bg-gray-50 border-gray-200">
+      <div className="text-xs text-gray-400 h-full flex items-center px-3 bg-gray-50 border-b border-gray-200">
         <span className="italic">No cell selected</span>
       </div>
     );
@@ -86,7 +86,7 @@ export const ColInfo = () => {
 
   // Display column information
   return (
-    <div className="text-xs text-gray-500 h-full flex items-center px-3 bg-gray-50 border-gray-200 gap-2">
+    <div className="text-xs text-gray-500 h-full flex items-center px-3 bg-gray-50 border-b border-gray-200 gap-2">
       {/* Column Title */}
       <div className="">{activeColumn.title || "Untitled"}</div>
 

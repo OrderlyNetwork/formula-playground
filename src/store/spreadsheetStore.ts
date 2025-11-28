@@ -4,6 +4,11 @@ import type { ColumnDef, RowDef } from "@/types/spreadsheet";
 import type { FormulaDefinition, FormulaScalar } from "@/types/formula";
 import { GridStore } from "./spreadsheet";
 
+// Cached empty values to prevent infinite loops in getSnapshot
+const EMPTY_COLUMNS: ColumnDef[] = [];
+const EMPTY_ROWS: RowDef[] = [];
+const EMPTY_RESULTS: CalculationResults = {};
+
 /**
  * Calculation result for a single row
  * Stored in a map by rowId for O(1) lookup
@@ -233,7 +238,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
 
   getTabColumns: (formulaId) => {
     const state = get();
-    return state.tabColumns[formulaId] || [];
+    return state.tabColumns[formulaId] || EMPTY_COLUMNS;
   },
 
   setTabColumnsReady: (formulaId, ready) =>
@@ -259,7 +264,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
 
   getTabRows: (formulaId) => {
     const state = get();
-    return state.tabRows[formulaId] || [];
+    return state.tabRows[formulaId] || EMPTY_ROWS;
   },
 
   setTabCalculationResults: (formulaId, results) =>
@@ -272,7 +277,7 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
 
   getTabCalculationResults: (formulaId) => {
     const state = get();
-    return state.tabCalculationResults[formulaId] || {};
+    return state.tabCalculationResults[formulaId] || EMPTY_RESULTS;
   },
 
   /**

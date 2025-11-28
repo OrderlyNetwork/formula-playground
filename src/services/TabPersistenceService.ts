@@ -151,6 +151,33 @@ export class TabPersistenceService {
   }
 
   /**
+   * Sanitize column definitions for IndexedDB storage
+   * Removes non-serializable render functions and other JSX components
+   */
+  private sanitizeColumnsForStorage(columns: ColumnDef[]): ColumnDef[] {
+    return columns.map(column => {
+      const sanitizedColumn = { ...column };
+
+      // Remove non-serializable properties
+      if (sanitizedColumn.render && typeof sanitizedColumn.render === 'function') {
+        sanitizedColumn.render = undefined;
+      }
+
+      // Remove any other non-serializable properties
+      Object.keys(sanitizedColumn).forEach(key => {
+        const value = sanitizedColumn[key as keyof ColumnDef];
+        if (typeof value === 'function') {
+          // Type-safe way to remove non-serializable function properties
+          const columnRecord = sanitizedColumn as Record<string, unknown>;
+          delete columnRecord[key];
+        }
+      });
+
+      return sanitizedColumn;
+    });
+  }
+
+  /**
    * Persist tab state to IndexedDB
    */
   private async persistToIndexedDB(
@@ -168,6 +195,9 @@ export class TabPersistenceService {
         cellDataObj[key] = value;
       });
 
+      // Sanitize columns to remove non-serializable functions
+      const sanitizedColumns = this.sanitizeColumnsForStorage(data.columns);
+
       const tabState: TabFormulaState = {
         id: formulaId,
         formulaId,
@@ -175,7 +205,7 @@ export class TabPersistenceService {
         type,
         cellData: cellDataObj,
         rows: data.rows,
-        columns: data.columns,
+        columns: sanitizedColumns,
         calculationResults: data.calculationResults,
         timestamp: Date.now(),
         lastAccessTime: data.lastAccessTime,
@@ -192,6 +222,22 @@ export class TabPersistenceService {
     } catch (error) {
       console.error(`Failed to persist tab state: ${formulaId}`, error);
     }
+  }
+
+  /**
+   * Restore column definitions with render functions
+   * Re-attaches render functions that were removed for storage
+   */
+  private restoreColumnsFromStorage(columns: ColumnDef[]): ColumnDef[] {
+    return columns.map(column => {
+      const restoredColumn = { ...column };
+
+      // Note: Render functions will be re-attached by the spreadsheet component
+      // when columns are loaded, since JSX cannot be used in .ts files
+      // The ResultCell render function is defined in spreadsheetUtils.tsx
+
+      return restoredColumn;
+    });
   }
 
   /**
@@ -241,11 +287,14 @@ export class TabPersistenceService {
         cellData.set(key, value);
       });
 
+      // Restore column render functions
+      const restoredColumns = this.restoreColumnsFromStorage(state.columns || []);
+
       const inMemoryData: InMemoryTabData = {
         formulaId,
         cellData,
         rows: state.rows,
-        columns: state.columns || [],
+        columns: restoredColumns,
         calculationResults: state.calculationResults,
         lastAccessTime: Date.now(),
         isDirty: false,
@@ -260,7 +309,7 @@ export class TabPersistenceService {
       return {
         cellData,
         rows: state.rows,
-        columns: state.columns || [],
+        columns: restoredColumns,
         calculationResults: state.calculationResults,
       };
     } catch (error) {

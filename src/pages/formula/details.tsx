@@ -10,7 +10,6 @@ import { StatusBar } from "../datasheet/components/StatusBar";
 import type { TabItem } from "../datasheet/types";
 import { useFormulaStore } from "@/store/formulaStore";
 import { useFormulaTabStore } from "@/store/formulaTabStore";
-import { useCalculationStatusStore } from "@/store/calculationStatusStore";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 import { useFormulaLogStore } from "@/store/formulaLogStore";
 import { useParams, useNavigate } from "react-router";
@@ -144,7 +143,9 @@ export const FormulaDetails = () => {
       const tab = tabs.find((t) => t.label === label);
       if (tab && tab.id !== activeTabId) {
         setActiveTab(tab.id);
-        navigate(`/formula/${tab.id}`);
+        navigate(`/formula/${tab.id}`, {
+          replace: true,
+        });
       }
     },
     [tabs, activeTabId, setActiveTab, navigate]
@@ -185,13 +186,13 @@ export const FormulaDetails = () => {
           <ResizablePanelGroup direction="horizontal" className="flex-1">
             <ResizablePanel defaultSize={100} minSize={20}>
               <ResizablePanelGroup direction="vertical" className="flex-1">
-                <ResizablePanel defaultSize={80} minSize={20}>
+                <ResizablePanel defaultSize={70} minSize={20}>
                   <FormulaDataSheet />
                 </ResizablePanel>
 
                 <ResizableHandle className="bg-zinc-200" />
 
-                <ResizablePanel defaultSize={20} minSize={10}>
+                <ResizablePanel defaultSize={30} minSize={10}>
                   <ResizablePanelGroup
                     direction="horizontal"
                     className="h-full"

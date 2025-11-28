@@ -60,7 +60,7 @@ export function FormulaCode({ formula: propFormula }: FormulaCodeProps) {
             options={editorOptions}
             loading={
               <div className="flex items-center justify-center h-full text-sm text-gray-500">
-                加载代码...
+                Loading code...
               </div>
             }
           />
