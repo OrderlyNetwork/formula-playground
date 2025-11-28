@@ -51,11 +51,12 @@ export const generateColumnsFromFormula = (
   columns.push({
     id: "result",
     title: "Result",
-    width: 150,
+    width: 200,
     type: "result" as const,
     locked: true,
     editable: false,
     sticky: "right",
+    // className:'flex-1',
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     render: (rowId: string, column: ColumnDef, _: GridStore) => {
       return <ResultCell rowId={rowId} column={column} />;

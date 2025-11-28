@@ -2,6 +2,7 @@ import React from "react";
 import { Lock, Trash2 } from "lucide-react";
 import type { ColumnDef } from "@/types/spreadsheet";
 import { getStickyStyle } from "./spreadsheetUtils";
+import { cn } from "@/lib/utils";
 
 /**
  * Props for SpreadsheetHeader component
@@ -34,11 +35,15 @@ const SpreadsheetHeader: React.FC<SpreadsheetHeaderProps> = ({
           <div
             key={col.id}
             onClick={() => onColHeaderClick(col.id)}
-            className={`bg-gray-100 [&:not(:last-child)]:border-r border-b border-gray-300 px-2 h-[33px] flex items-center justify-between group font-semibold text-xs uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors ${
-              isSelected
-                ? "bg-blue-200 text-blue-900 border-blue-300"
-                : "text-gray-600"
-            } ${className}`}
+            className={cn(
+              `bg-gray-100 px-2 h-[33px] flex items-center justify-between group font-semibold text-xs uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors ${
+                isSelected
+                  ? "bg-blue-200 text-blue-900 border-blue-300"
+                  : "text-gray-600"
+              } `,
+              "[&:not(:last-child)]:border-r border-b border-gray-300",
+              className
+            )}
             style={{ width: col.width, minWidth: col.width, ...style }}
           >
             <div className="flex items-center gap-1 truncate">

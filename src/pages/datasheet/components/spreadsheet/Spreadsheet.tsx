@@ -9,6 +9,7 @@ import { useSpreadsheetCalculation } from "./hooks/useSpreadsheetCalculation";
 import { useSpreadsheetActions } from "./hooks/useSpreadsheetActions";
 import { useSpreadsheetInitialization } from "./hooks/useSpreadsheetInitialization";
 import { useSpreadsheetVirtualization } from "./hooks/useSpreadsheetVirtualization";
+import { useTabPersistence } from "@/pages/datasheet/hooks/useTabPersistence";
 
 /**
  * Props interface for Spreadsheet component
@@ -61,6 +62,9 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
     setTabColumnsReady,
     getOrCreateTabGridStore,
   });
+
+  // Enable tab persistence (auto-save/restore)
+  useTabPersistence(currentFormula?.id, storeRef.current);
 
   // Use actions hook
   const {

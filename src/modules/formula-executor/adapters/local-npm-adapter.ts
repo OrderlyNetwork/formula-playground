@@ -44,7 +44,7 @@ function flattenModule(module: any): any {
 export class LocalNpmAdapter implements SDKAdapter {
   id = "local" as const;
   name = "Local NPM SDK";
-  version = "1.0.0";
+  version = perp.version;
 
   /**
    * Pre-imported packages mapping

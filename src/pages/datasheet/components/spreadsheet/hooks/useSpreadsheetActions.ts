@@ -50,9 +50,14 @@ export const useSpreadsheetActions = (
     [toggleColumnSelection]
   );
 
-  // Handle click inside a cell: Clear selection if clicked outside current selection
+  // Handle click inside a cell: Update active cell and clear selection if clicked outside current selection
   const handleCellClick = useCallback(
     (rowId: string, colId: string) => {
+      // Update active cell in store
+      const state = useSpreadsheetStore.getState();
+      state.setActiveCell(rowId, colId);
+
+      // Update selection state (clears if clicked outside current selection)
       updateSelectionOnCellClick(rowId, colId);
     },
     [updateSelectionOnCellClick]

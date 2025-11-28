@@ -31,6 +31,11 @@ export type CalculationResults = Record<string, RowCalculationResult>;
 type Selection = { type: "row" | "column"; id: string } | null;
 
 /**
+ * Active cell type - tracks which cell is currently being edited
+ */
+export type ActiveCell = { rowId: string; colId: string } | null;
+
+/**
  * Export shallow for use in components
  */
 export { shallow };
@@ -51,6 +56,9 @@ interface SpreadsheetState {
 
   // Selection (global - only one selection at a time)
   selection: Selection;
+
+  // Active cell (global - tracks which cell is currently being edited)
+  activeCell: ActiveCell;
 
   // Formula context (global)
   currentFormula?: FormulaDefinition;
@@ -166,6 +174,12 @@ interface SpreadsheetState {
   clearSelection: () => void;
   updateSelectionOnCellClick: (rowId: string, colId: string) => void;
 
+  // Active cell operations
+  /** Set the currently active/editing cell */
+  setActiveCell: (rowId: string, colId: string) => void;
+  /** Clear the active cell */
+  clearActiveCell: () => void;
+
   // Reset store
   reset: () => void;
 }
@@ -183,6 +197,7 @@ const initialState = {
   rows: [] as RowDef[],
   calculationResults: {} as CalculationResults,
   selection: null as Selection,
+  activeCell: null as ActiveCell,
   isColumnsReady: false,
   currentFormula: undefined as FormulaDefinition | undefined,
   tabColumns: {} as Record<string, ColumnDef[]>,
@@ -744,6 +759,20 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
       // Otherwise (clicked outside), clear selection
       return { selection: null };
     }),
+
+  // Active cell operations
+
+  /**
+   * Set the currently active/editing cell
+   * @param rowId - Row identifier
+   * @param colId - Column identifier
+   */
+  setActiveCell: (rowId, colId) => set({ activeCell: { rowId, colId } }),
+
+  /**
+   * Clear the active cell
+   */
+  clearActiveCell: () => set({ activeCell: null }),
 
   // Reset store to initial state
   reset: () => set(initialState),

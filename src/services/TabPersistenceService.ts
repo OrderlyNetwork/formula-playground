@@ -1,5 +1,5 @@
 import { db, type TabFormulaState } from "@/lib/dexie";
-import type { CellValue, RowDef } from "@/types/spreadsheet";
+import type { CellValue, RowDef, ColumnDef } from "@/types/spreadsheet";
 import type { CalculationResults } from "@/store/spreadsheetStore";
 import type { GridStore } from "@/store/spreadsheet";
 
@@ -22,6 +22,7 @@ interface InMemoryTabData {
   formulaId: string;
   cellData: Map<string, CellValue>;
   rows: RowDef[];
+  columns: ColumnDef[];
   calculationResults: CalculationResults;
   lastAccessTime: number;
   isDirty: boolean;
@@ -70,6 +71,7 @@ export class TabPersistenceService {
    * @param formulaId - Formula ID (tab identifier)
    * @param gridStore - GridStore instance with cell data
    * @param rows - Row definitions
+   * @param columns - Column definitions
    * @param calculationResults - Calculation results
    * @param label - Tab label
    * @param type - Tab type
@@ -78,6 +80,7 @@ export class TabPersistenceService {
     formulaId: string,
     gridStore: GridStore,
     rows: RowDef[],
+    columns: ColumnDef[],
     calculationResults: CalculationResults,
     label: string,
     type: "code" | "grid"
@@ -89,6 +92,7 @@ export class TabPersistenceService {
       formulaId,
       cellData,
       rows: [...rows],
+      columns: [...columns],
       calculationResults: { ...calculationResults },
       lastAccessTime: Date.now(),
       isDirty: true,
@@ -171,6 +175,7 @@ export class TabPersistenceService {
         type,
         cellData: cellDataObj,
         rows: data.rows,
+        columns: data.columns,
         calculationResults: data.calculationResults,
         timestamp: Date.now(),
         lastAccessTime: data.lastAccessTime,
@@ -197,6 +202,7 @@ export class TabPersistenceService {
   public async restoreTabState(formulaId: string): Promise<{
     cellData: Map<string, CellValue>;
     rows: RowDef[];
+    columns: ColumnDef[];
     calculationResults: CalculationResults;
   } | null> {
     // Check in-memory cache first
@@ -206,6 +212,7 @@ export class TabPersistenceService {
       return {
         cellData: cached.cellData,
         rows: cached.rows,
+        columns: cached.columns,
         calculationResults: cached.calculationResults,
       };
     }
@@ -238,6 +245,7 @@ export class TabPersistenceService {
         formulaId,
         cellData,
         rows: state.rows,
+        columns: state.columns || [],
         calculationResults: state.calculationResults,
         lastAccessTime: Date.now(),
         isDirty: false,
@@ -252,6 +260,7 @@ export class TabPersistenceService {
       return {
         cellData,
         rows: state.rows,
+        columns: state.columns || [],
         calculationResults: state.calculationResults,
       };
     } catch (error) {
@@ -274,6 +283,7 @@ export class TabPersistenceService {
       state: {
         cellData: Map<string, CellValue>;
         rows: RowDef[];
+        columns: ColumnDef[];
         calculationResults: CalculationResults;
       } | null
     ) => void

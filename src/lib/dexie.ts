@@ -7,7 +7,7 @@ import type {
   FormulaReference,
   UserDataSource,
 } from "../types/formula";
-import type { CellValue, RowDef } from "../types/spreadsheet";
+import type { CellValue, RowDef, ColumnDef } from "../types/spreadsheet";
 import type { CalculationResults } from "../store/spreadsheetStore";
 
 /**
@@ -22,6 +22,7 @@ export interface TabFormulaState {
   // Persistent data
   cellData: Record<string, CellValue>; // GridStore data as flat key-value (rowId:colId -> value)
   rows: RowDef[]; // Row structure from SpreadsheetStore
+  columns: ColumnDef[]; // Column definitions including custom columns
   calculationResults: CalculationResults; // Calculation results from SpreadsheetStore
 
   // Metadata

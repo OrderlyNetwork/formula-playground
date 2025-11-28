@@ -1,5 +1,5 @@
 "use client";
-import { SquareFunction, Code2, Download, X, Pin } from "lucide-react";
+import { SquareFunction, Code2, Download, X, Pin, Sigma } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePinnedStore } from "@/store/usePinnedStore";
 import { useNavigate, useParams } from "react-router";
@@ -29,7 +29,7 @@ export function FormulaSection({
     <div className={cn("mb-4", title === "Formulas" && "mb-0")}>
       <div className="flex items-center justify-between px-2 py-1 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
         <span>{title}</span>
-        <span className="bg-zinc-800 text-zinc-400 px-1.5 rounded-full">
+        <span className="bg-zinc-800 text-zinc-200 px-1.5 rounded-full">
           {count}
         </span>
       </div>
@@ -62,7 +62,7 @@ export function FormulaItem({ formula }: { formula: Formula }) {
       case "imported":
         return Download;
       default:
-        return SquareFunction;
+        return Sigma;
     }
   };
 
@@ -95,7 +95,8 @@ export function FormulaItem({ formula }: { formula: Formula }) {
             isActive ? "text-gray-900" : "text-zinc-400"
           )}
         >
-          <CreationIcon strokeWidth={1.5} size={16} />
+          {/* <Sigma size={16} /> */}
+          <CreationIcon size={16} />
         </div>
         <div className="truncate flex-1 min-w-0">{formula.name}</div>
       </div>

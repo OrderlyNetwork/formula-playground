@@ -17,17 +17,23 @@ export function useTabPersistence(
   const setTabDirty = useFormulaTabStore((state) => state.setTabDirty);
   const getActiveTab = useFormulaTabStore((state) => state.getActiveTab);
 
-  const rows = useSpreadsheetStore((state) => state.rows);
-  const calculationResults = useSpreadsheetStore(
-    (state) => state.calculationResults
-  );
-  const setRows = useSpreadsheetStore((state) => state.setRows);
-  const setCalculationResults = useSpreadsheetStore(
-    (state) => state.setCalculationResults
+  // Get per-tab state using getters
+  const getTabRows = useSpreadsheetStore((state) => state.getTabRows);
+  const getTabColumns = useSpreadsheetStore((state) => state.getTabColumns);
+  const getTabCalculationResults = useSpreadsheetStore(
+    (state) => state.getTabCalculationResults
   );
   const setTabRows = useSpreadsheetStore((state) => state.setTabRows);
+  const setTabColumns = useSpreadsheetStore((state) => state.setTabColumns);
   const setTabCalculationResults = useSpreadsheetStore(
     (state) => state.setTabCalculationResults
+  );
+
+  // Also update global state for backward compatibility
+  const setRows = useSpreadsheetStore((state) => state.setRows);
+  const setColumns = useSpreadsheetStore((state) => state.setColumns);
+  const setCalculationResults = useSpreadsheetStore(
+    (state) => state.setCalculationResults
   );
 
   const lastSavedStateRef = useRef<string>("");
@@ -42,22 +48,33 @@ export function useTabPersistence(
     const activeTab = getActiveTab();
     if (!activeTab || activeTab.id !== formulaId) return;
 
+    // Get current tab state
+    const rows = getTabRows(formulaId);
+    const columns = getTabColumns(formulaId);
+    const calculationResults = getTabCalculationResults(formulaId);
+
     try {
       await tabPersistenceService.saveTabState(
         formulaId,
         gridStore,
         rows,
+        columns,
         calculationResults,
         activeTab.label,
         activeTab.type
       );
 
-      // Also save to per-tab store
+      // Also save to per-tab store (already there, but ensure consistency)
       setTabRows(formulaId, rows);
+      setTabColumns(formulaId, columns);
       setTabCalculationResults(formulaId, calculationResults);
 
       // Update last saved state
-      const currentState = JSON.stringify({ rows, calculationResults });
+      const currentState = JSON.stringify({
+        rows,
+        columns,
+        calculationResults,
+      });
       lastSavedStateRef.current = currentState;
 
       // Clear dirty flag after successful save
@@ -70,10 +87,12 @@ export function useTabPersistence(
   }, [
     formulaId,
     gridStore,
-    rows,
-    calculationResults,
     getActiveTab,
+    getTabRows,
+    getTabColumns,
+    getTabCalculationResults,
     setTabRows,
+    setTabColumns,
     setTabCalculationResults,
     setTabDirty,
   ]);
@@ -91,8 +110,14 @@ export function useTabPersistence(
         );
 
         if (state) {
-          // Restore rows and calculation results
+          // Restore to per-tab store
+          setTabRows(targetFormulaId, state.rows);
+          setTabColumns(targetFormulaId, state.columns);
+          setTabCalculationResults(targetFormulaId, state.calculationResults);
+
+          // Also update global state for backward compatibility
           setRows(state.rows);
+          setColumns(state.columns);
           setCalculationResults(state.calculationResults);
 
           // Sync GridStore if available
@@ -107,6 +132,7 @@ export function useTabPersistence(
           // Update last saved state
           const currentState = JSON.stringify({
             rows: state.rows,
+            columns: state.columns,
             calculationResults: state.calculationResults,
           });
           lastSavedStateRef.current = currentState;
@@ -123,7 +149,16 @@ export function useTabPersistence(
         setTabLoading(targetFormulaId, false);
       }
     },
-    [gridStore, setRows, setCalculationResults, setTabLoading]
+    [
+      gridStore,
+      setTabRows,
+      setTabColumns,
+      setTabCalculationResults,
+      setRows,
+      setColumns,
+      setCalculationResults,
+      setTabLoading,
+    ]
   );
 
   /**
@@ -132,7 +167,12 @@ export function useTabPersistence(
   useEffect(() => {
     if (!formulaId) return;
 
-    const currentState = JSON.stringify({ rows, calculationResults });
+    // Get current tab state
+    const rows = getTabRows(formulaId);
+    const columns = getTabColumns(formulaId);
+    const calculationResults = getTabCalculationResults(formulaId);
+
+    const currentState = JSON.stringify({ rows, columns, calculationResults });
 
     // Check if state has changed
     if (
@@ -157,7 +197,14 @@ export function useTabPersistence(
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [formulaId, rows, calculationResults, saveTabState, setTabDirty]);
+  }, [
+    formulaId,
+    getTabRows,
+    getTabColumns,
+    getTabCalculationResults,
+    saveTabState,
+    setTabDirty,
+  ]);
 
   /**
    * Load state when active tab changes

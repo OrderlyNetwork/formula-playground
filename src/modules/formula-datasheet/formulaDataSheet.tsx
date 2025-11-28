@@ -3,6 +3,7 @@ import { flattenFormulaInputs } from "@/utils/formulaTableUtils";
 import { NoFormulaState } from "./components/EmptyState";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 import Spreadsheet from "@/pages/datasheet/components/spreadsheet/Spreadsheet";
+import { ColInfo } from "@/pages/datasheet/components/colInfo";
 
 interface FormulaDataSheetProps {
   className?: string;
@@ -31,13 +32,6 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formula?.id]);
 
-  // Note: Removed auto-clear logic on formula change
-  // In multi-tab mode, switching between tabs should preserve each tab's data
-  // Results are only cleared when:
-  // 1. User explicitly clears them
-  // 2. Tab is closed (handled by tab management)
-  // 3. Formula definition itself changes (not implemented yet)
-
   if (!formula) {
     return <NoFormulaState className={className} />;
   }
@@ -45,9 +39,10 @@ export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   return (
     <div className="h-full flex flex-col relative bg-gray-100">
       <div className="flex-1 overflow-hidden">
-        {/* Key prop forces Spreadsheet to remount when formula changes,
-            ensuring complete per-tab isolation */}
         <Spreadsheet key={formula.id} flattenedPaths={flattenedPaths} />
+      </div>
+      <div className="h-[28px] bg-gray-50 border-t border-gray-200">
+        <ColInfo />
       </div>
     </div>
   );
