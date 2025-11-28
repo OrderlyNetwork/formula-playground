@@ -3,6 +3,7 @@ import type { FormulaExecutionResult } from "../types/executor";
 import type { RunRecord } from "../types/history";
 import { setByPath } from "../utils/pathUtils";
 import { FormulaServiceFactory } from "../services/FormulaServiceFactory";
+import { useAppStore } from "./appStore";
 
 /**
  * Base class for formula stores containing common logic
@@ -12,7 +13,7 @@ export class BaseFormulaStore {
   /**
    * Wrap async operation with standard error handling
    * Provides consistent error handling pattern across all store methods
-   * 
+   *
    * @param operation - Async operation to execute
    * @param defaultErrorMessage - Default error message if operation fails
    * @returns Result object with success flag and optional data/error
@@ -25,9 +26,8 @@ export class BaseFormulaStore {
       const data = await operation();
       return { success: true, data };
     } catch (error) {
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : defaultErrorMessage;
+      const errorMessage =
+        error instanceof Error ? error.message : defaultErrorMessage;
       return { success: false, error: errorMessage };
     }
   }
@@ -66,7 +66,13 @@ export class BaseFormulaStore {
             // Non-array property: use regular default logic
             obj[p.key] =
               p.default ??
-              (p.type === "number" ? 0 : p.type === "boolean" ? false : (p.factorType?.nullable ? null : ""));
+              (p.type === "number"
+                ? 0
+                : p.type === "boolean"
+                ? false
+                : p.factorType?.nullable
+                ? null
+                : "");
           }
         }
 
@@ -117,6 +123,7 @@ export class BaseFormulaStore {
 
   /**
    * Execute formula with common error handling and history saving logic
+   * Also updates the app store with current adapter information
    */
   public async executeFormulaBase(
     formula: FormulaDefinition,
@@ -128,6 +135,21 @@ export class BaseFormulaStore {
     error?: string;
   }> {
     return this.withErrorHandling(async () => {
+      // Update adapter info in app store before execution
+      const { setAdapterInfo } = useAppStore.getState();
+      if (engine === "ts") {
+        setAdapterInfo("TypeScript SDK", "1.0.0");
+      } else if (engine === "local") {
+        // For local engine, we'll use the perp package version
+        // This matches the LocalNpmAdapter's version property
+        try {
+          const perpModule = await import("@orderly.network/perp");
+          setAdapterInfo("Local NPM SDK", perpModule.version || "unknown");
+        } catch {
+          setAdapterInfo("Local NPM SDK", "unknown");
+        }
+      }
+
       const executor = FormulaServiceFactory.getExecutor();
       const result = await executor.execute(formula, inputs, engine);
 
@@ -179,7 +201,10 @@ export class BaseFormulaStore {
   /**
    * Clear all history with common error handling
    */
-  public async clearHistoryBase(): Promise<{ success: boolean; error?: string }> {
+  public async clearHistoryBase(): Promise<{
+    success: boolean;
+    error?: string;
+  }> {
     return this.withErrorHandling(async () => {
       const historyManager = FormulaServiceFactory.getHistoryManager();
       await historyManager.clearAllRecords();
@@ -193,9 +218,7 @@ export class BaseFormulaStore {
   /**
    * Replay a history record with common logic
    */
-  public async replayHistoryRecordBase(
-    recordId: string
-  ): Promise<{
+  public async replayHistoryRecordBase(recordId: string): Promise<{
     success: boolean;
     inputs?: Record<string, any>;
     error?: string;
@@ -222,7 +245,10 @@ export class BaseFormulaStore {
    * Parse formulas from source with common error handling
    */
   public async parseFormulasBase(
-    sourceFiles: string[] | { path: string; content: string }[] | FormulaDefinition[]
+    sourceFiles:
+      | string[]
+      | { path: string; content: string }[]
+      | FormulaDefinition[]
   ): Promise<{
     success: boolean;
     formulas?: FormulaDefinition[];

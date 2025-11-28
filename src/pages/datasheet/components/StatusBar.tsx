@@ -1,13 +1,13 @@
 "use client";
-import { RefreshCw, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useMemo } from "react";
-import { useCalculationStatusStore } from "@/store/calculationStatusStore";
 import { useFormulaTabStore } from "@/store/formulaTabStore";
 import {
   usePreArgsCheckStore,
   createPreArgsCheckMessageSelector,
 } from "@/store/preArgsCheckStore";
 import { cn } from "@/lib/utils";
+import { Version } from "./version";
 
 export function StatusBar() {
   const activeTab = useFormulaTabStore((state) => state.getActiveTab());
@@ -18,17 +18,6 @@ export function StatusBar() {
   // Zustand will only re-render when the selected value actually changes
   const latestMessage = usePreArgsCheckStore(
     useMemo(() => createPreArgsCheckMessageSelector(formulaId), [formulaId])
-  );
-
-  // Method 2: Subscribe to specific formulaId's metrics
-  const executionTime = useCalculationStatusStore(
-    useMemo(
-      () => (state) => {
-        if (!formulaId) return 0;
-        return state.metrics.get(formulaId)?.averageTime || 0;
-      },
-      [formulaId]
-    )
   );
 
   return (
@@ -52,11 +41,12 @@ export function StatusBar() {
           </div>
         )}
       </div>
-      <div className="flex items-center h-full bg-gray-200 ml-0.5 px-2">
-        <div className="flex items-center gap-1.5">
+      <div className="flex items-center h-full px-2">
+        {/* <div className="flex items-center gap-1.5">
           <RefreshCw className="h-3 w-3" />
           <span>{executionTime || 0}ms</span>
-        </div>
+        </div> */}
+        <Version />
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import type { FormulaDefinition } from "../../types/formula";
 import type { FormulaExecutionResult } from "../../types/executor";
 import { TSAdapter } from "./adapters/ts-adapter";
 import { LocalNpmAdapter } from "./adapters/local-npm-adapter";
+import { useAppStore } from "../../store/appStore";
 
 /**
  * SyncFormulaExecutor - Executes formulas synchronously in the main thread
@@ -16,6 +17,11 @@ export class SyncFormulaExecutor {
     // Initialize adapters directly (no Worker needed)
     this.tsAdapter = new TSAdapter();
     this.localAdapter = new LocalNpmAdapter();
+
+    // Set initial adapter info when first adapter is created
+    // Default to TS adapter on initialization
+    const { setAdapterInfo } = useAppStore.getState();
+    setAdapterInfo(this.localAdapter.name, this.localAdapter.version);
   }
 
   /**
@@ -53,23 +59,29 @@ export class SyncFormulaExecutor {
   /**
    * Execute a formula synchronously (TS, Local NPM, or Rust - Rust will be added in Phase 2)
    * Engine can be auto-detected based on formula configuration if not specified
+   * Updates the app store with the current adapter information
    *
    * @param formula - Formula definition to execute
-   * @param inputs - Input values for the formula
+   * @param inputs - Input values for the formula (any type needed for dynamic formula inputs)
    * @param engine - Optional engine type to use
    * @returns Promise resolving to execution result
    */
   async execute(
     formula: FormulaDefinition,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     inputs: Record<string, any>,
     engine?: "ts" | "rust" | "local"
   ): Promise<FormulaExecutionResult> {
     // Auto-detect engine if not specified
     const selectedEngine = this.determineEngine(formula, engine);
 
+    // Update adapter info in app store when switching engines
+    const { setAdapterInfo } = useAppStore.getState();
     if (selectedEngine === "ts") {
+      setAdapterInfo(this.tsAdapter.name, this.tsAdapter.version);
       return this.tsAdapter.execute(formula, inputs);
     } else if (selectedEngine === "local") {
+      setAdapterInfo(this.localAdapter.name, this.localAdapter.version);
       return this.localAdapter.execute(formula, inputs);
     } else {
       // Rust WASM will be implemented in Phase 2

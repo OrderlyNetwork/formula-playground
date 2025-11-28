@@ -5,7 +5,11 @@ import { useEffect } from "react";
 export type AppMode = "normal" | "developer";
 
 // Playground Left Panel Categories
-export type PlaygroundPanelType = "formulas" | "datasource" | "history" | "settings";
+export type PlaygroundPanelType =
+  | "formulas"
+  | "datasource"
+  | "history"
+  | "settings";
 
 // Datasheet Sidebar Panel Types
 export type DatasheetPanelType = "tables" | "favorites" | "history";
@@ -24,6 +28,10 @@ export interface AppState {
   // Panel state for datasheet
   datasheetActivePanel: DatasheetPanelType;
 
+  // Adapter version for formula execution
+  adapterVersion: string | null;
+  adapterName: string | null;
+
   // Existing actions
   setMode: (mode: AppMode) => void;
   toggleMode: () => void;
@@ -37,7 +45,10 @@ export interface AppState {
   setPlaygroundActivePanel: (panel: PlaygroundPanelType) => void;
 
   setDatasheetActivePanel: (panel: DatasheetPanelType) => void;
-  }
+
+  // Adapter version actions
+  setAdapterInfo: (name: string, version: string) => void;
+}
 
 export const useAppStore = create<AppState>((set) => ({
   // Initial state
@@ -49,6 +60,10 @@ export const useAppStore = create<AppState>((set) => ({
   playgroundActivePanel: "formulas",
   datasheetActivePanel: "tables",
 
+  // Adapter info initial state
+  adapterVersion: null,
+  adapterName: null,
+
   // Existing actions
   setMode: (mode: AppMode) => set({ mode }),
   toggleMode: () =>
@@ -59,13 +74,18 @@ export const useAppStore = create<AppState>((set) => ({
   // New sidebar and panel actions
   toggleDatasheetSidebar: () =>
     set((s) => ({ datasheetSidebarOpen: !s.datasheetSidebarOpen })),
-  setDatasheetSidebarOpen: (open: boolean) => set({ datasheetSidebarOpen: open }),
+  setDatasheetSidebarOpen: (open: boolean) =>
+    set({ datasheetSidebarOpen: open }),
 
   setPlaygroundActivePanel: (panel: PlaygroundPanelType) =>
     set({ playgroundActivePanel: panel }),
 
   setDatasheetActivePanel: (panel: DatasheetPanelType) =>
     set({ datasheetActivePanel: panel }),
+
+  // Adapter version actions
+  setAdapterInfo: (name: string, version: string) =>
+    set({ adapterName: name, adapterVersion: version }),
 }));
 
 /**
