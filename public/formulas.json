@@ -505,5 +505,418 @@
       "functionName": "unrealizedPnL",
       "enabled": true
     }
+  },
+  {
+    "id": "unrealizedPnLROI",
+    "name": "unrealizedPnLROI",
+    "version": "1.0.0",
+    "description": "Calculates the return on investment (ROI) of a single position's unrealized profit or loss.",
+    "inputs": [
+      {
+        "key": "inputs",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": false,
+          "properties": [
+            {
+              "key": "positionQty",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "openPrice",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "IMR",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "unrealizedPnL",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number",
+          "nullable": false,
+          "array": false
+        },
+        "description": "The ROI of the position's unrealized profit or loss."
+      }
+    ],
+    "formulaText": "{\n  const { openPrice, IMR } = inputs;\n\n  if (\n    inputs.unrealizedPnL === 0 ||\n    inputs.positionQty === 0 ||\n    openPrice === 0 ||\n    IMR === 0\n  )\n    return 0;\n\n  return new Decimal(inputs.unrealizedPnL)\n    .div(new Decimal(Math.abs(inputs.positionQty)).mul(openPrice).mul(IMR))\n    .toNumber();\n}",
+    "sourceCode": "export function unrealizedPnLROI(inputs: UnrealPnLROIInputs): number {\n  const { openPrice, IMR } = inputs;\n\n  if (\n    inputs.unrealizedPnL === 0 ||\n    inputs.positionQty === 0 ||\n    openPrice === 0 ||\n    IMR === 0\n  )\n    return 0;\n\n  return new Decimal(inputs.unrealizedPnL)\n    .div(new Decimal(Math.abs(inputs.positionQty)).mul(openPrice).mul(IMR))\n    .toNumber();\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "unrealizedPnLROI",
+      "enabled": true
+    }
+  },
+  {
+    "id": "liqPrice",
+    "name": "liqPrice",
+    "version": "1.0.0",
+    "description": "Calculates the liquidation price of a single position.",
+    "inputs": [
+      {
+        "key": "inputs",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": false,
+          "properties": [
+            {
+              "key": "markPrice",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "totalCollateral",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "positionQty",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "positions",
+              "type": "object",
+              "factorType": {
+                "baseType": "object",
+                "nullable": false,
+                "array": true,
+                "properties": [
+                  {
+                    "key": "position_qty",
+                    "type": "number",
+                    "factorType": {
+                      "baseType": "number",
+                      "nullable": false,
+                      "array": false
+                    }
+                  },
+                  {
+                    "key": "mark_price",
+                    "type": "number",
+                    "factorType": {
+                      "baseType": "number",
+                      "nullable": false,
+                      "array": false
+                    }
+                  },
+                  {
+                    "key": "mmr",
+                    "type": "number",
+                    "factorType": {
+                      "baseType": "number",
+                      "nullable": false,
+                      "array": false
+                    },
+                    "description": "\nMaintenance margin ratio"
+                  }
+                ]
+              }
+            },
+            {
+              "key": "MMR",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number",
+          "nullable": true,
+          "array": false
+        },
+        "description": "The liquidation price of the position."
+      }
+    ],
+    "formulaText": "{\n  const { markPrice, totalCollateral, positions, positionQty, MMR } = inputs;\n\n  // console.log(\"inputs\", inputs);\n\n  if (positionQty === 0 || totalCollateral === 0) {\n    return null;\n  }\n\n  // totalNotional of all poisitions\n  const totalNotional = positions.reduce<Decimal>((acc, cur) => {\n    return acc.add(\n      new Decimal(notional(cur.position_qty, cur.mark_price)).mul(cur.mmr),\n    );\n  }, zero);\n\n  return Math.max(\n    new Decimal(markPrice)\n      .add(\n        new Decimal(totalCollateral)\n          .sub(totalNotional)\n          .div(new Decimal(positionQty).abs().mul(MMR).sub(positionQty)),\n      )\n      .toNumber(),\n    0,\n  );\n}",
+    "sourceCode": "export function liqPrice(inputs: LiqPriceInputs): number | null {\n  const { markPrice, totalCollateral, positions, positionQty, MMR } = inputs;\n\n  // console.log(\"inputs\", inputs);\n\n  if (positionQty === 0 || totalCollateral === 0) {\n    return null;\n  }\n\n  // totalNotional of all poisitions\n  const totalNotional = positions.reduce<Decimal>((acc, cur) => {\n    return acc.add(\n      new Decimal(notional(cur.position_qty, cur.mark_price)).mul(cur.mmr),\n    );\n  }, zero);\n\n  return Math.max(\n    new Decimal(markPrice)\n      .add(\n        new Decimal(totalCollateral)\n          .sub(totalNotional)\n          .div(new Decimal(positionQty).abs().mul(MMR).sub(positionQty)),\n      )\n      .toNumber(),\n    0,\n  );\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "liqPrice",
+      "enabled": true
+    }
+  },
+  {
+    "id": "unsettlementPnl",
+    "name": "unsettlementPnL",
+    "version": "1.0.0",
+    "description": "Calculates the unrealized profit or loss of each position.",
+    "inputs": [
+      {
+        "key": "inputs",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": false,
+          "properties": [
+            {
+              "key": "positionQty",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "markPrice",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "costPosition",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "sumUnitaryFunding",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "lastSumUnitaryFunding",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number",
+          "nullable": false,
+          "array": false
+        },
+        "description": "The unrealized profit or loss of each position."
+      }
+    ],
+    "formulaText": "{\n  const {\n    positionQty,\n    markPrice,\n    costPosition,\n    sumUnitaryFunding,\n    lastSumUnitaryFunding,\n  } = inputs;\n\n  const qty = new Decimal(positionQty);\n\n  return qty\n    .mul(markPrice)\n    .sub(costPosition)\n    .sub(qty.mul(new Decimal(sumUnitaryFunding).sub(lastSumUnitaryFunding)))\n    .toNumber();\n}",
+    "sourceCode": "export function unsettlementPnL(inputs: UnsettlementPnLInputs): number {\n  const {\n    positionQty,\n    markPrice,\n    costPosition,\n    sumUnitaryFunding,\n    lastSumUnitaryFunding,\n  } = inputs;\n\n  const qty = new Decimal(positionQty);\n\n  return qty\n    .mul(markPrice)\n    .sub(costPosition)\n    .sub(qty.mul(new Decimal(sumUnitaryFunding).sub(lastSumUnitaryFunding)))\n    .toNumber();\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "unsettlementPnL",
+      "enabled": true
+    }
+  },
+  {
+    "id": "MMR",
+    "name": "MMR",
+    "version": "1.0.0",
+    "description": "Calculates the maintenance margin requirement (MMR) of a position.",
+    "inputs": [
+      {
+        "key": "inputs",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": false,
+          "properties": [
+            {
+              "key": "baseMMR",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "baseIMR",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "IMRFactor",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "positionNotional",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "IMR_factor_power",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number",
+          "nullable": false,
+          "array": false
+        },
+        "description": "The MMR of the position."
+      }
+    ],
+    "formulaText": "{\n  const {\n    baseMMR,\n    baseIMR,\n    IMRFactor,\n    positionNotional,\n    IMR_factor_power = IMRFactorPower,\n  } = inputs;\n  return Math.max(\n    baseMMR,\n    new Decimal(baseMMR)\n      .div(baseIMR)\n      .mul(IMRFactor)\n      .mul(Math.pow(Math.abs(positionNotional), IMR_factor_power))\n      // .toPower(IMR_factor_power)\n      .toNumber(),\n  );\n}",
+    "sourceCode": "export function MMR(inputs: MMRInputs): number {\n  const {\n    baseMMR,\n    baseIMR,\n    IMRFactor,\n    positionNotional,\n    IMR_factor_power = IMRFactorPower,\n  } = inputs;\n  return Math.max(\n    baseMMR,\n    new Decimal(baseMMR)\n      .div(baseIMR)\n      .mul(IMRFactor)\n      .mul(Math.pow(Math.abs(positionNotional), IMR_factor_power))\n      // .toPower(IMR_factor_power)\n      .toNumber(),\n  );\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "MMR",
+      "enabled": true
+    }
+  },
+  {
+    "id": "maxPositionNotional",
+    "name": "maxPositionNotional",
+    "version": "1.0.0",
+    "description": "calculate the max position notional",
+    "formula": "max_notional = ( (1/ (leverage * imr_factor) ) ^ (1/0.8)",
+    "inputs": [
+      {
+        "key": "inputs",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": false,
+          "properties": [
+            {
+              "key": "leverage",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              },
+              "description": "symbol leverage"
+            },
+            {
+              "key": "IMRFactor",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number"
+        }
+      }
+    ],
+    "formulaText": "{\n  const { leverage, IMRFactor } = inputs;\n  return new Decimal(1)\n    .div(new Decimal(leverage).mul(IMRFactor))\n    .pow(1 / 0.8)\n    .toNumber();\n}",
+    "sourceCode": "export function maxPositionNotional(inputs: {\n  /** symbol leverage */\n  leverage: number;\n  IMRFactor: number;\n}) {\n  const { leverage, IMRFactor } = inputs;\n  return new Decimal(1)\n    .div(new Decimal(leverage).mul(IMRFactor))\n    .pow(1 / 0.8)\n    .toNumber();\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "maxPositionNotional",
+      "enabled": true
+    }
   }
 ]

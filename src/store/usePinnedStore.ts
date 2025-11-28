@@ -8,14 +8,12 @@ export interface PinnedState {
   pinFormula: (id: string) => void;
   unpinFormula: (id: string) => void;
   togglePin: (id: string) => void;
-  isPinned: (id: string) => boolean;
-  getPinnedFormulaIds: () => string[];
   clearAllPinned: () => void;
 }
 
 export const usePinnedStore = create<PinnedState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       // Initial state
       pinnedFormulaIds: new Set(),
 
@@ -44,16 +42,6 @@ export const usePinnedStore = create<PinnedState>()(
           }
           return { pinnedFormulaIds: newPinnedIds };
         }),
-
-      isPinned: (id: string) => {
-        const state = get();
-        return state.pinnedFormulaIds.has(id);
-      },
-
-      getPinnedFormulaIds: () => {
-        const state = get();
-        return Array.from(state.pinnedFormulaIds);
-      },
 
       clearAllPinned: () => {
         set({ pinnedFormulaIds: new Set() });
@@ -91,3 +79,17 @@ export const usePinnedStore = create<PinnedState>()(
     }
   )
 );
+
+/**
+ * Reactive selector: Check if a formula ID is pinned
+ * Usage in component: const isPinned = usePinnedStore(selectIsPinned(formulaId));
+ */
+export const selectIsPinned = (id: string) => (state: PinnedState) =>
+  state.pinnedFormulaIds.has(id);
+
+/**
+ * Reactive selector: Get all pinned formula IDs as an array
+ * Usage in component: const pinnedIds = usePinnedStore(selectPinnedFormulaIds);
+ */
+export const selectPinnedFormulaIds = (state: PinnedState) =>
+  Array.from(state.pinnedFormulaIds);

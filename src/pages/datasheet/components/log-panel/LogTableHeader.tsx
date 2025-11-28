@@ -3,7 +3,7 @@ import { TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export const LogTableHeader: React.FC = () => {
   return (
-    <TableHeader className="h-[33px]">
+    <TableHeader className="h-[33px] text-xs">
       <TableRow>
         <TableHead className="w-[30px] h-[33px]"></TableHead>
         <TableHead className="w-[40px] h-[33px]"></TableHead>

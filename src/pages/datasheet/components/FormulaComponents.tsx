@@ -1,7 +1,7 @@
 "use client";
 import { SquareFunction, Code2, Download, X, Pin, Sigma } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { usePinnedStore } from "@/store/usePinnedStore";
+import { usePinnedStore, selectIsPinned } from "@/store/usePinnedStore";
 import { useNavigate, useParams } from "react-router";
 import { useFormulaTabStore } from "@/store/formulaTabStore";
 
@@ -46,11 +46,12 @@ export function FormulaSection({
 
 // Formula item component
 export function FormulaItem({ formula }: { formula: Formula }) {
-  const { isPinned, togglePin } = usePinnedStore();
+  // ✅ Reactive: Subscribe directly to pinned state for this formula
+  const isPinned = usePinnedStore(selectIsPinned(formula.id));
+  const togglePin = usePinnedStore((state) => state.togglePin);
   const { addTab } = useFormulaTabStore();
   const navigate = useNavigate();
   const params = useParams<{ id?: string }>();
-  const pinned = isPinned(formula.id);
 
   // Check if this formula is currently active based on route params
   const isActive = params.id === formula.id;
@@ -101,7 +102,7 @@ export function FormulaItem({ formula }: { formula: Formula }) {
         <div className="truncate flex-1 min-w-0">{formula.name}</div>
       </div>
       <div className="opacity-0 group-hover:opacity-100 flex items-center ml-2 shrink-0">
-        {pinned ? (
+        {isPinned ? (
           <Pin
             className="h-3 w-3 text-yellow-500 -rotate-45 cursor-pointer hover:text-yellow-400"
             onClick={handlePinToggle}

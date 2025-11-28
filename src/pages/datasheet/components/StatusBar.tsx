@@ -21,7 +21,7 @@ export function StatusBar() {
   );
 
   return (
-    <div className="h-8 bg-gray-100 flex items-center justify-between px-2 text-xs text-white select-none border-t border-gray-200">
+    <div className="h-8 bg-gray-50 flex items-center justify-between px-2 text-xs text-white select-none border-t border-gray-200">
       <div className="flex items-center flex-1">
         {latestMessage ? (
           <div

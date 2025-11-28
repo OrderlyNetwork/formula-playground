@@ -9,7 +9,8 @@ import { useFormulaStore } from "@/store/formulaStore";
 
 export function LocalFormulasPanel() {
   const [searchQuery, setSearchQuery] = useState("");
-  const { isPinned } = usePinnedStore();
+  // ✅ Reactive: Subscribe directly to pinnedFormulaIds Set
+  const pinnedFormulaIds = usePinnedStore((state) => state.pinnedFormulaIds);
   const { formulaDefinitions, loadFormulasFromAllSources } = useFormulaStore();
 
   // Load formulas on component mount
@@ -17,14 +18,6 @@ export function LocalFormulasPanel() {
     console.log("LocalFormulasPanel: Loading formulas...");
     loadFormulasFromAllSources();
   }, [loadFormulasFromAllSources]);
-
-  // Debug: log formula definitions when they change
-  useEffect(() => {
-    console.log(
-      "LocalFormulasPanel: Formula definitions loaded:",
-      formulaDefinitions
-    );
-  }, [formulaDefinitions]);
 
   const { pinnedFormulas, unpinnedFormulas, totalFilteredFormulas } =
     useMemo(() => {
@@ -66,11 +59,11 @@ export function LocalFormulasPanel() {
       }
 
       return {
-        pinnedFormulas: filtered.filter((f) => isPinned(f.id)),
-        unpinnedFormulas: filtered.filter((f) => !isPinned(f.id)),
+        pinnedFormulas: filtered.filter((f) => pinnedFormulaIds.has(f.id)),
+        unpinnedFormulas: filtered.filter((f) => !pinnedFormulaIds.has(f.id)),
         totalFilteredFormulas: filtered.length,
       };
-    }, [searchQuery, isPinned, formulaDefinitions]);
+    }, [searchQuery, pinnedFormulaIds, formulaDefinitions]);
 
   return (
     <div className="flex flex-col h-full ">
@@ -105,7 +98,7 @@ export function LocalFormulasPanel() {
       </ScrollArea>
 
       {/* Footer */}
-      <div className="px-2.5 py-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-600 shrink-0">
+      <div className="px-2.5 h-8 py-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-600 shrink-0">
         {searchQuery.trim() ? (
           <>
             Showing {totalFilteredFormulas} / {formulaDefinitions.length}{" "}
