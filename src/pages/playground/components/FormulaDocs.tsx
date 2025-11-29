@@ -2,12 +2,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFormulaStore } from "@/store/formulaStore";
 import { Markdown } from "@/components/common/Markdown";
 import type { FormulaDefinition } from "@/types/formula";
+import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 
-interface FormulaDocsProps {
-  formula?: FormulaDefinition;
-}
 
-export function FormulaDocs({ formula: propFormula }: FormulaDocsProps) {
+
+export function FormulaDocs() {
+  const propFormula = useSpreadsheetStore((state) => state.currentFormula);
   const { formulaDefinitions, selectedFormulaId } = useFormulaStore();
 
   // Use prop formula if provided, otherwise fall back to store selection

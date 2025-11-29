@@ -13,7 +13,7 @@ export function useModeData() {
   const developerModeData = useDeveloperStore();
 
   return useMemo(() => {
-    const isDeveloper = mode === "developer";
+    const isDeveloper = mode === "development";
 
     return {
       formulaDefinitions: isDeveloper

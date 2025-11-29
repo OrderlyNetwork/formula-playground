@@ -8,6 +8,7 @@ import {
 } from "@/store/preArgsCheckStore";
 import { cn } from "@/lib/utils";
 import { Version } from "./version";
+import { EditorMode } from "./EditorMode";
 
 export function StatusBar() {
   const activeTab = useFormulaTabStore((state) => state.getActiveTab());
@@ -21,7 +22,7 @@ export function StatusBar() {
   );
 
   return (
-    <div className="h-8 bg-gray-50 flex items-center justify-between px-2 text-xs text-white select-none border-t border-gray-200">
+    <div className="h-8 bg-gray-50 flex items-center justify-between px-2 text-xs select-none border-t border-gray-200">
       <div className="flex items-center flex-1">
         {latestMessage ? (
           <div
@@ -41,11 +42,10 @@ export function StatusBar() {
           </div>
         )}
       </div>
-      <div className="flex items-center h-full px-2">
-        {/* <div className="flex items-center gap-1.5">
-          <RefreshCw className="h-3 w-3" />
-          <span>{executionTime || 0}ms</span>
-        </div> */}
+
+      <div className="flex items-center h-full px-2 gap-4">
+        {/* <EditorMode /> */}
+
         <Version />
       </div>
     </div>

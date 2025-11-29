@@ -16,7 +16,7 @@ function App() {
         { path: "/", element: <DatabaseDashboard /> },
         { path: "/formula/:id/test", element: <FormulaTestPage /> },
         { path: "/formula/:id", element: <FormulaDetails /> },
-        { path: "/dev", element: <DevPage /> },
+        { path: "/new", element: <DevPage /> },
         { path: "*", element: <DatabaseDashboard /> },
       ],
     },

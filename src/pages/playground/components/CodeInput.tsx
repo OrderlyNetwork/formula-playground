@@ -129,15 +129,13 @@ export function CodeInput() {
         <h3 className="font-medium text-gray-800 text-sm">
           Enter TypeScript Formula Code
         </h3>
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleClear}
-            disabled={submitting}
-          >
+        <div className="flex items-center gap-2">
+          <Button onClick={handleClear} disabled={submitting} size={'sm'} variant={'ghost'}>
             Clear
-          </Button>
+        </Button>
+        <Button onClick={handleParseAndCreate} disabled={submitting} size={'sm'} className="w-30">
+          {submitting ? "Parsing..." : "Parse"}
+        </Button>
         </div>
       </div>
       <div className="flex-1 overflow-auto">
@@ -172,11 +170,14 @@ export function CodeInput() {
           </div>
         )}
       </div>
-      <div className="px-3 py-2 border-t bg-gray-50 flex items-center justify-end">
-        <Button onClick={handleParseAndCreate} disabled={submitting}>
+      {/* <div className="px-3 py-2 border-t bg-gray-50 flex items-center justify-end gap-2">
+        <Button onClick={handleClear} disabled={submitting} size={'sm'} variant={'ghost'}>
+            Clear
+        </Button>
+        <Button onClick={handleParseAndCreate} disabled={submitting} size={'sm'} className="w-30">
           {submitting ? "Parsing..." : "Parse"}
         </Button>
-      </div>
+      </div> */}
     </div>
   );
 }

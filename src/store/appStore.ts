@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { useMatch } from "react-router";
 import { useEffect } from "react";
 
-export type AppMode = "normal" | "developer";
+export type AppMode = "Playground" | "Development";
 
 // Playground Left Panel Categories
 export type PlaygroundPanelType =
@@ -52,7 +52,7 @@ export interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
   // Initial state
-  mode: "normal",
+  mode: "Playground",
   showCodeInput: false,
 
   // New initial states
@@ -67,7 +67,7 @@ export const useAppStore = create<AppState>((set) => ({
   // Existing actions
   setMode: (mode: AppMode) => set({ mode }),
   toggleMode: () =>
-    set((s) => ({ mode: s.mode === "normal" ? "developer" : "normal" })),
+    set((s) => ({ mode: s.mode === "Playground" ? "development" : "playground" })),
   openCodeInput: () => set({ showCodeInput: true }),
   closeCodeInput: () => set({ showCodeInput: false }),
 
@@ -97,7 +97,7 @@ export const useSyncModeWithRouter = () => {
   const { mode, setMode } = useAppStore();
 
   // Derive mode from route match
-  const newMode: AppMode = devMatch ? "developer" : "normal";
+  const newMode: AppMode = devMatch ? "development" : "Playground";
 
   // Update app store mode when route match changes, but only if different
   useEffect(() => {

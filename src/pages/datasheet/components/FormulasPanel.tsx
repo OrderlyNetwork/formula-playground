@@ -8,12 +8,14 @@ import { usePinnedStore } from "@/store/usePinnedStore";
 import { useFormulaStore } from "@/store/formulaStore";
 import { Card } from "@/components/common/Card";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router";
 
 export function LocalFormulasPanel() {
   const [searchQuery, setSearchQuery] = useState("");
   // ✅ Reactive: Subscribe directly to pinnedFormulaIds Set
   const pinnedFormulaIds = usePinnedStore((state) => state.pinnedFormulaIds);
   const { formulaDefinitions, loadFormulasFromAllSources } = useFormulaStore();
+  const navigate = useNavigate();
 
   // Load formulas on component mount
   useEffect(() => {
@@ -68,9 +70,21 @@ export function LocalFormulasPanel() {
     }, [searchQuery, pinnedFormulaIds, formulaDefinitions]);
 
   return (
-    <Card title="Formulas" className="h-full flex flex-col" headerRight={<Button variant={'ghost'} className="w-5 h-5" onClick={() => { }}>
-      <Plus size={16} />
-    </Button>}>
+    <Card
+      title="Formulas"
+      className="h-full flex flex-col"
+      headerRight={
+        <Button
+          variant={"ghost"}
+          className="w-5 h-5"
+          onClick={() => {
+            navigate("/new");
+          }}
+        >
+          <Plus size={16} />
+        </Button>
+      }
+    >
       <div className="flex flex-col h-full min-h-0">
         <div className="p-3 border-b border-gray-200 shrink-0">
           <div className="relative">

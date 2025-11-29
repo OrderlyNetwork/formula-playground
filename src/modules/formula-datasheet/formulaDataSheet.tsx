@@ -9,16 +9,7 @@ interface FormulaDataSheetProps {
   className?: string;
 }
 
-/**
- * FormulaDataSheet Component
- * Displays formula parameters in an editable table with automatic calculation
- *
- * Note: currentFormula is now managed by spreadsheetStore and should be set
- * by parent components via setCurrentFormula()
- *
- * Row structure is managed by GridStore in Spreadsheet component.
- * Calculation results are stored in SpreadsheetStore as a map {rowId: result}.
- */
+
 export const FormulaDataSheet: React.FC<FormulaDataSheetProps> = ({
   className = "",
 }) => {

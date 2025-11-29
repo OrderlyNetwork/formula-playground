@@ -1,3 +1,7 @@
+import { FormulaDevelopment } from "@/modules/development/FormulaDevelopment"
+
 export const DevPage = () => {
-  return <div>DevPage</div>;
-};
+    return <div className="h-full">
+        <FormulaDevelopment/>
+    </div>
+}

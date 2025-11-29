@@ -18,6 +18,8 @@ import { FormulaDocs } from "../playground/components/FormulaDocs";
 import { FormulaCode } from "../playground/components/FormulaCode";
 import { Progress } from "@/components/ui/progress";
 import { FormulaLogPanel } from "../datasheet/components/FormulaLogPanel";
+import { useAppStore } from "@/store/appStore";
+import { FormulaDevelopment } from "@/modules/development/FormulaDevelopment";
 
 const LoadingState = () => (
   <div className="flex-1 flex flex-col items-center justify-center gap-4 text-zinc-600">
@@ -198,11 +200,11 @@ export const FormulaDetails = () => {
                     className="h-full"
                   >
                     <ResizablePanel defaultSize={50} minSize={20}>
-                      <FormulaDocs formula={currentFormula} />
+                      <FormulaDocs />
                     </ResizablePanel>
                     <ResizableHandle />
                     <ResizablePanel defaultSize={50} minSize={20}>
-                      <FormulaCode formula={currentFormula} />
+                      <FormulaCode />
                     </ResizablePanel>
                   </ResizablePanelGroup>
                 </ResizablePanel>

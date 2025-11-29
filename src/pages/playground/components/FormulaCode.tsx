@@ -2,12 +2,7 @@ import { useMemo } from "react";
 import Editor from "@monaco-editor/react";
 import type { EditorProps } from "@monaco-editor/react";
 import { useFormulaStore } from "../../../store/formulaStore";
-import type { FormulaDefinition } from "@/types/formula";
-
-interface FormulaCodeProps {
-  formula?: FormulaDefinition;
-}
-
+import { useSpreadsheetStore } from "@/store/spreadsheetStore";
 /**
  * Read-only code viewer for the selected formula using Monaco Editor.
  *
@@ -16,7 +11,8 @@ interface FormulaCodeProps {
  * - Configured as read-only and auto-sized for this panel
  * - Using @monaco-editor/react for automatic lifecycle management
  */
-export function FormulaCode({ formula: propFormula }: FormulaCodeProps) {
+export function FormulaCode() {
+  const propFormula = useSpreadsheetStore((state) => state.currentFormula);
   const { formulaDefinitions, selectedFormulaId, activeEngine } =
     useFormulaStore();
 

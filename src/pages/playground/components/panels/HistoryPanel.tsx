@@ -60,7 +60,7 @@ export function HistoryPanel() {
 
   // Get formula definitions based on mode
   const formulaDefinitions = useMemo(() => {
-    return mode === "developer"
+    return mode === "development"
       ? developerModeData.parsedFormulas
       : normalModeData.formulaDefinitions;
   }, [
@@ -85,11 +85,11 @@ export function HistoryPanel() {
 
   // Use correct store based on mode
   const runHistory =
-    mode === "developer"
+    mode === "development"
       ? developerModeData.runHistory
       : normalModeData.runHistory;
   const replayHistoryRecord =
-    mode === "developer"
+    mode === "development"
       ? developerModeData.replayHistoryRecord
       : normalModeData.replayHistoryRecord;
 
