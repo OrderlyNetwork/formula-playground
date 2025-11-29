@@ -1,7 +1,16 @@
+import React from "react";
 import { db, type TabFormulaState } from "@/lib/dexie";
 import type { CellValue, RowDef, ColumnDef } from "@/types/spreadsheet";
 import type { CalculationResults } from "@/store/spreadsheetStore";
 import type { GridStore } from "@/store/spreadsheet";
+
+/**
+ * Serializable column definition (excludes non-serializable fields)
+ */
+type SerializableColumnDef = Omit<ColumnDef, "render"> & {
+  // Store metadata about which columns need render functions restored
+  _hasRenderFunction?: boolean;
+};
 
 /**
  * Configuration for TabPersistenceService
@@ -152,28 +161,32 @@ export class TabPersistenceService {
 
   /**
    * Sanitize column definitions for IndexedDB storage
-   * Removes non-serializable render functions and other JSX components
+   * Removes non-serializable render functions and tracks which columns had them
    */
-  private sanitizeColumnsForStorage(columns: ColumnDef[]): ColumnDef[] {
-    return columns.map(column => {
-      const sanitizedColumn = { ...column };
+  private sanitizeColumnsForStorage(
+    columns: ColumnDef[]
+  ): SerializableColumnDef[] {
+    return columns.map((column) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sanitizedColumn: any = { ...column };
 
-      // Remove non-serializable properties
-      if (sanitizedColumn.render && typeof sanitizedColumn.render === 'function') {
-        sanitizedColumn.render = undefined;
+      // Track if this column had a render function
+      const hasRenderFunction = typeof column.render === "function";
+      if (hasRenderFunction) {
+        sanitizedColumn._hasRenderFunction = true;
+        // Remove the render function
+        delete sanitizedColumn.render;
       }
 
-      // Remove any other non-serializable properties
-      Object.keys(sanitizedColumn).forEach(key => {
-        const value = sanitizedColumn[key as keyof ColumnDef];
-        if (typeof value === 'function') {
-          // Type-safe way to remove non-serializable function properties
-          const columnRecord = sanitizedColumn as Record<string, unknown>;
-          delete columnRecord[key];
+      // Remove any other non-serializable function properties
+      Object.keys(sanitizedColumn).forEach((key) => {
+        const value = sanitizedColumn[key];
+        if (typeof value === "function") {
+          delete sanitizedColumn[key];
         }
       });
 
-      return sanitizedColumn;
+      return sanitizedColumn as SerializableColumnDef;
     });
   }
 
@@ -226,17 +239,36 @@ export class TabPersistenceService {
 
   /**
    * Restore column definitions with render functions
-   * Re-attaches render functions that were removed for storage
+   * Uses a callback to re-attach render functions based on column metadata
+   * @param columns - Serialized columns from IndexedDB
+   * @param renderFunctionProvider - Optional callback to provide render functions
+   * @returns Restored columns with render functions
    */
-  private restoreColumnsFromStorage(columns: ColumnDef[]): ColumnDef[] {
-    return columns.map(column => {
-      const restoredColumn = { ...column };
+  private restoreColumnsFromStorage(
+    columns: (ColumnDef | SerializableColumnDef)[],
+    renderFunctionProvider?: (
+      column: ColumnDef
+    ) => ColumnDef["render"] | undefined
+  ): ColumnDef[] {
+    return columns.map((column) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const restoredColumn: any = { ...column };
 
-      // Note: Render functions will be re-attached by the spreadsheet component
-      // when columns are loaded, since JSX cannot be used in .ts files
-      // The ResultCell render function is defined in spreadsheetUtils.tsx
+      // Remove metadata flag
+      delete restoredColumn._hasRenderFunction;
 
-      return restoredColumn;
+      // If a render function provider is given and column had a render function
+      if (
+        renderFunctionProvider &&
+        (column as SerializableColumnDef)._hasRenderFunction
+      ) {
+        const renderFunc = renderFunctionProvider(restoredColumn as ColumnDef);
+        if (renderFunc) {
+          restoredColumn.render = renderFunc;
+        }
+      }
+
+      return restoredColumn as ColumnDef;
     });
   }
 
@@ -288,7 +320,9 @@ export class TabPersistenceService {
       });
 
       // Restore column render functions
-      const restoredColumns = this.restoreColumnsFromStorage(state.columns || []);
+      const restoredColumns = this.restoreColumnsFromStorage(
+        state.columns || []
+      );
 
       const inMemoryData: InMemoryTabData = {
         formulaId,
@@ -303,8 +337,6 @@ export class TabPersistenceService {
       // Add to cache and manage LRU
       this.activeTabsCache.set(formulaId, inMemoryData);
       this.manageLRUCache();
-
-      console.log(`✅ Tab state restored from IndexedDB: ${formulaId}`);
 
       return {
         cellData,
@@ -527,6 +559,38 @@ export class TabPersistenceService {
       activeTabs: this.activeTabsCache.size,
       maxTabs: CONFIG.MAX_ACTIVE_TABS,
       dirtyTabs: dirtyCount,
+    };
+  }
+
+  /**
+   * Create a default render function provider
+   * This should be provided by the component layer where JSX is available
+   * @example
+   * ```tsx
+   * const renderProvider = (column: ColumnDef) => {
+   *   if (column.type === "result") {
+   *     return (rowId, col, store) => <ResultCell rowId={rowId} column={col} />;
+   *   }
+   *   return undefined;
+   * };
+   * ```
+   */
+  public static createRenderFunctionProvider(
+    renderMap: Record<
+      string,
+      (rowId: string, column: ColumnDef, store: GridStore) => React.ReactNode
+    >
+  ): (column: ColumnDef) => ColumnDef["render"] | undefined {
+    return (column: ColumnDef) => {
+      // Check by column type
+      if (column.type && renderMap[column.type]) {
+        return renderMap[column.type];
+      }
+      // Check by column id
+      if (column.id && renderMap[column.id]) {
+        return renderMap[column.id];
+      }
+      return undefined;
     };
   }
 }

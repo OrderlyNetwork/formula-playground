@@ -791,6 +791,290 @@
     }
   },
   {
+    "id": "totalUnrealizedPnl",
+    "name": "Total Unrealized PNL",
+    "version": "1.0.0",
+    "description": "## Term Definitions\n\n- **Total Unrealized PNL**: Sum of all current unrealized profit and loss for user's positions\n- **unrealized_pnl_i**: Current unrealized profit and loss for a single symbol\n- **position_qty_i**: Single symbol position quantity\n- **mark_price_i**: Single symbol mark price\n- **entry_price_i**: Single symbol entry price (avg. open price)\n\n## Example\n\n**BTC-PERP unrealized_pnl_i** = 0.2 * (25986.2 - 26067) = -16.16\n\n**ETH-PERP unrealized_pnl_i** = -3 * (1638.41 - 1710.64) = 216.69\n\nfor example \n\nBTC-PERP unrealized_pnl_i = 0.2 * (25986.2 - 26067) = -16.16\n\nETH-PERP unrealized_pnl_i = -3 * (1638.41 - 1710.64) = 216.69\n\nTotal Unrealized PNL = -16.16 + 216.69 = 200.53",
+    "formula": "Total Unrealized PNL = sum ( unrealized_pnl_i ), unrealized_pnl_i = position_qty_i * ( mark_price_i - entry_price _i )",
+    "inputs": [
+      {
+        "key": "positions",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": true,
+          "properties": [
+            {
+              "key": "account_id",
+              "type": "string",
+              "factorType": {
+                "baseType": "string",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "symbol",
+              "type": "string",
+              "factorType": {
+                "baseType": "string",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "position_qty",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "cost_position",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "last_sum_unitary_funding",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "pending_long_qty",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "pending_short_qty",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "settle_price",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "average_open_price",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "unrealized_pnl",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "unrealized_pnl_index",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "unrealized_pnl_ROI",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "unsettled_pnl",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "unsettled_pnl_ROI",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "unrealized_pnl_ROI_index",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "mark_price",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "index_price",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "est_liq_price",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "timestamp",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "mmr",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              },
+              "description": "\nMaintenance margin ratio"
+            },
+            {
+              "key": "imr",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "IMR_withdraw_orders",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "MMR_with_orders",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "pnl_24_h",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "fee_24_h",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "fundingFee",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "leverage",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number",
+          "nullable": false,
+          "array": false
+        },
+        "description": "The total unrealized profit or loss of all positions."
+      }
+    ],
+    "formulaText": "{\n  return positions.reduce((acc, cur) => {\n    return (\n      acc +\n      unrealizedPnL({\n        qty: cur.position_qty,\n        openPrice: cur.average_open_price,\n        markPrice: cur.mark_price,\n      })\n    );\n  }, 0);\n}",
+    "sourceCode": "export function totalUnrealizedPnL(positions: API.Position[]): number {\n  return positions.reduce((acc, cur) => {\n    return (\n      acc +\n      unrealizedPnL({\n        qty: cur.position_qty,\n        openPrice: cur.average_open_price,\n        markPrice: cur.mark_price,\n      })\n    );\n  }, 0);\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "totalUnrealizedPnL",
+      "enabled": true
+    }
+  },
+  {
     "id": "liqPrice",
     "name": "liqPrice",
     "version": "1.0.0",

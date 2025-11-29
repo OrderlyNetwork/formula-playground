@@ -2,6 +2,7 @@ import React from "react";
 import {
   BetweenHorizontalStart,
   BetweenVerticalStart,
+  Camera,
   ListX,
   PanelRightClose,
   PanelRightOpen,
@@ -88,9 +89,14 @@ const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
           >
             <ListX size={20} />
           </Button>
-          {/* <Button variant="ghost" size="icon" className="p-1 w-7 h-7">
-            <Webhook size={20} />
-          </Button> */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="p-1 w-7 h-7"
+            title="Take a screenshot of the current spreadsheet"
+          >
+            <Camera size={20} />
+          </Button>
         </div>
       </div>
       <div>

@@ -7,10 +7,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { sanitizeJsonStringify } from "@/utils/sanitization";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Editor from "@monaco-editor/react";
 
 export interface ArrayCellProps {
   rowId: string;
@@ -32,6 +31,8 @@ export const ArrayCell: React.FC<ArrayCellProps> = ({
 
   const gridStore = getTabGridStore(formulaId);
   const cellValue = gridStore?.getValue(rowId, column.id);
+
+  console.log("----cellValue", cellValue);
 
   const { displayText, arrayData, isValidArray } = useMemo(() => {
     // Try to parse if it's a string
@@ -118,7 +119,7 @@ export const ArrayCell: React.FC<ArrayCellProps> = ({
 
       {isValidArray && (
         <PopoverContent
-          className="w-96 rounded-none inset-ring-2 inset-ring-blue-500 !animate-none h-[323px] !shadow-none"
+          className="w-96 rounded-none inset-ring-2 inset-ring-blue-500 !animate-none h-[323px] !shadow-none !p-1"
           align="start"
           side="top"
           sideOffset={-40}
@@ -133,30 +134,50 @@ export const ArrayCell: React.FC<ArrayCellProps> = ({
             placeholder='["item1", "item2", ...]'
           /> */}
           <div className="space-y-3">
-            <div>
+            {/* <div>
               <h4 className="font-semibold text-sm text-gray-700">
                 {column.title || column.id}
               </h4>
-              {/* <p className="text-xs text-gray-500 mt-1">
-                Row: {rowId} | Column: {column.title || column.id}
-              </p> */}
+            
               <label className="text-xs font-medium text-gray-500 block mb-1">
                 Array Content (JSON format):
               </label>
-            </div>
+            </div> */}
 
             <div>
-              <Textarea
+              <Editor
+                height="254px"
+                defaultLanguage="json"
+                value={editValue}
+                onChange={(value) => setEditValue(value || "")}
+                options={{
+                  fontSize: 12,
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  wordWrap: "on",
+                  tabSize: 2,
+                  // Make the line number gutter narrower
+                  lineNumbersMinChars: 2,
+                  glyphMargin: false,
+                  lineDecorationsWidth: 0,
+                }}
+                loading={
+                  <div className="flex items-center justify-center h-full text-sm text-gray-500">
+                    Loading editor...
+                  </div>
+                }
+              />
+              {/* <Textarea
                 value={editValue}
                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                   setEditValue(e.target.value)
                 }
                 className="font-mono text-sm min-h-[188px] max-h-[400px]"
                 placeholder='["item1", "item2", ...]'
-              />
+              /> */}
             </div>
 
-            <div className="flex gap-2 justify-end pt-2 border-t">
+            <div className="flex gap-2 justify-end pt-2 border-t px-2">
               <Button variant="ghost" size={"sm"} onClick={handleCancel}>
                 Cancel
               </Button>

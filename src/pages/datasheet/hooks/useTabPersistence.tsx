@@ -16,13 +16,17 @@ import type { ColumnDef } from "@/types/spreadsheet";
  * This re-attaches JSX render functions that were removed for IndexedDB storage
  */
 const restoreColumnRenderFunctions = (columns: ColumnDef[]): ColumnDef[] => {
-  return columns.map(column => {
+  return columns.map((column) => {
     const restoredColumn = { ...column };
 
     // Re-attach ResultCell render function for result columns
     if (column.type === "result" || column.id === "result") {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      restoredColumn.render = (rowId: string, column: ColumnDef, _gridStore: GridStore) => {
+      restoredColumn.render = (
+        rowId: string,
+        column: ColumnDef,
+        _gridStore: GridStore
+      ) => {
         return <ResultCell rowId={rowId} column={column} />;
       };
     }
@@ -30,6 +34,7 @@ const restoreColumnRenderFunctions = (columns: ColumnDef[]): ColumnDef[] => {
     return restoredColumn;
   });
 };
+
 export function useTabPersistence(
   formulaId: string | undefined,
   gridStore: GridStore | null

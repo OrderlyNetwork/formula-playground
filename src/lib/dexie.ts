@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { RunRecord, CanvasSnapshot } from "../types/history";
+import type { RunRecord } from "../types/history";
 import type {
   FormulaDefinition,
   CompiledFormula,
@@ -42,7 +42,7 @@ export class FormulaPlaygroundDB extends Dexie {
   sharedCode!: Table<SharedCodeEntry, string>;
   formulaReferences!: Table<FormulaReference, string>;
   userDataSources!: Table<UserDataSource, string>;
-  canvasSnapshots!: Table<CanvasSnapshot, string>;
+  // canvasSnapshots!: Table<CanvasSnapshot, string>;
   tabFormulaStates!: Table<TabFormulaState, string>;
 
   constructor() {
@@ -62,7 +62,7 @@ export class FormulaPlaygroundDB extends Dexie {
       sharedCode: "id, url, version, timestamp", // Shared code entries (new storage strategy)
       formulaReferences: "id, formulaId, version, sharedCodeId, timestamp", // Formula references to shared code
       userDataSources: "id, name, timestamp, sourceNodeId", // User-defined data sources from OutputNode
-      canvasSnapshots: "id, timestamp, name", // Canvas snapshots with timestamp and name indexes
+      // canvasSnapshots: "id, timestamp, name", // Canvas snapshots with timestamp and name indexes
     });
 
     // v7: add tabFormulaStates table for per-tab formula persistence
@@ -74,7 +74,7 @@ export class FormulaPlaygroundDB extends Dexie {
       sharedCode: "id, url, version, timestamp",
       formulaReferences: "id, formulaId, version, sharedCodeId, timestamp",
       userDataSources: "id, name, timestamp, sourceNodeId",
-      canvasSnapshots: "id, timestamp, name",
+      // canvasSnapshots: "id, timestamp, name",
       tabFormulaStates: "id, formulaId, timestamp, lastAccessTime, isDirty", // Per-tab state with LRU indexes
     });
   }
