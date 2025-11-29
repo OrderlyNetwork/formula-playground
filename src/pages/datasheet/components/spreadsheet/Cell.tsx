@@ -70,14 +70,18 @@ const Cell: React.FC<CellProps> = ({
           }
         }
 
-        if (column.type === "custom") {
+        // For custom cells (using column.render or CELL_REGISTRY), trigger re-render on data change
+        if (
+          typeof column.render === "function" ||
+          CELL_REGISTRY.has(column.type)
+        ) {
           setForceUpdate((prev) => prev + 1);
         }
       }
     );
 
     return () => unsubscribe();
-  }, [rowId, column.id, store, column.type, calculationResult]);
+  }, [rowId, column.id, store, column.type, column.render, calculationResult]);
 
   const handleFocus = () => {
     if (onCellClick) {
@@ -113,7 +117,8 @@ const Cell: React.FC<CellProps> = ({
       );
     }
     return null;
-  }, [rowId, column, store, isSelected, onCellClick]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowId, column, store, isSelected, onCellClick, _forceUpdateCounter]);
 
   const containerClass = cn(
     "relative [&:not(:last-child)]:border-r border-b border-grid-border box-border overflow-hidden transition-colors focus-within:inset-ring-2 focus-within:inset-ring-blue-500 focus-within:z-10 [&:has([data-popover-open])]:inset-ring-2 [&:has([data-popover-open])]:inset-ring-blue-500 [&:has([data-popover-open])]:z-10",

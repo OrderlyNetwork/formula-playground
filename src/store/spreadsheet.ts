@@ -10,6 +10,8 @@ export class GridStore {
   private rows: RowDef[] = [];
   private columns: ColumnDef[] = [];
   private onCalculateRow?: (rowId: string, colId: string) => void;
+  // Global change listeners for persistence (e.g., auto-save)
+  private globalChangeListeners: Set<() => void> = new Set();
 
   constructor(
     initialRows: RowDef[],
@@ -89,6 +91,18 @@ export class GridStore {
       // 3. Trigger Calculations (Business Logic) - only if not silent
       if (!silent) {
         this.calculateRow(rowId, colId);
+      }
+
+      // 4. Notify global change listeners (for persistence/auto-save)
+      // Only notify for editable columns (user input changes)
+      const column = this.columns.find((c) => c.id === colId);
+      if (
+        column &&
+        column.editable !== false &&
+        colId !== "index" &&
+        colId !== "result"
+      ) {
+        this.notifyGlobalChange();
       }
     }
   }
@@ -170,8 +184,37 @@ export class GridStore {
     // Notify all active listeners (only subscribed cells)
     // This is straightforward and works well with virtual scrolling
     // since only visible cells are typically subscribed
-    this.listeners.forEach((listenerSet, key) => {
+    this.listeners.forEach((listenerSet) => {
       listenerSet.forEach((fn) => fn(""));
+    });
+
+    // Notify global change listeners
+    this.notifyGlobalChange();
+  }
+
+  /**
+   * Subscribe to global changes in the GridStore
+   * Useful for persistence/auto-save mechanisms
+   * @param listener - Callback function to call when any cell value changes
+   * @returns Unsubscribe function
+   */
+  public subscribeToGlobalChanges(listener: () => void): () => void {
+    this.globalChangeListeners.add(listener);
+    return () => {
+      this.globalChangeListeners.delete(listener);
+    };
+  }
+
+  /**
+   * Notify all global change listeners
+   */
+  private notifyGlobalChange() {
+    this.globalChangeListeners.forEach((listener) => {
+      try {
+        listener();
+      } catch (error) {
+        console.error("Error in global change listener:", error);
+      }
     });
   }
 }

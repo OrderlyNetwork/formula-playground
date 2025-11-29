@@ -3,6 +3,177 @@ import { db, type TabFormulaState } from "@/lib/dexie";
 import type { CellValue, RowDef, ColumnDef } from "@/types/spreadsheet";
 import type { CalculationResults } from "@/store/spreadsheetStore";
 import type { GridStore } from "@/store/spreadsheet";
+import { Decimal } from "@orderly.network/utils";
+
+/**
+ * Check if a value is a Decimal instance or similar non-serializable numeric wrapper
+ * Decimal instances have toString and toNumber methods and are not plain objects
+ */
+function isDecimalInstance(value: unknown): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value !== "object") return false;
+
+  // Check for Decimal-like objects (from decimal.js-light, @orderly.network/utils, etc.)
+  // They typically have toString, toNumber methods and constructor names like "Decimal", "Decimal2", etc.
+  const obj = value as Record<string, unknown>;
+  const hasDecimalMethods =
+    typeof obj.toString === "function" && typeof obj.toNumber === "function";
+
+  if (!hasDecimalMethods) return false;
+
+  // Check constructor name (Decimal, Decimal2, etc.)
+  const constructorName = obj.constructor?.name || "";
+  if (/^Decimal\d*$/i.test(constructorName)) {
+    return true;
+  }
+
+  // Fallback: check if it looks like a Decimal by checking for common methods
+  // Decimal instances typically have methods like: mul, add, sub, div, etc.
+  const hasDecimalOperations =
+    typeof obj.mul === "function" ||
+    typeof obj.add === "function" ||
+    typeof obj.sub === "function" ||
+    typeof obj.div === "function";
+
+  return hasDecimalOperations;
+}
+
+/**
+ * Serialize a value for IndexedDB storage
+ * Converts Decimal instances and other non-serializable objects to serializable formats
+ */
+function serializeForIndexedDB(value: unknown): unknown {
+  // Handle null and undefined
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  // Handle primitives (string, number, boolean) - return as-is
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+
+  // Handle functions - skip them (they cannot be serialized)
+  if (typeof value === "function") {
+    return undefined; // Functions cannot be stored in IndexedDB
+  }
+
+  // Handle Date objects - convert to ISO string
+  if (value instanceof Date) {
+    return {
+      __type: "Date",
+      __value: value.toISOString(),
+    };
+  }
+
+  // Handle Decimal instances - convert to string
+  if (isDecimalInstance(value)) {
+    const decimal = value as { toString: () => string };
+    return {
+      __type: "Decimal",
+      __value: decimal.toString(),
+    };
+  }
+
+  // Handle arrays - recursively serialize each element
+  if (Array.isArray(value)) {
+    return value
+      .map(serializeForIndexedDB)
+      .filter((item) => item !== undefined);
+  }
+
+  // Handle plain objects - recursively serialize each property
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const serialized: Record<string, unknown> = {};
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        const serializedValue = serializeForIndexedDB(obj[key]);
+        // Only include non-undefined values
+        if (serializedValue !== undefined) {
+          serialized[key] = serializedValue;
+        }
+      }
+    }
+    return serialized;
+  }
+
+  // For any other type, try to convert to string as fallback
+  try {
+    return String(value);
+  } catch {
+    // If conversion fails, return undefined (skip it)
+    return undefined;
+  }
+}
+
+/**
+ * Deserialize a value from IndexedDB storage
+ * Converts serialized Decimal objects back to Decimal instances
+ */
+function deserializeFromIndexedDB(value: unknown): unknown {
+  // Handle null and undefined
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  // Handle primitives (string, number, boolean) - return as-is
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return value;
+  }
+
+  // Handle serialized Decimal objects
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "__type" in value &&
+    "__value" in value
+  ) {
+    const serialized = value as { __type: string; __value: unknown };
+    if (serialized.__type === "Decimal") {
+      // Convert back to Decimal instance
+      try {
+        return new Decimal(serialized.__value as string | number);
+      } catch (error) {
+        console.warn("Failed to deserialize Decimal:", error);
+        // Fallback to string value
+        return serialized.__value;
+      }
+    }
+    if (serialized.__type === "Date") {
+      // Convert back to Date instance
+      return new Date(serialized.__value as string);
+    }
+  }
+
+  // Handle arrays - recursively deserialize each element
+  if (Array.isArray(value)) {
+    return value.map(deserializeFromIndexedDB);
+  }
+
+  // Handle plain objects - recursively deserialize each property
+  if (typeof value === "object" && value.constructor === Object) {
+    const obj = value as Record<string, unknown>;
+    const deserialized: Record<string, unknown> = {};
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        deserialized[key] = deserializeFromIndexedDB(obj[key]);
+      }
+    }
+    return deserialized;
+  }
+
+  // For any other type, return as-is
+  return value;
+}
 
 /**
  * Serializable column definition (excludes non-serializable fields)
@@ -203,23 +374,29 @@ export class TabPersistenceService {
 
     try {
       // Convert Map to plain object for IndexedDB
-      const cellDataObj: Record<string, CellValue> = {};
+      // Serialize cell values to handle any non-serializable objects (e.g., Decimal)
+      const cellDataObj: Record<string, unknown> = {};
       data.cellData.forEach((value, key) => {
-        cellDataObj[key] = value;
+        cellDataObj[key] = serializeForIndexedDB(value);
       });
 
       // Sanitize columns to remove non-serializable functions
       const sanitizedColumns = this.sanitizeColumnsForStorage(data.columns);
+
+      // Serialize calculation results to handle Decimal instances and other non-serializable objects
+      const serializedCalculationResults = serializeForIndexedDB(
+        data.calculationResults
+      ) as CalculationResults;
 
       const tabState: TabFormulaState = {
         id: formulaId,
         formulaId,
         label,
         type,
-        cellData: cellDataObj,
+        cellData: cellDataObj as Record<string, CellValue>,
         rows: data.rows,
         columns: sanitizedColumns,
-        calculationResults: data.calculationResults,
+        calculationResults: serializedCalculationResults,
         timestamp: Date.now(),
         lastAccessTime: data.lastAccessTime,
         isDirty: false,
@@ -314,9 +491,19 @@ export class TabPersistenceService {
       }
 
       // Convert to in-memory format
+      // Deserialize cell data to handle serialized Decimal objects
       const cellData = new Map<string, CellValue>();
       Object.entries(state.cellData).forEach(([key, value]) => {
-        cellData.set(key, value);
+        const deserialized = deserializeFromIndexedDB(value);
+        // Ensure the value is a valid CellValue type
+        cellData.set(
+          key,
+          typeof deserialized === "string" ||
+            typeof deserialized === "number" ||
+            deserialized === null
+            ? (deserialized as CellValue)
+            : String(deserialized)
+        );
       });
 
       // Restore column render functions
@@ -324,12 +511,17 @@ export class TabPersistenceService {
         state.columns || []
       );
 
+      // Deserialize calculation results to restore Decimal instances
+      const deserializedCalculationResults = deserializeFromIndexedDB(
+        state.calculationResults
+      ) as CalculationResults;
+
       const inMemoryData: InMemoryTabData = {
         formulaId,
         cellData,
         rows: state.rows,
         columns: restoredColumns,
-        calculationResults: state.calculationResults,
+        calculationResults: deserializedCalculationResults,
         lastAccessTime: Date.now(),
         isDirty: false,
       };
@@ -342,7 +534,7 @@ export class TabPersistenceService {
         cellData,
         rows: state.rows,
         columns: restoredColumns,
-        calculationResults: state.calculationResults,
+        calculationResults: deserializedCalculationResults,
       };
     } catch (error) {
       if (error === "TIMEOUT") {

@@ -32,8 +32,6 @@ export const ArrayCell: React.FC<ArrayCellProps> = ({
   const gridStore = getTabGridStore(formulaId);
   const cellValue = gridStore?.getValue(rowId, column.id);
 
-  console.log("----cellValue", cellValue);
-
   const { displayText, arrayData, isValidArray } = useMemo(() => {
     // Try to parse if it's a string
     let parsedValue = cellValue;

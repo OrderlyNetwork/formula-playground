@@ -65,6 +65,7 @@ export function useTabPersistence(
 
   const lastSavedStateRef = useRef<string>("");
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gridStoreChangeUnsubscribeRef = useRef<(() => void) | null>(null);
 
   /**
    * Save current tab state
@@ -96,7 +97,7 @@ export function useTabPersistence(
       setTabColumns(formulaId, columns);
       setTabCalculationResults(formulaId, calculationResults);
 
-      // Update last saved state
+      // Update last saved state (for tracking structural changes)
       const currentState = JSON.stringify({
         rows,
         columns,
@@ -107,7 +108,7 @@ export function useTabPersistence(
       // Clear dirty flag after successful save
       setTabDirty(formulaId, false);
 
-      console.log(`Tab state saved: ${formulaId}`);
+      console.log(`✅ Tab state saved to IndexedDB: ${formulaId}`);
     } catch (error) {
       console.error(`Failed to save tab state: ${formulaId}`, error);
     }
@@ -192,7 +193,50 @@ export function useTabPersistence(
   );
 
   /**
-   * Track changes and mark tab as dirty
+   * Subscribe to GridStore changes for auto-save
+   * This is the key mechanism that triggers auto-save when user inputs data
+   */
+  useEffect(() => {
+    if (!formulaId || !gridStore) return;
+
+    // Unsubscribe from previous GridStore if it exists
+    if (gridStoreChangeUnsubscribeRef.current) {
+      gridStoreChangeUnsubscribeRef.current();
+      gridStoreChangeUnsubscribeRef.current = null;
+    }
+
+    // Subscribe to GridStore global changes
+    const unsubscribe = gridStore.subscribeToGlobalChanges(() => {
+      // Mark tab as dirty
+      setTabDirty(formulaId, true);
+
+      // Clear existing timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      // Schedule auto-save with debounce
+      saveTimeoutRef.current = setTimeout(() => {
+        saveTabState();
+      }, 500); // 500ms debounce
+    });
+
+    gridStoreChangeUnsubscribeRef.current = unsubscribe;
+
+    return () => {
+      if (gridStoreChangeUnsubscribeRef.current) {
+        gridStoreChangeUnsubscribeRef.current();
+        gridStoreChangeUnsubscribeRef.current = null;
+      }
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [formulaId, gridStore, saveTabState, setTabDirty]);
+
+  /**
+   * Track changes in SpreadsheetStore state (rows, columns, results)
+   * This handles structural changes, while GridStore changes are handled above
    */
   useEffect(() => {
     if (!formulaId) return;
@@ -204,7 +248,7 @@ export function useTabPersistence(
 
     const currentState = JSON.stringify({ rows, columns, calculationResults });
 
-    // Check if state has changed
+    // Check if state has changed (for structural changes like adding rows/columns)
     if (
       lastSavedStateRef.current &&
       currentState !== lastSavedStateRef.current

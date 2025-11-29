@@ -1,10 +1,10 @@
 import { ArrayCell } from "./ArrayCell";
 import type { CellProps } from "./Cell";
-import InputCell from "./InputCell";
+// import InputCell from "./InputCell";
 
 export const CELL_REGISTRY = new Map<string, React.FC<CellProps>>([
-  ["text", InputCell],
-  ["number", InputCell],
+  // ["text", InputCell],
+  // ["number", InputCell],
   ["array", ArrayCell],
 ]);
 
