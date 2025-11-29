@@ -57,6 +57,23 @@ export class GridStore {
   }
 
   /**
+   * Get all data in the store
+   * @returns Record of rowId -> colId -> value
+   */
+  public getAllData(): Record<string, Record<string, CellValue>> {
+    const allData: Record<string, Record<string, CellValue>> = {};
+
+    this.rows.forEach((row) => {
+      const rowData = this.getRowData(row.id);
+      if (Object.keys(rowData).length > 0) {
+        allData[row.id] = rowData;
+      }
+    });
+
+    return allData;
+  }
+
+  /**
    * Check if a row exists in the store
    * @param rowId - Row identifier
    * @returns True if row exists

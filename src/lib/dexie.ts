@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { RunRecord } from "../types/history";
+import type { RunRecord, DatasheetSnapshot } from "../types/history";
 import type {
   FormulaDefinition,
   CompiledFormula,
@@ -42,7 +42,7 @@ export class FormulaPlaygroundDB extends Dexie {
   sharedCode!: Table<SharedCodeEntry, string>;
   formulaReferences!: Table<FormulaReference, string>;
   userDataSources!: Table<UserDataSource, string>;
-  // canvasSnapshots!: Table<CanvasSnapshot, string>;
+  datasheetSnapshots!: Table<DatasheetSnapshot, string>;
   tabFormulaStates!: Table<TabFormulaState, string>;
 
   constructor() {
@@ -74,7 +74,7 @@ export class FormulaPlaygroundDB extends Dexie {
       sharedCode: "id, url, version, timestamp",
       formulaReferences: "id, formulaId, version, sharedCodeId, timestamp",
       userDataSources: "id, name, timestamp, sourceNodeId",
-      // canvasSnapshots: "id, timestamp, name",
+      datasheetSnapshots: "id, timestamp, name",
       tabFormulaStates: "id, formulaId, timestamp, lastAccessTime, isDirty", // Per-tab state with LRU indexes
     });
   }

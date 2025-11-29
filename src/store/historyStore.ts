@@ -1,6 +1,7 @@
 import { create } from "zustand";
-import type { CanvasSnapshot } from "../types/history";
-import { canvasSnapshotManager } from "../modules/history-manager";
+import type { DatasheetSnapshot } from "../types/history";
+import { datasheetSnapshotManager } from "../modules/history-manager";
+import { useSpreadsheetStore } from "./spreadsheetStore";
 
 interface HistoryStore {
   // State
@@ -8,7 +9,7 @@ interface HistoryStore {
   sortBy: "timestamp" | "formula" | "duration";
   sortOrder: "asc" | "desc";
   searchQuery: string;
-  canvasSnapshots: CanvasSnapshot[];
+  datasheetSnapshots: DatasheetSnapshot[];
 
   // Actions
   setFilterEngine: (engine: "all" | "ts" | "rust" | "local") => void;
@@ -17,17 +18,19 @@ interface HistoryStore {
   setSearchQuery: (query: string) => void;
   resetFilters: () => void;
 
-  // Canvas snapshot actions
-  saveCanvasSnapshot: (
-    formulaParams: Record<string, Record<string, unknown>>,
-    canvasMode: "single" | "multi",
-    formulaIds?: string[]
+  // Datasheet snapshot actions
+  saveDatasheetSnapshot: (
+    data: Record<string, Record<string, unknown>>,
+    activeFormulaId?: string
   ) => Promise<string>;
-  loadCanvasSnapshots: () => Promise<void>;
-  replayCanvasSnapshot: (snapshotId: string) => Promise<void>;
-  updateCanvasSnapshotName: (snapshotId: string, name: string) => Promise<void>;
-  deleteCanvasSnapshot: (snapshotId: string) => Promise<void>;
-  clearCanvasSnapshots: () => Promise<void>;
+  loadDatasheetSnapshots: () => Promise<void>;
+  replayDatasheetSnapshot: (snapshotId: string) => Promise<void>;
+  updateDatasheetSnapshotName: (
+    snapshotId: string,
+    name: string
+  ) => Promise<void>;
+  deleteDatasheetSnapshot: (snapshotId: string) => Promise<void>;
+  clearDatasheetSnapshots: () => Promise<void>;
 }
 
 /**
@@ -50,7 +53,7 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
   sortBy: "timestamp",
   sortOrder: "desc",
   searchQuery: "",
-  canvasSnapshots: [],
+  datasheetSnapshots: [],
 
   // Set filter by engine
   setFilterEngine: (engine: "all" | "ts" | "rust" | "local") => {
@@ -82,107 +85,139 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
     });
   },
 
-  // Save canvas snapshot
-  // Note: React Flow functionality has been removed, now only saves formula parameters and canvas mode
-  saveCanvasSnapshot: async (
-    formulaParams: Record<string, Record<string, unknown>>,
-    canvasMode: "single" | "multi",
-    formulaIds?: string[]
+  // Save datasheet snapshot
+  saveDatasheetSnapshot: async (
+    data: Record<string, Record<string, unknown>>,
+    activeFormulaId?: string
   ) => {
     const timestamp = Date.now();
     const name = formatTimestampName(timestamp);
 
-    // Deep clone formula params to avoid reference issues
-    const snapshotParams = JSON.parse(
-      JSON.stringify(formulaParams)
-    ) as Record<string, Record<string, unknown>>;
+    // Deep clone data to avoid reference issues
+    const snapshotData = JSON.parse(JSON.stringify(data)) as Record<
+      string,
+      Record<string, unknown>
+    >;
 
-    const snapshotId = await canvasSnapshotManager.addSnapshot({
+    const snapshotId = await datasheetSnapshotManager.addSnapshot({
       name,
-      formulaParams: snapshotParams,
-      canvasMode,
-      formulaIds,
+      data: snapshotData,
+      activeFormulaId,
     });
 
     // Reload snapshots to update UI
-    await get().loadCanvasSnapshots();
+    await get().loadDatasheetSnapshots();
 
     return snapshotId;
   },
 
-  // Load all canvas snapshots
-  loadCanvasSnapshots: async () => {
+  // Load all datasheet snapshots
+  loadDatasheetSnapshots: async () => {
     try {
-      const snapshots = await canvasSnapshotManager.getAllSnapshots();
-      set({ canvasSnapshots: snapshots });
+      const snapshots = await datasheetSnapshotManager.getAllSnapshots();
+      set({ datasheetSnapshots: snapshots });
     } catch (error) {
-      console.error("Failed to load canvas snapshots:", error);
+      console.error("Failed to load datasheet snapshots:", error);
     }
   },
 
-  // Replay a canvas snapshot - restore canvas state
-  // Note: React Flow functionality has been removed, so this function only restores canvas mode and formula parameters
-  replayCanvasSnapshot: async (snapshotId: string) => {
+  // Replay a datasheet snapshot - restore datasheet state
+  replayDatasheetSnapshot: async (snapshotId: string) => {
     try {
-      const snapshot = await canvasSnapshotManager.getSnapshotById(snapshotId);
+      const snapshot = await datasheetSnapshotManager.getSnapshotById(snapshotId);
       if (!snapshot) {
-        console.error("Canvas snapshot not found:", snapshotId);
+        console.error("Datasheet snapshot not found:", snapshotId);
         return;
       }
 
-      // Import store dynamically to avoid circular dependencies
-      const { useCanvasStore } = await import("./canvasStore");
-      const canvasStore = useCanvasStore.getState();
+      const spreadsheetStore = useSpreadsheetStore.getState();
 
-      // Restore canvas mode
-      canvasStore.setMode(snapshot.canvasMode);
+      // Restore data for each formula
+      Object.entries(snapshot.data).forEach(([formulaId, rowsData]) => {
+        if (typeof rowsData !== "object" || rowsData === null) return;
 
-      // Restore formula IDs from snapshot data (if available)
-      if (snapshot.formulaIds && Array.isArray(snapshot.formulaIds)) {
-        canvasStore.clearCanvas();
-        snapshot.formulaIds.forEach((formulaId: string) => {
-          canvasStore.addFormulaToCanvas(formulaId);
+        // 1. Reconstruct rows from snapshot data keys
+        // The snapshot keys are the row IDs. We need to restore them to the store
+        // so the UI knows what rows to render.
+        const rowIds = Object.keys(rowsData);
+        const rows = rowIds.map((id) => ({ id }));
+
+        // Update the rows in the spreadsheet store
+        spreadsheetStore.setTabRows(formulaId, rows);
+
+        // 2. Get or create GridStore for this tab
+        // If the tab hasn't been visited, GridStore might not exist.
+        // We create it so we can populate the data.
+        let gridStore = spreadsheetStore.getTabGridStore(formulaId);
+
+        if (!gridStore) {
+          // Use current columns if available, otherwise empty (will be synced when tab opens)
+          const columns = spreadsheetStore.getTabColumns(formulaId);
+
+          // Create new GridStore with a dummy callback (will be updated when component mounts)
+          gridStore = spreadsheetStore.getOrCreateTabGridStore(
+            formulaId,
+            rows,
+            columns,
+            async () => { } // No-op callback
+          );
+        } else {
+          // If it exists, sync the new row structure
+          const columns = spreadsheetStore.getTabColumns(formulaId);
+          gridStore.syncStructure(rows, columns);
+        }
+
+        // 3. Populate data into GridStore
+        Object.entries(rowsData).forEach(([rowId, colValues]) => {
+          if (typeof colValues === "object" && colValues !== null) {
+            Object.entries(colValues).forEach(([colId, value]) => {
+              // We use silent=true to avoid triggering calculations during restore
+              // The UI will trigger necessary updates when it renders
+              gridStore!.setValue(rowId, colId, value as any, true);
+            });
+          }
         });
-      }
-
-      // Restore formula parameters
-      Object.entries(snapshot.formulaParams).forEach(([formulaId, params]) => {
-        canvasStore.setFormulaParams(formulaId, params);
       });
+
+      // If there was an active formula in the snapshot, we could optionally switch to it
+      // if (snapshot.activeFormulaId) {
+      //   // Logic to switch active tab if desired
+      // }
+
     } catch (error) {
-      console.error("Failed to replay canvas snapshot:", error);
+      console.error("Failed to replay datasheet snapshot:", error);
     }
   },
 
-  // Update a canvas snapshot's name
-  updateCanvasSnapshotName: async (snapshotId: string, name: string) => {
+  // Update a datasheet snapshot's name
+  updateDatasheetSnapshotName: async (snapshotId: string, name: string) => {
     try {
-      await canvasSnapshotManager.updateSnapshotName(snapshotId, name);
+      await datasheetSnapshotManager.updateSnapshotName(snapshotId, name);
       // Reload snapshots to update UI
-      await get().loadCanvasSnapshots();
+      await get().loadDatasheetSnapshots();
     } catch (error) {
-      console.error("Failed to update canvas snapshot name:", error);
+      console.error("Failed to update datasheet snapshot name:", error);
     }
   },
 
-  // Delete a single canvas snapshot
-  deleteCanvasSnapshot: async (snapshotId: string) => {
+  // Delete a single datasheet snapshot
+  deleteDatasheetSnapshot: async (snapshotId: string) => {
     try {
-      await canvasSnapshotManager.deleteSnapshot(snapshotId);
+      await datasheetSnapshotManager.deleteSnapshot(snapshotId);
       // Reload snapshots to update UI
-      await get().loadCanvasSnapshots();
+      await get().loadDatasheetSnapshots();
     } catch (error) {
-      console.error("Failed to delete canvas snapshot:", error);
+      console.error("Failed to delete datasheet snapshot:", error);
     }
   },
 
-  // Clear all canvas snapshots
-  clearCanvasSnapshots: async () => {
+  // Clear all datasheet snapshots
+  clearDatasheetSnapshots: async () => {
     try {
-      await canvasSnapshotManager.clearAllSnapshots();
-      set({ canvasSnapshots: [] });
+      await datasheetSnapshotManager.clearAllSnapshots();
+      set({ datasheetSnapshots: [] });
     } catch (error) {
-      console.error("Failed to clear canvas snapshots:", error);
+      console.error("Failed to clear datasheet snapshots:", error);
     }
   },
 }));

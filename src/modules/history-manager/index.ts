@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { db } from "../../lib/dexie";
-import type { RunRecord, CanvasSnapshot } from "../../types/history";
+import type { RunRecord, DatasheetSnapshot } from "../../types/history";
 
 /**
  * HistoryManager - Manages formula execution history using IndexedDB
@@ -145,58 +145,58 @@ export class HistoryManager {
 export const historyManager = new HistoryManager();
 
 /**
- * CanvasSnapshotManager - Manages canvas snapshots using IndexedDB
+ * DatasheetSnapshotManager - Manages datasheet snapshots using IndexedDB
  */
-export class CanvasSnapshotManager {
+export class DatasheetSnapshotManager {
   /**
-   * Add a new canvas snapshot
+   * Add a new datasheet snapshot
    */
   async addSnapshot(
-    snapshot: Omit<CanvasSnapshot, "id" | "timestamp">
+    snapshot: Omit<DatasheetSnapshot, "id" | "timestamp">
   ): Promise<string> {
-    const fullSnapshot: CanvasSnapshot = {
+    const fullSnapshot: DatasheetSnapshot = {
       id: uuidv4(),
       timestamp: Date.now(),
       ...snapshot,
     };
 
-    await db.canvasSnapshots.add(fullSnapshot);
+    await db.datasheetSnapshots.add(fullSnapshot);
     return fullSnapshot.id;
   }
 
   /**
-   * Get all canvas snapshots
+   * Get all datasheet snapshots
    */
-  async getAllSnapshots(): Promise<CanvasSnapshot[]> {
-    return db.canvasSnapshots.orderBy("timestamp").reverse().toArray();
+  async getAllSnapshots(): Promise<DatasheetSnapshot[]> {
+    return db.datasheetSnapshots.orderBy("timestamp").reverse().toArray();
   }
 
   /**
-   * Get a single canvas snapshot by ID
+   * Get a single datasheet snapshot by ID
    */
-  async getSnapshotById(id: string): Promise<CanvasSnapshot | undefined> {
-    return db.canvasSnapshots.get(id);
+  async getSnapshotById(id: string): Promise<DatasheetSnapshot | undefined> {
+    return db.datasheetSnapshots.get(id);
   }
 
   /**
-   * Update a canvas snapshot's name by ID
+   * Update a datasheet snapshot's name by ID
    */
   async updateSnapshotName(id: string, name: string): Promise<void> {
-    await db.canvasSnapshots.update(id, { name });
+    await db.datasheetSnapshots.update(id, { name });
   }
 
   /**
-   * Delete a canvas snapshot by ID
+   * Delete a datasheet snapshot by ID
    */
   async deleteSnapshot(id: string): Promise<void> {
-    await db.canvasSnapshots.delete(id);
+    await db.datasheetSnapshots.delete(id);
   }
 
   /**
-   * Clear all canvas snapshots
+   * Clear all datasheet snapshots
    */
   async clearAllSnapshots(): Promise<void> {
-    await db.canvasSnapshots.clear();
+    await db.datasheetSnapshots.clear();
   }
 
   /**
@@ -205,10 +205,10 @@ export class CanvasSnapshotManager {
   async getSnapshotsPaginated(
     page: number = 1,
     limit: number = 50
-  ): Promise<{ snapshots: CanvasSnapshot[]; total: number }> {
+  ): Promise<{ snapshots: DatasheetSnapshot[]; total: number }> {
     const offset = (page - 1) * limit;
-    const total = await db.canvasSnapshots.count();
-    const snapshots = await db.canvasSnapshots
+    const total = await db.datasheetSnapshots.count();
+    const snapshots = await db.datasheetSnapshots
       .orderBy("timestamp")
       .reverse()
       .offset(offset)
@@ -228,7 +228,7 @@ export class CanvasSnapshotManager {
     const cutoffTimestamp = Date.now() - maxDays * 24 * 60 * 60 * 1000;
 
     // Get all snapshots ordered by timestamp
-    const allSnapshots = await db.canvasSnapshots
+    const allSnapshots = await db.datasheetSnapshots
       .orderBy("timestamp")
       .reverse()
       .toArray();
@@ -242,7 +242,7 @@ export class CanvasSnapshotManager {
     }
 
     // Delete snapshots older than cutoff
-    const oldSnapshots = await db.canvasSnapshots
+    const oldSnapshots = await db.datasheetSnapshots
       .where("timestamp")
       .below(cutoffTimestamp)
       .toArray();
@@ -252,7 +252,7 @@ export class CanvasSnapshotManager {
     const uniqueToDelete = Array.from(new Set(snapshotsToDelete));
 
     // Delete snapshots
-    await db.canvasSnapshots.bulkDelete(uniqueToDelete);
+    await db.datasheetSnapshots.bulkDelete(uniqueToDelete);
 
     return uniqueToDelete.length;
   }
@@ -270,8 +270,8 @@ export class CanvasSnapshotManager {
    */
   async importFromJSON(jsonString: string): Promise<number> {
     try {
-      const snapshots: CanvasSnapshot[] = JSON.parse(jsonString);
-      await db.canvasSnapshots.bulkAdd(snapshots);
+      const snapshots: DatasheetSnapshot[] = JSON.parse(jsonString);
+      await db.datasheetSnapshots.bulkAdd(snapshots);
       return snapshots.length;
     } catch (error) {
       throw new Error(`Failed to import snapshots: ${error}`);
@@ -280,4 +280,4 @@ export class CanvasSnapshotManager {
 }
 
 // Create a singleton instance
-export const canvasSnapshotManager = new CanvasSnapshotManager();
+export const datasheetSnapshotManager = new DatasheetSnapshotManager();

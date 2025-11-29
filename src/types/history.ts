@@ -23,14 +23,13 @@ export interface RunRecord {
 }
 
 /**
- * @description Canvas snapshot - manually saved canvas state
- * Note: React Flow functionality has been removed. Now only stores formula parameters and canvas mode.
+ * @description Datasheet snapshot - manually saved datasheet state
+ * Stores formula parameters/inputs for the datasheet.
  */
-export interface CanvasSnapshot {
+export interface DatasheetSnapshot {
   id: string; // UUID
   timestamp: number; // Save timestamp
   name: string; // Display name (formatted timestamp string)
-  formulaParams: Record<string, Record<string, unknown>>; // Formula parameters for each formula
-  canvasMode: "single" | "multi"; // Canvas mode at save time
-  formulaIds?: string[]; // Formula IDs in canvas (for multi-mode snapshots)
+  data: Record<string, Record<string, unknown>>; // Snapshot data (formulaId -> data)
+  activeFormulaId?: string; // ID of the formula active when snapshot was taken
 }

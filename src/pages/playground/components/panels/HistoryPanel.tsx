@@ -4,31 +4,25 @@ import { useFormulaStore } from "@/store/formulaStore";
 import { useDeveloperStore } from "@/store/developerStore";
 import { useAppStore } from "@/store/appStore";
 import { useHistoryStore } from "@/store/historyStore";
+import { useFormulaTabStore } from "@/store/formulaTabStore";
 import { formatTimestamp } from "@/lib/utils";
-import type { CanvasSnapshot } from "@/types/history";
+import type { DatasheetSnapshot } from "@/types/history";
 import { Trash2 } from "lucide-react";
 
 /**
- * Extract formula names from a canvas snapshot
- * Returns an array of formula names found in the snapshot's formula parameters
+ * Extract formula names from a datasheet snapshot
+ * Returns an array of formula names found in the snapshot's data
  */
 function getFormulaNamesFromSnapshot(
-  snapshot: CanvasSnapshot,
+  snapshot: DatasheetSnapshot,
   formulaDefinitions: Array<{ id: string; name: string }>
 ): string[] {
   const formulaIds = new Set<string>();
 
-  // Extract formula IDs from formula parameters
-  Object.keys(snapshot.formulaParams).forEach((formulaId) => {
+  // Extract formula IDs from snapshot data
+  Object.keys(snapshot.data).forEach((formulaId) => {
     formulaIds.add(formulaId);
   });
-
-  // Also extract from formulaIds array if available (for newer snapshots)
-  if (snapshot.formulaIds) {
-    snapshot.formulaIds.forEach((formulaId) => {
-      formulaIds.add(formulaId);
-    });
-  }
 
   // Map formula IDs to names
   const formulaNames = Array.from(formulaIds)
@@ -46,12 +40,12 @@ export function HistoryPanel() {
   const normalModeData = useFormulaStore();
   const developerModeData = useDeveloperStore();
   const {
-    canvasSnapshots,
-    loadCanvasSnapshots,
-    replayCanvasSnapshot,
-    updateCanvasSnapshotName,
-    deleteCanvasSnapshot,
-    clearCanvasSnapshots,
+    datasheetSnapshots,
+    loadDatasheetSnapshots,
+    replayDatasheetSnapshot,
+    updateDatasheetSnapshotName,
+    deleteDatasheetSnapshot,
+    clearDatasheetSnapshots,
   } = useHistoryStore();
 
   // Track which snapshot is being edited
@@ -75,10 +69,10 @@ export function HistoryPanel() {
     normalModeData.formulaDefinitions,
   ]);
 
-  // Load canvas snapshots on mount
+  // Load datasheet snapshots on mount
   useEffect(() => {
-    loadCanvasSnapshots();
-  }, [loadCanvasSnapshots]);
+    loadDatasheetSnapshots();
+  }, [loadDatasheetSnapshots]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -100,13 +94,13 @@ export function HistoryPanel() {
       : normalModeData.replayHistoryRecord;
 
   const hasExecutionHistory = runHistory.length > 0;
-  const hasSnapshots = canvasSnapshots.length > 0;
+  const hasSnapshots = datasheetSnapshots.length > 0;
   const hasAnyHistory = hasExecutionHistory || hasSnapshots;
 
   /**
    * Start editing a snapshot name
    */
-  const startEditing = (snapshot: CanvasSnapshot) => {
+  const startEditing = (snapshot: DatasheetSnapshot) => {
     setEditingSnapshotId(snapshot.id);
     setEditingName(snapshot.name);
     // Focus input after state update
@@ -122,7 +116,7 @@ export function HistoryPanel() {
   const saveEditing = async (snapshotId: string) => {
     const trimmedName = editingName.trim();
     if (trimmedName && trimmedName !== "") {
-      await updateCanvasSnapshotName(snapshotId, trimmedName);
+      await updateDatasheetSnapshotName(snapshotId, trimmedName);
     }
     setEditingSnapshotId(null);
     setEditingName("");
@@ -155,9 +149,11 @@ export function HistoryPanel() {
   /**
    * Handle click on snapshot name - distinguish single vs double click
    */
+  const { addTab } = useFormulaTabStore();
+
   const handleNameClick = (
     e: React.MouseEvent<HTMLButtonElement>,
-    snapshot: CanvasSnapshot
+    snapshot: DatasheetSnapshot
   ) => {
     const now = Date.now();
     const timeSinceLastClick = now - lastClickTimeRef.current;
@@ -178,8 +174,16 @@ export function HistoryPanel() {
       if (clickTimeoutRef.current) {
         clearTimeout(clickTimeoutRef.current);
       }
-      clickTimeoutRef.current = setTimeout(() => {
-        replayCanvasSnapshot(snapshot.id);
+      clickTimeoutRef.current = setTimeout(async () => {
+        await replayDatasheetSnapshot(snapshot.id);
+
+        // Switch to the active formula tab if it exists in the snapshot
+        if (snapshot.activeFormulaId) {
+          const formula = formulaDefinitions.find(f => f.id === snapshot.activeFormulaId);
+          const formulaName = formula?.name || snapshot.activeFormulaId;
+          addTab(snapshot.activeFormulaId, formulaName, "grid");
+        }
+
         clickTimeoutRef.current = null;
         lastClickTimeRef.current = 0;
       }, 300);
@@ -192,7 +196,7 @@ export function HistoryPanel() {
       headerRight={
         hasSnapshots && (
           <button
-            onClick={clearCanvasSnapshots}
+            onClick={clearDatasheetSnapshots}
             className=" hover:text-gray-600 cursor-pointer"
           >
             <Trash2 size={14} strokeWidth={1.5} />
@@ -205,32 +209,11 @@ export function HistoryPanel() {
           <p className="text-xs text-gray-500 p-3">No history</p>
         ) : (
           <>
-            {/* Clear buttons */}
-            {/* <div className="flex justify-end gap-2 mb-1.5">
-              {hasSnapshots && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearCanvasSnapshots}
-                >
-                  Clear Snapshots
-                </Button>
-              )}
-              {hasExecutionHistory && (
-                <Button variant="ghost" size="sm" onClick={clearHistory}>
-                  Clear Executions
-                </Button>
-              )}
-            </div> */}
-
             <div className="space-y-1.5 max-h-80 overflow-y-auto">
-              {/* Canvas Snapshots Section */}
+              {/* Datasheet Snapshots Section */}
               {hasSnapshots && (
                 <div>
-                  {/* <div className="text-xs font-semibold text-gray-700 px-2.5 py-1">
-                    Canvas Snapshots
-                  </div> */}
-                  {canvasSnapshots.slice(0, 10).map((snapshot) => {
+                  {datasheetSnapshots.slice(0, 10).map((snapshot) => {
                     const formulaNames = getFormulaNamesFromSnapshot(
                       snapshot,
                       formulaDefinitions
@@ -270,24 +253,23 @@ export function HistoryPanel() {
                                 </span>
                               </button>
                             )}
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] text-gray-500 px-1.5 py-0.5 bg-blue-100 rounded">
-                                {snapshot.canvasMode === "multi"
-                                  ? "Multi"
-                                  : "Single"}
-                              </span>
-                              {/* Delete button - visible on hover */}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteCanvasSnapshot(snapshot.id);
-                                }}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-red-100 rounded text-red-600 absolute bottom-0 right-0"
-                                title="Delete snapshot"
-                              >
-                                <Trash2 size={12} strokeWidth={1.5} />
-                              </button>
-                            </div>
+
+                            {!isEditing && (
+                              <div className="flex items-center gap-2">
+                                {/* Delete button - visible on hover */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteDatasheetSnapshot(snapshot.id);
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-red-100 rounded text-red-600 absolute bottom-0 right-0"
+                                  title="Delete snapshot"
+                                >
+                                  <Trash2 size={12} strokeWidth={1.5} />
+                                </button>
+                              </div>
+                            )}
+
                           </div>
                           {!isEditing && (
                             <div className="text-[11px] text-gray-600 mt-1 line-clamp-2">

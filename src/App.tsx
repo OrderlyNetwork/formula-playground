@@ -6,7 +6,7 @@ import { Sidebar } from "./pages/datasheet/components/Sidebar";
 import { useState } from "react";
 import { FormulaDetails } from "./pages/formula/details";
 import { TooltipProvider } from "./components/ui/tooltip";
-
+import { DevPage } from "./pages/dev/devPage";
 
 function App() {
   const router = createBrowserRouter([
@@ -16,6 +16,7 @@ function App() {
         { path: "/", element: <DatabaseDashboard /> },
         { path: "/formula/:id/test", element: <FormulaTestPage /> },
         { path: "/formula/:id", element: <FormulaDetails /> },
+        { path: "/dev", element: <DevPage /> },
         { path: "*", element: <DatabaseDashboard /> },
       ],
     },
@@ -44,10 +45,7 @@ function RootLayout() {
           {/* Main Layout */}
           <div className="flex flex-1 overflow-hidden">
             {/* Sidebar */}
-            <Sidebar
-              isOpen={isSidebarOpen}
-              onToggle={handleSidebarToggle}
-            />
+            <Sidebar isOpen={isSidebarOpen} onToggle={handleSidebarToggle} />
 
             {/* Main Content */}
             <div className="flex flex-1 flex-col min-w-0 ">
