@@ -8,7 +8,7 @@ import { db } from "../lib/dexie";
 interface DataSourceStore {
   // State
   userDataSources: UserDataSource[];
-  dataSourceData: Record<string, any[]>;
+  dataSourceData: Record<string, unknown>;
 
   // Actions
   loadDataSources: () => Promise<void>;
@@ -21,8 +21,8 @@ interface DataSourceStore {
   ) => Promise<string>;
   deleteDataSource: (id: string) => Promise<void>;
   getDataSource: (id: string) => UserDataSource | undefined;
-  setDataSourceData: (id: string, data: any) => void;
-  getDataSourceData: (id: string) => any[];
+  setDataSourceData: (id: string, data: unknown) => void;
+  getDataSourceData: (id: string) => unknown | null | undefined;
 }
 
 /**
@@ -47,7 +47,7 @@ export const useDataSourceStore = create<DataSourceStore>((set, get) => ({
   },
 
   getDataSourceData: (id) => {
-    return get().dataSourceData[id] || [];
+    return get().dataSourceData[id];
   },
 
   /**

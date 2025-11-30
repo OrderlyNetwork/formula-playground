@@ -26,7 +26,7 @@ const staticDataSource = [
 export const apiDataSources = [
   {
     // the data's key for the global scope
-    id: "tokens",
+    id: "Tokens",
     label: "Tokens",
     description: "Get all available trading tokens",
     method: "GET",
