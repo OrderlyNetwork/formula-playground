@@ -1,133 +1,97 @@
 import React from "react";
-import { useSpreadsheetStore } from "@/store/spreadsheetStore";
+import type { GridStore } from "@/store/spreadsheet";
+import type { ColumnDef } from "@/types/spreadsheet";
 import type { FlattenedPath } from "@/utils/formulaTableUtils";
 import SpreadsheetToolbar from "./SpreadsheetToolbar";
 import SpreadsheetHeader from "./SpreadsheetHeader";
 import SpreadsheetRow from "./SpreadsheetRow";
-import { useSpreadsheetState } from "./hooks/useSpreadsheetState";
-import { useSpreadsheetCalculation } from "./hooks/useSpreadsheetCalculation";
-import { useSpreadsheetActions } from "./hooks/useSpreadsheetActions";
-import { useSpreadsheetInitialization } from "./hooks/useSpreadsheetInitialization";
 import { useSpreadsheetVirtualization } from "./hooks/useSpreadsheetVirtualization";
-import { useTabPersistence } from "@/pages/datasheet/hooks/useTabPersistence";
 
 /**
- * Props interface for Spreadsheet component
+ * Selection type for rows and columns
  */
-interface SpreadsheetProps {
+type Selection = { type: "row" | "column"; id: string } | null;
+
+/**
+ * Props interface for stateless Spreadsheet component
+ * All data and callbacks are passed from parent
+ */
+export interface SpreadsheetProps {
+  /** Column definitions */
+  columns: ColumnDef[];
+  /** Row IDs for rendering */
+  rowIds: string[];
+  /** GridStore instance containing cell data */
+  gridStore: GridStore | null;
+  /** Current selection state (row or column) */
+  selection: Selection;
+  /** Set of selected row IDs for O(1) lookup */
+  selectedRowIds: Set<string>;
+  /** Set of selected column IDs for O(1) lookup */
+  selectedColIds: Set<string>;
+  /** Callback when row header is clicked */
+  onRowHeaderClick: (rowId: string) => void;
+  /** Callback when column header is clicked */
+  onColHeaderClick: (colId: string) => void;
+  /** Callback when cell is clicked */
+  onCellClick: (rowId: string, colId: string) => void;
+  /** Callback when column is deleted */
+  onDeleteColumn: (colId: string) => void;
+  /** Callback when add row button is clicked */
+  onAddRow: () => void;
+  /** Callback when add column button is clicked */
+  onAddColumn: () => void;
+  /** Callback when clear datasheet button is clicked */
+  onClearDataSheet: () => void;
+  /** Optional flattened paths for toolbar display */
   flattenedPaths?: FlattenedPath[];
+  /** Whether to show toolbar */
+  showToolbar?: boolean;
 }
 
-const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
-  // Get current formula first (needed for per-tab state)
-  const currentFormula = useSpreadsheetStore((state) => state.currentFormula);
-
-  // Get clear results action from store
-  const clearTabResults = useSpreadsheetStore((state) => state.clearTabResults);
-
-  // Use custom hooks for state management
-  const {
-    formulaId,
-    columns,
-    rows,
-    rowIds,
-    isColumnsReady,
-    selection,
-    selectedRowIds,
-    selectedColIds,
-    setTabColumns,
-    setTabRows,
-    setTabColumnsReady,
-    getOrCreateTabGridStore,
-    addColumnAction,
-    deleteColumnAction,
-    toggleRowSelection,
-    toggleColumnSelection,
-    updateSelectionOnCellClick,
-  } = useSpreadsheetState(currentFormula || null);
-
-  // Use calculation hook
-  const { handleCalculateRow } = useSpreadsheetCalculation(
-    currentFormula || null,
-    formulaId
-  );
-
-  // Use initialization hook
-  const { storeRef } = useSpreadsheetInitialization({
-    currentFormula: currentFormula || null,
-    formulaId,
-    flattenedPaths,
-    columns,
-    rows,
-    handleCalculateRow,
-    setTabColumns,
-    setTabRows,
-    setTabColumnsReady,
-    getOrCreateTabGridStore,
-  });
-
-  // Enable tab persistence (auto-save/restore)
-  useTabPersistence(currentFormula?.id, storeRef.current);
-
-  // Use actions hook
-  const {
-    addRow,
-    addColumn,
-    handleRowHeaderClick,
-    handleColHeaderClick,
-    handleCellClick,
-  } = useSpreadsheetActions(
-    formulaId,
-    selection,
-    columns,
-    storeRef.current,
-    toggleRowSelection,
-    toggleColumnSelection,
-    updateSelectionOnCellClick,
-    addColumnAction
-  );
-
-  // Use virtualization hook
+/**
+ * Stateless Spreadsheet Component
+ *
+ * This is a pure presentation component that receives all data and callbacks via props.
+ * It has no direct dependency on global state stores, making it reusable across different modes:
+ * - Datasheet mode: Use SpreadsheetContainer wrapper
+ * - Playground mode: Pass custom props
+ * - Development mode: Pass custom props
+ *
+ * @param props - All data and callbacks needed for rendering
+ */
+const Spreadsheet: React.FC<SpreadsheetProps> = ({
+  columns,
+  rowIds,
+  gridStore,
+  selection,
+  selectedRowIds,
+  selectedColIds,
+  onRowHeaderClick,
+  onColHeaderClick,
+  onCellClick,
+  onDeleteColumn,
+  onAddRow,
+  onAddColumn,
+  onClearDataSheet,
+  flattenedPaths,
+  showToolbar = true,
+}) => {
+  // Use virtualization hook for efficient rendering of large datasets
   const { parentRef, rowVirtualizer } = useSpreadsheetVirtualization(rowIds);
-
-  /**
-   * Clear all data in the current spreadsheet
-   * Clears both cell input data and calculation results
-   */
-  const handleClearDataSheet = () => {
-    // Clear all cell data in GridStore
-    if (storeRef.current) {
-      storeRef.current.clearAllData();
-    }
-
-    // Clear all calculation results for this tab
-    clearTabResults(formulaId);
-  };
-
-  // Show loading state until columns are determined
-  if (!isColumnsReady) {
-    return (
-      <div className="flex flex-col h-full bg-white shadow-sm overflow-hidden">
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="text-sm text-gray-500">Loading spreadsheet...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col h-full shadow-sm overflow-hidden">
       {/* Toolbar */}
-      <SpreadsheetToolbar
-        selection={selection}
-        flattenedPaths={flattenedPaths}
-        onAddRow={addRow}
-        onAddColumn={addColumn}
-        onClearDataSheet={handleClearDataSheet}
-      />
+      {showToolbar && (
+        <SpreadsheetToolbar
+          selection={selection}
+          flattenedPaths={flattenedPaths}
+          onAddRow={onAddRow}
+          onAddColumn={onAddColumn}
+          onClearDataSheet={onClearDataSheet}
+        />
+      )}
 
       {/* Grid Container with Virtual Scrolling */}
       <div
@@ -142,8 +106,8 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
           <SpreadsheetHeader
             columns={columns}
             selectedColIds={selectedColIds}
-            onColHeaderClick={handleColHeaderClick}
-            onDeleteColumn={(colId) => deleteColumnAction(formulaId, colId)}
+            onColHeaderClick={onColHeaderClick}
+            onDeleteColumn={onDeleteColumn}
           />
 
           {/* Virtualized Data Rows */}
@@ -163,11 +127,11 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({ flattenedPaths }) => {
                   rowId={rowId}
                   rowIndex={virtualRow.index}
                   columns={columns}
-                  store={storeRef.current!}
+                  store={gridStore!}
                   isRowSelected={isRowSelected}
                   selectedColIds={selectedColIds}
-                  onRowHeaderClick={handleRowHeaderClick}
-                  onCellClick={handleCellClick}
+                  onRowHeaderClick={onRowHeaderClick}
+                  onCellClick={onCellClick}
                   style={{
                     height: `${virtualRow.size}px`,
                     transform: `translateY(${virtualRow.start}px)`,

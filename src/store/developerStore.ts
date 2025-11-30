@@ -6,6 +6,25 @@ import { useUserCodeStore } from "./userCodeStore";
 import { BaseFormulaStore } from "./BaseFormulaStore";
 
 /**
+ * Multiline TypeScript sample used as the default content when the
+ * current editor value is empty. This provides users with a ready-to-use
+ * example of how to structure formula code with proper JSDoc annotations.
+ */
+const PLACEHOLDER_TS_SAMPLE = `/**
+* @formulaId custom_formula
+* @name Custom Formula
+* @description Example: input and output description
+* @version 1.0.0
+* @param {number} a - First input @default 1 @unit unitA
+* @param {number} b - Second input @default 2 @unit unitB
+* @returns {number} Result @unit unitR
+*/
+export function add(a: number, b: number): number {
+  return a + b;
+}
+`;
+
+/**
  * Developer mode store
  * Manages state for developer mode independently from normal mode
  */
@@ -112,7 +131,7 @@ const baseStore = new BaseFormulaStore();
 
 export const useDeveloperStore = create<DeveloperStore>((set, get) => ({
   // Initial state
-  codeInput: "",
+  codeInput: PLACEHOLDER_TS_SAMPLE,
   parsedFormulas: [],
   selectedFormulaId: null,
   currentInputs: {},
@@ -137,12 +156,14 @@ export const useDeveloperStore = create<DeveloperStore>((set, get) => ({
 
     if (!trimmed) {
       set({
-        parseError: "请输入包含导出函数和 JSDoc 的 TypeScript 代码",
+        parseError:
+          "Please enter TypeScript code containing exported functions and JSDoc",
         parseSuccess: null,
       });
       return {
         success: false,
-        error: "请输入包含导出函数和 JSDoc 的 TypeScript 代码",
+        error:
+          "Please enter TypeScript code containing exported functions and JSDoc",
       } as const;
     }
 
@@ -154,7 +175,9 @@ export const useDeveloperStore = create<DeveloperStore>((set, get) => ({
       ]);
 
       if (!result.success || !result.formulas || result.formulas.length === 0) {
-        const error = result.error || "未能识别任何公式函数，请检查代码和 JSDoc 注释";
+        const error =
+          result.error ||
+          "No formula functions were recognized, please check your code and JSDoc comments";
         set({ parseError: error, loading: false });
         return { success: false, error } as const;
       }
@@ -168,7 +191,7 @@ export const useDeveloperStore = create<DeveloperStore>((set, get) => ({
       const formulaNames = markedDefs
         .map((f: FormulaDefinition) => `• ${f.name} (${f.id})`)
         .join("\n");
-      const successMsg = `✅ 成功解析 ${markedDefs.length} 个公式:\n${formulaNames}`;
+      const successMsg = `✅ Successfully parsed ${markedDefs.length} formula(s):\n${formulaNames}`;
 
       set({ parseSuccess: successMsg, loading: false });
       return { success: true, formulas: markedDefs } as const;
@@ -186,12 +209,14 @@ export const useDeveloperStore = create<DeveloperStore>((set, get) => ({
 
     if (!trimmed) {
       set({
-        parseError: "请输入包含导出函数和 JSDoc 的 TypeScript 代码",
+        parseError:
+          "Please enter TypeScript code containing exported functions and JSDoc",
         parseSuccess: null,
       });
       return {
         success: false,
-        error: "请输入包含导出函数和 JSDoc 的 TypeScript 代码",
+        error:
+          "Please enter TypeScript code containing exported functions and JSDoc",
       } as const;
     }
 
@@ -210,7 +235,9 @@ export const useDeveloperStore = create<DeveloperStore>((set, get) => ({
       ]);
 
       if (!result.success || !result.formulas || result.formulas.length === 0) {
-        const error = result.error || "未能识别任何公式函数，请检查代码和 JSDoc 注释";
+        const error =
+          result.error ||
+          "No formula functions were recognized, please check your code and JSDoc comments";
         set({ parseError: error, loading: false });
         return { success: false, error } as const;
       }
@@ -221,12 +248,11 @@ export const useDeveloperStore = create<DeveloperStore>((set, get) => ({
         creationType: "parsed" as const,
       }));
 
-      // Add to developer mode formula list
-      const { parsedFormulas } = get();
-      const next = [...parsedFormulas, ...markedDefs];
+      // Replace all formulas with newly parsed ones (single file editing mode)
+      // Each Parse completely replaces the formula list with what's in the current code
       set({
-        parsedFormulas: next,
-        parseSuccess: `✅ 成功创建 ${markedDefs.length} 个公式`,
+        parsedFormulas: markedDefs,
+        parseSuccess: `✅ Successfully parsed ${markedDefs.length} formula(s)`,
         loading: false,
       });
 
@@ -275,7 +301,10 @@ export const useDeveloperStore = create<DeveloperStore>((set, get) => ({
 
   // Select a formula in developer mode
   selectFormula: (formulaId: string) => {
-    const result = baseStore.findAndInitializeFormula(formulaId, get().parsedFormulas);
+    const result = baseStore.findAndInitializeFormula(
+      formulaId,
+      get().parsedFormulas
+    );
     if (!result) return;
 
     set({

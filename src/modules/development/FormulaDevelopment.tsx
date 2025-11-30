@@ -4,7 +4,7 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { CodeInput } from "@/pages/playground/components/CodeInput";
-
+import { FormulaDataSheet } from "./FormulaDataSheet";
 
 export const FormulaDevelopment = () => {
   return (
@@ -16,7 +16,7 @@ export const FormulaDevelopment = () => {
       <ResizableHandle className="bg-zinc-200" />
 
       <ResizablePanel defaultSize={30} minSize={10}>
-        <div>Runner</div>
+        <FormulaDataSheet />
       </ResizablePanel>
     </ResizablePanelGroup>
   );
