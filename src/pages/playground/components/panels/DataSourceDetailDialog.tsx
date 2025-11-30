@@ -1,14 +1,9 @@
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Globe, Radio, Database } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import {
   type ApiDataSourceConfig,
   type WsDataSourceConfig,
@@ -60,21 +55,9 @@ export function DataSourceDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
-        {/* <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {dataSource.type === DataSourceType.API ? (
-              <Globe size={18} className="text-orange-600" />
-            ) : dataSource.type === DataSourceType.WEBSOCKET ? (
-              <Radio size={18} className="text-teal-600" />
-            ) : (
-              <Database size={18} className="text-blue-600" />
-            )}
-            {dataSource.label}
-          </DialogTitle>
-          <DialogDescription>
-            {dataSource.description || "No description available"}
-          </DialogDescription>
-        </DialogHeader> */}
+        <VisuallyHidden>
+          <DialogTitle>{dataSource.label}</DialogTitle>
+        </VisuallyHidden>
 
         <div className="flex-1 overflow-y-auto space-y-4">
           <Tabs defaultValue="data" className="w-full">
@@ -129,7 +112,7 @@ export function DataSourceDetailDialog({
                     theme="vs"
                   />
                 </div>
-              ) : data.length > 0 ? (
+              ) : Object.keys(data).length > 0 ? (
                 <div className="bg-gray-50 overflow-hidden h-[400px] border border-gray-200">
                   <Editor
                     height="400px"

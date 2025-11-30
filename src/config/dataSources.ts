@@ -14,8 +14,8 @@ const staticDataSource = [
     label: "Order side",
     description: "Order side",
     data: {
-      buy: "buy",
-      sell: "sell",
+      buy: "BUY",
+      sell: "SELL",
     },
   },
 ];
@@ -32,6 +32,7 @@ export const apiDataSources = [
     method: "GET",
     url: "/v1/public/token",
     dataPath: "data.rows",
+    convertKey: "token",
   },
   {
     id: "Symbols",
@@ -40,6 +41,7 @@ export const apiDataSources = [
     method: "GET",
     url: "/v1/public/info",
     dataPath: "data.rows",
+    convertKey: "symbol",
   },
 ] as const;
 
@@ -125,6 +127,7 @@ export interface ApiDataSourceConfig extends BaseDataSourceConfig {
   headers?: Record<string, string>;
   // Path to the array in the response (e.g., "data.rows"). If empty, assumes root is array.
   dataPath: string;
+  convertKey?: string;
 }
 
 export interface WsDataSourceConfig extends BaseDataSourceConfig {
@@ -236,7 +239,16 @@ export class DataSourceManager {
         const result = await response.json();
         const items = this.extractItems(result, apiConfig.dataPath);
 
-        useDataSourceStore.getState().setDataSourceData(id, items);
+        // if the data is an array, convert it to an object with the key as the index
+        if (Array.isArray(items) && typeof apiConfig.convertKey === "string") {
+          const obj: Record<string, any> = {};
+          for (const item of items) {
+            obj[item[apiConfig.convertKey]] = item;
+          }
+          useDataSourceStore.getState().setDataSourceData(id, obj);
+        } else {
+          useDataSourceStore.getState().setDataSourceData(id, items as any[]);
+        }
 
         // Update last fetch time
         this.lastFetchTime.set(id, Date.now());
