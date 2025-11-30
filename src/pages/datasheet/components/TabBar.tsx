@@ -89,7 +89,7 @@ function TabComponent({
       <span className="truncate flex-1">{label}</span>
       {isDirty && !isLoading && (
         <div
-          className="h-1.5 w-1.5 rounded-full bg-orange-500"
+          className="h-1.5 w-1.5 rounded-full bg-orange-500 absolute right-0 top-0"
           title="Unsaved changes"
         />
       )}

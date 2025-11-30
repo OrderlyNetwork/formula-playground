@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { dataSourceManager } from "@/config/dataSources";
+import { DataSourceManager, dataSourceManager } from "@/config/dataSources";
 import { useFormulaStore } from "@/store/formulaStore";
+import { useSettingsStore } from "@/store/settingsStore";
 
 interface AppInitState {
   isReady: boolean;
@@ -12,6 +13,7 @@ export function useAppInit(): AppInitState {
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [statusMessage, setStatusMessage] = useState("Initializing...");
+  const apiBaseURL = useSettingsStore((state) => state.settings.apiBaseURL);
   const loadFormulasFromAllSources = useFormulaStore(
     (state) => state.loadFormulasFromAllSources
   );
@@ -19,7 +21,9 @@ export function useAppInit(): AppInitState {
   useEffect(() => {
     const init = async () => {
       try {
+        dataSourceManager.apiBaseURL = apiBaseURL;
         setStatusMessage("Loading data sources...");
+        DataSourceManager.prepare();
         await dataSourceManager.fetchAll();
 
         setStatusMessage("Loading formula library...");
@@ -39,7 +43,7 @@ export function useAppInit(): AppInitState {
     };
 
     init();
-  }, [loadFormulasFromAllSources]);
+  }, [loadFormulasFromAllSources, apiBaseURL]);
 
   return { isReady, error, statusMessage };
 }

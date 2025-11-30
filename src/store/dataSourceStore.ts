@@ -8,12 +8,21 @@ import { db } from "../lib/dexie";
 interface DataSourceStore {
   // State
   userDataSources: UserDataSource[];
+  dataSourceData: Record<string, any[]>;
 
   // Actions
   loadDataSources: () => Promise<void>;
-  saveDataSource: (name: string, value: unknown, unit?: string, description?: string, sourceNodeId?: string) => Promise<string>;
+  saveDataSource: (
+    name: string,
+    value: unknown,
+    unit?: string,
+    description?: string,
+    sourceNodeId?: string
+  ) => Promise<string>;
   deleteDataSource: (id: string) => Promise<void>;
   getDataSource: (id: string) => UserDataSource | undefined;
+  setDataSourceData: (id: string, data: any) => void;
+  getDataSourceData: (id: string) => any[];
 }
 
 /**
@@ -26,13 +35,30 @@ function generateDataSourceId(): string {
 export const useDataSourceStore = create<DataSourceStore>((set, get) => ({
   // Initial state
   userDataSources: [],
+  dataSourceData: {},
+
+  setDataSourceData: (id, data) => {
+    set((state) => ({
+      dataSourceData: {
+        ...state.dataSourceData,
+        [id]: data,
+      },
+    }));
+  },
+
+  getDataSourceData: (id) => {
+    return get().dataSourceData[id] || [];
+  },
 
   /**
    * Load all user data sources from IndexedDB
    */
   loadDataSources: async () => {
     try {
-      const dataSources = await db.userDataSources.orderBy("timestamp").reverse().toArray();
+      const dataSources = await db.userDataSources
+        .orderBy("timestamp")
+        .reverse()
+        .toArray();
       set({ userDataSources: dataSources });
     } catch (error) {
       console.error("Failed to load data sources:", error);
@@ -62,10 +88,10 @@ export const useDataSourceStore = create<DataSourceStore>((set, get) => ({
       };
 
       await db.userDataSources.add(dataSource);
-      
+
       // Reload data sources to update state
       await get().loadDataSources();
-      
+
       return id;
     } catch (error) {
       console.error("Failed to save data source:", error);
@@ -96,4 +122,3 @@ export const useDataSourceStore = create<DataSourceStore>((set, get) => ({
     return get().userDataSources.find((ds) => ds.id === id);
   },
 }));
-

@@ -2,6 +2,24 @@
  * Data source configurations for API and WebSocket endpoints
  */
 
+const staticDataSource = [
+  // {
+  //   id:'OrderTypes',
+  //   data:{
+  //     ''
+  //   }
+  // }
+  {
+    id: "OrderSides",
+    label: "Order side",
+    description: "Order side",
+    data: {
+      buy: "buy",
+      sell: "sell",
+    },
+  },
+];
+
 /**
  * RESTful API data sources
  */
@@ -16,11 +34,11 @@ export const apiDataSources = [
     dataPath: "data.rows",
   },
   {
-    id: "symbols",
+    id: "Symbols",
     label: "Symbols",
-    description: "Get all trading symbols/pairs",
+    description: "Get Available Symbols",
     method: "GET",
-    url: "/v1/public/symbols",
+    url: "/v1/public/info",
     dataPath: "data.rows",
   },
 ] as const;
@@ -76,26 +94,28 @@ export type WsDataSource = (typeof wsDataSources)[number];
 export const DataSourceType = {
   STATIC: "STATIC",
   API: "API",
+  WEBSOCKET: "WEBSOCKET",
 } as const;
 
 export type DataSourceType =
   (typeof DataSourceType)[keyof typeof DataSourceType];
 
 export interface DataSourceOption {
-  label: string;
-  value: string | number;
+  // label: string;
+  // value: string | number;
   [key: string]: any;
 }
 
 export interface BaseDataSourceConfig {
   id: string;
   type: DataSourceType;
+  label: string;
   description?: string;
 }
 
 export interface StaticDataSourceConfig extends BaseDataSourceConfig {
   type: typeof DataSourceType.STATIC;
-  options: DataSourceOption[];
+  data: DataSourceOption;
 }
 
 export interface ApiDataSourceConfig extends BaseDataSourceConfig {
@@ -107,11 +127,40 @@ export interface ApiDataSourceConfig extends BaseDataSourceConfig {
   dataPath: string;
 }
 
-export type DataSourceConfig = StaticDataSourceConfig | ApiDataSourceConfig;
+export interface WsDataSourceConfig extends BaseDataSourceConfig {
+  type: typeof DataSourceType.WEBSOCKET;
+  topic: string;
+  url?: string;
+}
 
-class DataSourceManager {
+export type DataSourceConfig =
+  | StaticDataSourceConfig
+  | ApiDataSourceConfig
+  | WsDataSourceConfig;
+
+import { useDataSourceStore } from "../store/dataSourceStore";
+
+export class DataSourceManager {
   private configs: Map<string, DataSourceConfig> = new Map();
-  private data: Map<string, DataSourceOption[]> = new Map();
+  #apiBaseURL: string = "";
+  // Track ongoing fetch requests to prevent duplicates
+  private pendingFetches: Map<string, Promise<void>> = new Map();
+  // Cache timestamps for each data source
+  private lastFetchTime: Map<string, number> = new Map();
+  // Cache duration in milliseconds (default: 5 seconds)
+  private cacheDuration: number = 5000;
+
+  set apiBaseURL(url: string) {
+    this.#apiBaseURL = url;
+  }
+
+  /**
+   * Set the cache duration for deduplication
+   * @param duration Duration in milliseconds
+   */
+  setCacheDuration(duration: number) {
+    this.cacheDuration = duration;
+  }
 
   /**
    * Register a new data source configuration
@@ -119,7 +168,7 @@ class DataSourceManager {
   register(config: DataSourceConfig) {
     this.configs.set(config.id, config);
     if (config.type === DataSourceType.STATIC) {
-      this.data.set(config.id, config.options);
+      useDataSourceStore.getState().setDataSourceData(config.id, config.data);
     }
   }
 
@@ -141,11 +190,12 @@ class DataSourceManager {
    * Get options for a specific data source
    */
   getOptions(id: string): DataSourceOption[] {
-    return this.data.get(id) || [];
+    return useDataSourceStore.getState().getDataSourceData(id);
   }
 
   /**
    * Fetch data for a specific API data source
+   * Implements deduplication to prevent duplicate requests within cache duration
    */
   async fetch(id: string): Promise<void> {
     const config = this.configs.get(id);
@@ -153,29 +203,54 @@ class DataSourceManager {
       return;
     }
 
+    // Check if there's already a pending request
+    const pending = this.pendingFetches.get(id);
+    if (pending) {
+      return pending;
+    }
+
+    // Check if we have recent cached data
+    const lastFetch = this.lastFetchTime.get(id);
+    const now = Date.now();
+    if (lastFetch && now - lastFetch < this.cacheDuration) {
+      return;
+    }
+
     // Type guard confirmed config is ApiDataSourceConfig
     const apiConfig = config as ApiDataSourceConfig;
 
-    try {
-      const response = await fetch(apiConfig.url, {
-        method: apiConfig.method || "GET",
-        headers: apiConfig.headers,
-      });
+    // Create and store the fetch promise
+    const fetchPromise = (async () => {
+      try {
+        const response = await fetch(`${this.#apiBaseURL}${apiConfig.url}`, {
+          method: apiConfig.method || "GET",
+          headers: apiConfig.headers,
+        });
 
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch data source ${id}: ${response.statusText}`
-        );
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch data source ${id}: ${response.statusText}`
+          );
+        }
+
+        const result = await response.json();
+        const items = this.extractItems(result, apiConfig.dataPath);
+
+        useDataSourceStore.getState().setDataSourceData(id, items);
+
+        // Update last fetch time
+        this.lastFetchTime.set(id, Date.now());
+      } catch (error) {
+        console.error(`Error fetching data source ${id}:`, error);
+        // Optionally handle error state
+      } finally {
+        // Remove from pending fetches
+        this.pendingFetches.delete(id);
       }
+    })();
 
-      const result = await response.json();
-      const items = this.extractItems(result, apiConfig.dataPath);
-
-      this.data.set(id, items);
-    } catch (error) {
-      console.error(`Error fetching data source ${id}:`, error);
-      // Optionally handle error state
-    }
+    this.pendingFetches.set(id, fetchPromise);
+    return fetchPromise;
   }
 
   /**
@@ -208,11 +283,30 @@ class DataSourceManager {
     }
   }
 
-  private extractItems(data: any, path?: string): any[] {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private extractItems(data: unknown, path?: string): any[] {
     if (!path) {
       return Array.isArray(data) ? data : [];
     }
-    return path.split(".").reduce((obj, key) => obj?.[key], data) || [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = path.split(".").reduce((obj: any, key) => obj?.[key], data);
+    return Array.isArray(result) ? result : [];
+  }
+
+  static prepare() {
+    staticDataSource.forEach((config) =>
+      dataSourceManager.register({ ...config, type: DataSourceType.STATIC })
+    );
+    apiDataSources.forEach((config) =>
+      dataSourceManager.register({
+        ...config,
+        type: DataSourceType.API,
+      })
+    );
+    // wsDataSources.forEach((config) => dataSourceManager.register({
+    //   ...config,
+    //   type: DataSourceType.WEBSOCKET,
+    // }));
   }
 }
 
