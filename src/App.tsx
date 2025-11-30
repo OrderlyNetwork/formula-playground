@@ -7,6 +7,8 @@ import { useState } from "react";
 import { FormulaDetails } from "./pages/formula/details";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { DevPage } from "./pages/dev/devPage";
+import { useAppInit } from "./hooks/useAppInit";
+import { Loader2 } from "lucide-react";
 
 function App() {
   const router = createBrowserRouter([
@@ -33,10 +35,22 @@ function App() {
 function RootLayout() {
   // State to control sidebar visibility
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const { isReady, statusMessage } = useAppInit();
 
   const handleSidebarToggle = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
+
+  if (!isReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">{statusMessage}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider>

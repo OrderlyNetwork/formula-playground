@@ -179,12 +179,6 @@ export function DataSourcePanel() {
 
       {/* Fixed footer with hint and statistics */}
       <div className="shrink-0 border-t border-gray-200 bg-gray-50">
-        {/* Hint message */}
-        {hasResults && (
-          <div className="text-[11px] text-gray-500 px-2.5 pt-2 pb-1 border-b border-gray-200 bg-white">
-            💡 Drag a data source to the canvas to create a node
-          </div>
-        )}
         {/* Statistics */}
         <div className="px-2.5 py-2 text-xs text-gray-600">
           {searchQuery.trim() ? (

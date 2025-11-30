@@ -10,15 +10,7 @@ interface InputCellProps {
   onCellClick?: (rowId: string, colId: string) => void;
 }
 
-/**
- * InputCell Component - Renders editable input cells
- *
- * DESIGN:
- * 1. Does NOT use props for 'value' to avoid re-rendering by parent.
- * 2. Uses `useRef` to maintain the input DOM element.
- * 3. Subscribes to GridStore to receive updates.
- * 4. Handles user input and updates GridStore on blur/enter.
- */
+
 const InputCell: React.FC<InputCellProps> = ({
   rowId,
   column,

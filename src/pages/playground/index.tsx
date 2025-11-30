@@ -47,8 +47,7 @@ export function PlaygroundPage() {
    */
   useEffect(() => {
     let isMounted = true;
-    async function initializeFromAllSources() {
-      await loadFormulasFromAllSources();
+    async function checkFormulas() {
       if (!isMounted) return;
 
       // Check if we have any formulas loaded
@@ -76,11 +75,11 @@ export function PlaygroundPage() {
         setNeedsImport(false);
       }
     }
-    void initializeFromAllSources();
+    void checkFormulas();
     return () => {
       isMounted = false;
     };
-  }, [loadFormulasFromAllSources]);
+  }, []);
 
   /**
    * Prompts the user for GitHub URLs (newline-separated), sanitizes input,
@@ -250,7 +249,7 @@ function UserLayout() {
 
   // Get selected formula from formula store
   const { selectedFormulaId, formulaDefinitions } = useFormulaStore();
-  
+
   // Get setCurrentFormula from spreadsheet store
   const setCurrentFormula = useSpreadsheetStore(
     (state) => state.setCurrentFormula

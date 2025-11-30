@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Plus, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,14 +14,9 @@ export function LocalFormulasPanel() {
   const [searchQuery, setSearchQuery] = useState("");
   // ✅ Reactive: Subscribe directly to pinnedFormulaIds Set
   const pinnedFormulaIds = usePinnedStore((state) => state.pinnedFormulaIds);
-  const { formulaDefinitions, loadFormulasFromAllSources } = useFormulaStore();
+  const { formulaDefinitions } = useFormulaStore();
   const navigate = useNavigate();
 
-  // Load formulas on component mount
-  useEffect(() => {
-    console.log("LocalFormulasPanel: Loading formulas...");
-    loadFormulasFromAllSources();
-  }, [loadFormulasFromAllSources]);
 
   const { pinnedFormulas, unpinnedFormulas, totalFilteredFormulas } =
     useMemo(() => {

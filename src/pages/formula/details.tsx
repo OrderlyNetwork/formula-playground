@@ -18,8 +18,6 @@ import { FormulaDocs } from "../playground/components/FormulaDocs";
 import { FormulaCode } from "../playground/components/FormulaCode";
 import { Progress } from "@/components/ui/progress";
 import { FormulaLogPanel } from "../datasheet/components/FormulaLogPanel";
-import { useAppStore } from "@/store/appStore";
-import { FormulaDevelopment } from "@/modules/development/FormulaDevelopment";
 
 const LoadingState = () => (
   <div className="flex-1 flex flex-col items-center justify-center gap-4 text-zinc-600">
@@ -43,8 +41,7 @@ export const FormulaDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { loadFormulasFromAllSources, formulaDefinitions, loading } =
-    useFormulaStore();
+  const { formulaDefinitions, loading } = useFormulaStore();
 
   const { tabs, activeTabId, addTab, closeTab, setActiveTab } =
     useFormulaTabStore();
@@ -56,15 +53,8 @@ export const FormulaDetails = () => {
   const isLogPanelOpen = useFormulaLogStore((state) => state.isOpen);
   const setLogPanelOpen = useFormulaLogStore((state) => state.setIsOpen);
 
-  const formulasLoadedRef = useRef(false);
   const logPanelRef = useRef<ImperativePanelHandle>(null);
 
-  useEffect(() => {
-    if (!formulasLoadedRef.current) {
-      formulasLoadedRef.current = true;
-      loadFormulasFromAllSources();
-    }
-  }, [loadFormulasFromAllSources]);
 
   // Sync log panel collapse state with store
   useEffect(() => {
