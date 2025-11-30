@@ -149,7 +149,7 @@ export const ArrayCell: React.FC<ArrayCellProps> = ({
                 value={editValue}
                 onChange={(value) => setEditValue(value || "")}
                 options={{
-                  fontSize: 12,
+                  fontSize: 14,
                   minimap: { enabled: false },
                   scrollBeyondLastLine: false,
                   wordWrap: "on",

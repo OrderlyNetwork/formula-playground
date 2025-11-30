@@ -65,7 +65,7 @@ function TabComponent({
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 px-3 py-2 text-xs border-r border-gray-300 cursor-pointer min-w-[120px] max-w-[200px]",
+        "group relative flex items-center gap-2 px-3 py-2 text-xs border-r border-gray-300 cursor-pointer min-w-[120px] max-w-[200px]",
         active
           ? "bg-white text-gray-900 "
           : "bg-gray-100 text-gray-600 hover:bg-gray-100"
@@ -89,7 +89,7 @@ function TabComponent({
       <span className="truncate flex-1">{label}</span>
       {isDirty && !isLoading && (
         <div
-          className="h-1.5 w-1.5 rounded-full bg-orange-500 absolute right-0 top-0"
+          className="h-1.5 w-1.5 rounded-full bg-orange-500 absolute right-1 top-1"
           title="Unsaved changes"
         />
       )}

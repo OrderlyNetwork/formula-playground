@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Card } from "../../../../components/common/Card";
-import { Globe, Radio, Search, Database } from "lucide-react";
+import { Globe, Radio, Search, Database, Braces } from "lucide-react";
 import {
   dataSourceManager,
   DataSourceType,
@@ -141,7 +141,7 @@ export function DataSourcePanel() {
           {filteredStaticDataSources.length > 0 && (
             <div>
               <div className="text-xs font-semibold text-gray-700 mb-1.5 px-2.5 flex items-center gap-1.5">
-                <Database size={14} strokeWidth={1.5} />
+                <Braces size={14} />
                 <span>Static Data</span>
               </div>
               <div className="px-2 space-y-1">

@@ -55,14 +55,15 @@ export const FormulaDetails = () => {
 
   const logPanelRef = useRef<ImperativePanelHandle>(null);
 
-
   // Sync log panel collapse state with store
   useEffect(() => {
-    if (logPanelRef.current) {
-      if (isLogPanelOpen) {
-        logPanelRef.current.expand();
-      } else {
-        logPanelRef.current.collapse();
+    const panel = logPanelRef.current;
+    if (panel) {
+      const isCollapsed = panel.isCollapsed();
+      if (isLogPanelOpen && isCollapsed) {
+        panel.expand();
+      } else if (!isLogPanelOpen && !isCollapsed) {
+        panel.collapse();
       }
     }
   }, [isLogPanelOpen]);
@@ -207,8 +208,8 @@ export const FormulaDetails = () => {
               minSize={20}
               collapsible={true}
               collapsedSize={0}
-              onCollapse={() => setLogPanelOpen(false)}
-              onExpand={() => setLogPanelOpen(true)}
+              // onCollapse={() => setLogPanelOpen(false)}
+              // onExpand={() => setLogPanelOpen(true)}
             >
               <FormulaLogPanel />
             </ResizablePanel>

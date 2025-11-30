@@ -179,7 +179,9 @@ export function HistoryPanel() {
 
         // Switch to the active formula tab if it exists in the snapshot
         if (snapshot.activeFormulaId) {
-          const formula = formulaDefinitions.find(f => f.id === snapshot.activeFormulaId);
+          const formula = formulaDefinitions.find(
+            (f) => f.id === snapshot.activeFormulaId
+          );
           const formulaName = formula?.name || snapshot.activeFormulaId;
           addTab(snapshot.activeFormulaId, formulaName, "grid");
         }
@@ -206,7 +208,7 @@ export function HistoryPanel() {
     >
       <div className="space-y-1.5">
         {!hasAnyHistory ? (
-          <p className="text-xs text-gray-500 p-3">No history</p>
+          <p className="text-xs text-gray-500 p-3">No snapshots</p>
         ) : (
           <>
             <div className="space-y-1.5 max-h-80 overflow-y-auto">
@@ -269,7 +271,6 @@ export function HistoryPanel() {
                                 </button>
                               </div>
                             )}
-
                           </div>
                           {!isEditing && (
                             <div className="text-[11px] text-gray-600 mt-1 line-clamp-2">

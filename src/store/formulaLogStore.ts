@@ -31,7 +31,7 @@ const MAX_LOGS = 20;
 
 export const useFormulaLogStore = create<FormulaLogStore>((set) => ({
   logs: [],
-  isOpen: true,
+  isOpen: false,
 
   addLog: (logData) => {
     const newLog: FormulaExecutionLog = {
