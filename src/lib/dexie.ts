@@ -30,6 +30,7 @@ export interface TabFormulaState {
   lastAccessTime: number; // For LRU cache management
   isDirty: boolean; // Has unsaved changes
   version: string; // Schema version for future migrations
+  urlDataHash?: string; // (Deprecated) Previously used for hash-based comparison, now uses deep content comparison
 }
 
 /**
