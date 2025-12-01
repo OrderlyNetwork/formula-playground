@@ -1,7 +1,12 @@
-import { SquareFunction, Database, Clock, Settings } from "lucide-react";
+import { Database, Clock, Settings, Sigma } from "lucide-react";
 import type { Table } from "../types";
 
-export type ActivePanel = 'formulas' | 'datasource' | 'history' | 'settings' | null;
+export type ActivePanel =
+  | "formulas"
+  | "datasource"
+  | "history"
+  | "settings"
+  | null;
 
 export interface Category {
   id: ActivePanel;
@@ -18,14 +23,29 @@ export interface PanelConfig {
 
 // Mock data for formulas - replace with actual store data if available
 export const mockFormulas = [
-  { id: "1", name: "Funding Fee", tags: ["trading", "fees"], creationType: "core" as const },
-  { id: "2", name: "Liquidation Price", tags: ["risk", "trading"], creationType: "core" as const },
-  { id: "3", name: "PnL Calculation", tags: ["profit", "loss"], creationType: "core" as const },
+  {
+    id: "1",
+    name: "Funding Fee",
+    tags: ["trading", "fees"],
+    creationType: "core" as const,
+  },
+  {
+    id: "2",
+    name: "Liquidation Price",
+    tags: ["risk", "trading"],
+    creationType: "core" as const,
+  },
+  {
+    id: "3",
+    name: "PnL Calculation",
+    tags: ["profit", "loss"],
+    creationType: "core" as const,
+  },
 ];
 
 // Categories configuration
 export const categories: Category[] = [
-  { id: "formulas", label: "Formulas", icon: SquareFunction },
+  { id: "formulas", label: "Formulas", icon: Sigma },
   { id: "datasource", label: "DataSource", icon: Database },
   { id: "history", label: "History", icon: Clock },
   { id: "settings", label: "Settings", icon: Settings },

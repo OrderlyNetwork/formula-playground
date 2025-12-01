@@ -25,19 +25,17 @@ export function IconButton({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
+          <button
             className={cn(
-              "h-8 w-8 hover:bg-zinc-800 transition-colors",
+              "h-8 w-8 hover:bg-zinc-500 transition-colors flex items-center justify-center rounded-md",
               isActive
                 ? "bg-zinc-700 text-white border border-zinc-600"
                 : "text-zinc-400 hover:text-white"
             )}
             onClick={onClick}
           >
-            <Icon className="h-5 w-5" />
-          </Button>
+            <Icon className="h-6 w-6" />
+          </button>
         </TooltipTrigger>
         <TooltipContent side="right">{category.label}</TooltipContent>
       </Tooltip>

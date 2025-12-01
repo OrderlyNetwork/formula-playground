@@ -5,6 +5,7 @@ import type { ActivePanel } from "./constants";
 import { categories } from "./constants";
 import { PANEL_REGISTRY } from "./panelRegistry";
 import { IconButton } from "./SharedComponents";
+import { Logo } from "./Logo";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -31,15 +32,22 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   return (
     <div className="flex">
       {/* Icon Strip */}
-      <div className="flex w-12 flex-col items-center py-4 gap-2 bg-gray-50 border-r border-gray-200 shrink-0">
-        {categories.map((category) => (
-          <IconButton
-            key={category.id}
-            category={category}
-            isActive={activePanel === category.id}
-            onClick={() => togglePanel(category.id)}
-          />
-        ))}
+      <div className="flex flex-col items-center">
+        {/* <div className="flex items-center justify-center py-3">
+          <a href="/">
+            <Logo />
+          </a>
+        </div> */}
+        <div className="flex w-14 flex-col items-center py-4 gap-3 bg-gray-50 border-r border-gray-200 shrink-0 flex-1">
+          {categories.map((category) => (
+            <IconButton
+              key={category.id}
+              category={category}
+              isActive={activePanel === category.id}
+              onClick={() => togglePanel(category.id)}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Sidebar Content */}
