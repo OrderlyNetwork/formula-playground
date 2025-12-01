@@ -1,8 +1,8 @@
 "use client";
-import { SquareFunction, Code2, Download, X, Pin, Sigma } from "lucide-react";
+import { Code2, Download, Pin, Sigma } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePinnedStore, selectIsPinned } from "@/store/usePinnedStore";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useMatch } from "react-router";
 import { useFormulaTabStore } from "@/store/formulaTabStore";
 
 export interface Formula {
@@ -49,12 +49,13 @@ export function FormulaItem({ formula }: { formula: Formula }) {
   // ✅ Reactive: Subscribe directly to pinned state for this formula
   const isPinned = usePinnedStore(selectIsPinned(formula.id));
   const togglePin = usePinnedStore((state) => state.togglePin);
-  const { addTab } = useFormulaTabStore();
+  const { addTab, activeTabId } = useFormulaTabStore();
   const navigate = useNavigate();
-  const params = useParams<{ id?: string }>();
+  const isFormulaDetailsPage = useMatch("/formula/:id");
 
-  // Check if this formula is currently active based on route params
-  const isActive = params.id === formula.id;
+  // Check if this formula is currently active based on activeTabId from store
+  // (since URL navigation is now handled silently via pushState)
+  const isActive = activeTabId === formula.id;
 
   const getCreationIcon = (creationType: string) => {
     switch (creationType) {
@@ -76,15 +77,22 @@ export function FormulaItem({ formula }: { formula: Formula }) {
 
   const handleFormulaClick = () => {
     console.log("FormulaItem: Clicked formula:", formula);
-    // Add formula to tab store and navigate
+    // Add formula to tab store
     addTab(formula.id, formula.name, "code");
-    navigate(`/formula/${formula.id}`);
+
+    if (isFormulaDetailsPage) {
+      // If already on details page, just update store (silent URL update handled in details.tsx)
+      useFormulaTabStore.getState().setActiveTab(formula.id);
+    } else {
+      // If on another page (e.g. dashboard, test page), we must navigate
+      navigate(`/formula/${formula.id}`);
+    }
   };
 
   return (
     <div
       className={cn(
-        "group flex items-center justify-between px-2 py-1.5 rounded cursor-pointer text-xs",
+        "group flex items-center justify-between px-2 py-1 rounded cursor-pointer text-[13px]",
         isActive ? "bg-gray-100 " : "hover:bg-gray-200 text-gray-900"
       )}
       onClick={handleFormulaClick}
@@ -99,7 +107,7 @@ export function FormulaItem({ formula }: { formula: Formula }) {
           {/* <Sigma size={16} /> */}
           <CreationIcon size={16} />
         </div>
-        <div className="truncate flex-1 min-w-0">{formula.name}</div>
+        <div className={cn("truncate flex-1 min-w-0",isActive?'font-semibold':'')}>{formula.name}</div>
       </div>
       <div className="opacity-0 group-hover:opacity-100 flex items-center ml-2 shrink-0">
         {isPinned ? (

@@ -111,15 +111,17 @@ export class GridStore {
       }
 
       // 4. Notify global change listeners (for persistence/auto-save)
-      // Only notify for editable columns (user input changes)
-      const column = this.columns.find((c) => c.id === colId);
-      if (
-        column &&
-        column.editable !== false &&
-        colId !== "index" &&
-        colId !== "result"
-      ) {
-        this.notifyGlobalChange();
+      // Only notify for editable columns (user input changes) and when not silent
+      if (!silent) {
+        const column = this.columns.find((c) => c.id === colId);
+        if (
+          column &&
+          column.editable !== false &&
+          colId !== "index" &&
+          colId !== "result"
+        ) {
+          this.notifyGlobalChange();
+        }
       }
     }
   }

@@ -80,12 +80,20 @@ export const FormulaDetails = () => {
       return;
     }
 
-    addTab(id, formula.name || id, "code");
-
+    // Only set active tab if it's different and we are initializing or navigating via browser
     if (id !== activeTabId) {
+      addTab(id, formula.name || id, "code");
       setActiveTab(id);
     }
-  }, [id, loading, formulaDefinitions, addTab, setActiveTab, activeTabId]);
+  }, [id, loading, formulaDefinitions, addTab, setActiveTab]);
+
+  // Silent URL update when activeTabId changes
+  useEffect(() => {
+    if (activeTabId && activeTabId !== id) {
+      const newUrl = `/formula/${activeTabId}`;
+      window.history.pushState(null, "", newUrl);
+    }
+  }, [activeTabId, id]);
 
   const currentFormula = useMemo(() => {
     if (!activeTabId) return undefined;
@@ -102,7 +110,7 @@ export const FormulaDetails = () => {
       const tab = tabs.find((t) => t.label === label);
       if (!tab) return;
 
-      const isClosingActiveTab = tab.id === id;
+      const isClosingActiveTab = tab.id === activeTabId;
       const tabIndex = tabs.findIndex((t) => t.id === tab.id);
 
       const remainingTabs = tabs.filter((t) => t.id !== tab.id);
