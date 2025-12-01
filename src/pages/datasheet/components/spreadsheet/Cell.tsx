@@ -121,7 +121,7 @@ const Cell: React.FC<CellProps> = ({
   }, [rowId, column, store, isSelected, onCellClick, _forceUpdateCounter]);
 
   const containerClass = cn(
-    "relative [&:not(:last-child)]:border-r border-b border-grid-border box-border overflow-hidden transition-colors focus-within:inset-ring-2 focus-within:inset-ring-blue-500 focus-within:z-10 [&:has([data-popover-open])]:inset-ring-2 [&:has([data-popover-open])]:inset-ring-blue-500 [&:has([data-popover-open])]:z-10",
+    "relative border-r border-b border-grid-border box-border overflow-hidden transition-colors focus-within:inset-ring-2 focus-within:inset-ring-blue-500 focus-within:z-10 [&:has([data-popover-open])]:inset-ring-2 [&:has([data-popover-open])]:inset-ring-blue-500 [&:has([data-popover-open])]:z-10",
     bgClass,
     className
   );

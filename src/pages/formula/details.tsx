@@ -51,7 +51,6 @@ export const FormulaDetails = () => {
   );
 
   const isLogPanelOpen = useFormulaLogStore((state) => state.isOpen);
-  const setLogPanelOpen = useFormulaLogStore((state) => state.setIsOpen);
 
   const logPanelRef = useRef<ImperativePanelHandle>(null);
 

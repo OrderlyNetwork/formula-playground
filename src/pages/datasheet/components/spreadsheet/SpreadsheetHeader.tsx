@@ -41,7 +41,7 @@ const SpreadsheetHeader: React.FC<SpreadsheetHeaderProps> = ({
                   ? "bg-blue-200 text-blue-900 border-blue-300"
                   : "text-gray-600"
               } `,
-              "[&:not(:last-child)]:border-r border-b border-gray-300",
+              "border-r border-b border-gray-300",
               className
             )}
             style={{ width: col.width, minWidth: col.width, ...style }}
