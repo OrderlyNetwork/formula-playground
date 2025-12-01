@@ -34,7 +34,11 @@ export class TypeAnalyzer {
 
     // For object-like parameters, extract structural properties
     // Skip property extraction for Decimal, other numeric wrapper types, and enums
-    if (baseType === "object" && !this.isNumericWrapperType(type) && !this.isEnumType(type)) {
+    if (
+      baseType === "object" &&
+      !this.isNumericWrapperType(type) &&
+      !this.isEnumType(type)
+    ) {
       const typeToAnalyze = array ? type.getArrayElementType() : type;
       if (typeToAnalyze) {
         const props = this.extractObjectProperties(typeToAnalyze);
@@ -100,7 +104,9 @@ export class TypeAnalyzer {
 
     // Check for decimal.js-light (Decimal) and other numeric wrapper types
     // The type might appear as an import path or direct type name
-    return /decimal\.js-light|\.default|Decimal|BigNumber|Big|BN/.test(typeText);
+    return /decimal\.js-light|\.default|Decimal|BigNumber|Big|BN/.test(
+      typeText
+    );
   }
 
   /**
@@ -121,14 +127,22 @@ export class TypeAnalyzer {
     // Get properties, using enum detector for proper filtering
     const symbols = EnumDetector.isEnumType(tsType)
       ? EnumDetector.getEnumProperties(tsType)
-      : tsType.getProperties().filter(symbol => {
+      : tsType.getProperties().filter((symbol) => {
           const name = symbol.getName();
           // Filter out basic prototype properties for non-enum types
           const prototypeProperties = [
-            'toString', 'toLocaleString', 'valueOf', 'hasOwnProperty',
-            'isPrototypeOf', 'propertyIsEnumerable', 'constructor',
-            '__defineGetter__', '__defineSetter__', '__lookupGetter__',
-            '__lookupSetter__', '__proto__'
+            "toString",
+            "toLocaleString",
+            "valueOf",
+            "hasOwnProperty",
+            "isPrototypeOf",
+            "propertyIsEnumerable",
+            "constructor",
+            "__defineGetter__",
+            "__defineSetter__",
+            "__lookupGetter__",
+            "__lookupSetter__",
+            "__proto__",
           ];
           return !prototypeProperties.includes(name);
         });
@@ -155,14 +169,18 @@ export class TypeAnalyzer {
   /**
    * Extract information from a single property symbol
    */
-  private extractPropertyInfo(symbol: any): NonNullable<FactorType["properties"]>[0] | null {
+  private extractPropertyInfo(
+    symbol: any
+  ): NonNullable<FactorType["properties"]>[0] | null {
     const key = symbol.getName();
     const decl = symbol.getValueDeclaration() ?? symbol.getDeclarations()?.[0];
     if (!decl) return null;
 
     const propType = symbol.getTypeAtLocation(decl);
     const isArray = propType.isArray();
-    const elementType = isArray ? propType.getArrayElementType() ?? propType : propType;
+    const elementType = isArray
+      ? propType.getArrayElementType() ?? propType
+      : propType;
     const baseType = this.getBaseType(elementType);
 
     const factorType: FactorType = {
@@ -187,13 +205,15 @@ export class TypeAnalyzer {
    * Extract JSDoc description from a declaration
    */
   private extractJSDocDescription(decl: any): string | undefined {
-    if (decl && 'getJsDocs' in decl && typeof decl.getJsDocs === 'function') {
+    if (decl && "getJsDocs" in decl && typeof decl.getJsDocs === "function") {
       const jsDocs = (decl as any).getJsDocs();
       if (jsDocs && jsDocs.length > 0) {
         const jsDoc = jsDocs[0];
-        return jsDoc.getDescription?.()?.toString() ||
-               jsDoc.getComment?.()?.toString().trim() ||
-               undefined;
+        return (
+          jsDoc.getDescription?.()?.toString() ||
+          jsDoc.getComment?.()?.toString().trim() ||
+          undefined
+        );
       }
     }
     return undefined;
@@ -203,7 +223,9 @@ export class TypeAnalyzer {
    * Parse properties from type text as fallback when ts-morph can't resolve types
    * Handles simple cases like: { holding: number; indexPrice: number; }
    */
-  private parsePropertiesFromTypeText(typeText: string): NonNullable<FactorType["properties"]> {
+  private parsePropertiesFromTypeText(
+    typeText: string
+  ): NonNullable<FactorType["properties"]> {
     const properties: NonNullable<FactorType["properties"]> = [];
 
     // Match object literal type: { prop1: type1; prop2: type2; }
@@ -214,13 +236,13 @@ export class TypeAnalyzer {
 
     // Simple split by semicolons - strip comments first for basic cases
     const cleanContent = content
-      .replace(/\/\*\*.*?\*\//gs, '') // Remove multi-line comments
-      .replace(/\/\/.*$/gm, '');     // Remove single-line comments
+      .replace(/\/\*\*.*?\*\//gs, "") // Remove multi-line comments
+      .replace(/\/\/.*$/gm, ""); // Remove single-line comments
 
     const propStrings = cleanContent
-      .split(';')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
+      .split(";")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
 
     // Parse each property string
     for (const propString of propStrings) {
@@ -228,12 +250,12 @@ export class TypeAnalyzer {
       const propMatch = propString.match(/^(\w+)\s*:\s*(.+)$/);
       if (!propMatch) continue;
 
-      const [, key, propTypeText] = propMatch.trim();
-      const isArray = propTypeText.includes('[]');
+      const [, key, propTypeText] = propMatch;
+      const isArray = propTypeText.includes("[]");
 
       // Extract element type for arrays (remove [] suffix)
       const elementTypeText = isArray
-        ? propTypeText.replace(/\s*\[\]\s*$/, '').trim()
+        ? propTypeText.replace(/\s*\[\]\s*$/, "").trim()
         : propTypeText;
 
       const baseType = this.inferTypeFromText(elementTypeText);
@@ -258,7 +280,7 @@ export class TypeAnalyzer {
    * Infer base type from type text (simple inference)
    */
   private inferTypeFromText(typeText: string): FormulaInputType {
-    const cleanType = typeText.trim().replace('[]', '');
+    const cleanType = typeText.trim().replace("[]", "");
 
     // Check for common number types
     if (/^(number|decimal|big(int|number)|bn)$/i.test(cleanType)) {
@@ -336,7 +358,11 @@ export class TypeAnalyzer {
     // For object return types, extract structural properties
     // Skip property extraction for Decimal, other numeric wrapper types, and enums
     // If it's an array of objects, extract properties from the array element type
-    if (baseType === "object" && !this.isNumericWrapperType(returnType) && !this.isEnumType(returnType)) {
+    if (
+      baseType === "object" &&
+      !this.isNumericWrapperType(returnType) &&
+      !this.isEnumType(returnType)
+    ) {
       const typeToAnalyze = array
         ? returnType.getArrayElementType()
         : returnType;

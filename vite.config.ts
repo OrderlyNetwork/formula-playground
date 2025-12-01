@@ -6,6 +6,9 @@ import tailwindcss from "@tailwindcss/vite";
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Set base path for GitHub Pages deployment
+  // Use repository name as base path in production environment
+  base: process.env.NODE_ENV === "production" ? "/formula-playground/" : "/",
   plugins: [
     react({
       babel: {
