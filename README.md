@@ -1,17 +1,71 @@
-# Formula Playground - MVP
+# Formula Playground
 
-An interactive formula verification tool for cryptocurrency trading calculations.
+> A verification tool for Orderly SDK calculation formulas
 
-## Phase 1 MVP Features
+[![Deploy to GitHub Pages](https://github.com/orderly/formula-playground/actions/workflows/deploy.yml/badge.svg)](https://github.com/orderly/formula-playground/actions/workflows/deploy.yml)
 
-- ✅ TypeScript formula execution
-- ✅ React Flow visualization with auto-layout
-- ✅ IndexedDB history tracking
-- ✅ Input parameter configuration
-- ✅ Result display and comparison UI
-- ✅ Pre-defined formula library
+## 🌟 Overview
 
-## Quick Start
+Formula Playground provides an interactive environment for testing, debugging, and validating Orderly SDK calculation formulas. It features a spreadsheet-like interface for formula development, real-time execution comparison between different engines, and comprehensive execution history tracking for regression testing.
+
+### ✅ Current Status: Phase 1 MVP Complete
+
+All core features are implemented and production-ready.
+
+## 🚀 Key Features
+
+### Core Functionality
+
+- **📊 Datasheet Mode**: Excel-like spreadsheet interface for formula input/output management
+  - Auto-calculation with dependency tracking
+  - Type-aware input cells (numbers, strings, arrays, objects)
+  - Multi-row batch testing
+  - Real-time formula execution with detailed logging
+- **🧪 Playground Mode**: Interactive formula testing environment
+
+  - Visual parameter configuration
+  - Multiple execution engines (TypeScript, Local NPM packages)
+  - Execution history and comparison
+  - Canvas snapshots for state restoration
+
+- **🔍 Formula Management**
+
+  - Load formulas from multiple sources:
+    - Built-in formula library
+    - GitHub repositories (via jsDelivr)
+    - Local file uploads
+    - jsDelivr CDN URLs
+    - Local npm packages (@orderly.network SDKs)
+  - JSDoc-based automatic metadata extraction
+  - Formula versioning and categorization
+  - User-imported formulas stored in IndexedDB
+
+- **⚡ Execution Engines**
+
+  - **TypeScript Engine**: Execute formulas in isolated Web Workers
+  - **Local NPM Engine**: Run formulas from installed @orderly.network packages
+  - **Future**: Rust WASM engine for performance comparison
+
+- **💾 Persistence & History**
+
+  - IndexedDB-based execution history
+  - Canvas snapshots for parameter combinations
+  - Run record tracking with full metadata
+  - Import/export capabilities
+
+- **🎨 Modern UI/UX**
+  - Monaco Editor integration for code viewing/editing
+  - Responsive resizable panel layouts
+  - Dark/light theme support
+  - Real-time syntax highlighting
+  - Markdown documentation rendering
+
+## 📦 Quick Start
+
+### Prerequisites
+
+- Node.js 20+
+- pnpm 10+
 
 ### Installation
 
@@ -22,98 +76,137 @@ pnpm install
 ### Development
 
 ```bash
+# Start development server
 pnpm dev
-```
 
-Open [http://localhost:5173](http://localhost:5173) to view the app.
+# Open http://localhost:5173
+```
 
 ### Build
 
 ```bash
+# Type check and build
+pnpm build:check
+
+# Build only
 pnpm build
-```
 
-### Preview Production Build
-
-```bash
+# Preview production build
 pnpm preview
 ```
 
-## Project Structure
+### Generate Formula Config
 
-```
-formula-playground/
-├── sdk-mock/               # Mock SDK with sample formulas
-│   └── ts/
-│       └── formulas.ts     # TypeScript formula implementations
-├── src/
-│   ├── components/         # Reusable UI components
-│   │   ├── common/         # Basic components (Button, Input, Card, etc.)
-│   │   └── formula-ui/     # Formula-specific components
-│   ├── constants/          # Constants and mock data
-│   │   └── mockFormulas.ts # Pre-parsed formula definitions
-│   ├── lib/                # Utility libraries
-│   │   ├── utils.ts        # General utilities
-│   │   ├── math.ts         # Math utilities
-│   │   └── dexie.ts        # IndexedDB setup
-│   ├── modules/            # Core business logic
-│   │   ├── formula-parser/ # TS source code parser (for future)
-│   │   ├── formula-executor/ # Formula execution via Web Worker
-│   │   ├── formula-graph/  # React Flow graph generation
-│   │   ├── history-manager/ # IndexedDB history management
-│   │   └── sdk-registry/   # SDK adapter registry
-│   ├── pages/              # Page components
-│   │   └── playground/     # Main playground page
-│   ├── store/              # Zustand state management
-│   │   ├── formulaStore.ts # Formula state
-│   │   ├── graphStore.ts   # Graph state
-│   │   └── historyStore.ts # History UI state
-│   └── types/              # TypeScript type definitions
-└── public/
-    └── formulaConfig.json  # Configuration file
+```bash
+# Generate formula configuration from source code
+pnpm generate:formulas
 ```
 
-## Available Formulas
+## 🛠️ Technology Stack
 
-1. **Funding Fee Calculation** - Calculate perpetual contract funding fees
-2. **Liquidation Price** - Calculate liquidation price for leveraged positions
-3. **Profit and Loss** - Calculate PnL for trading positions
-4. **Margin Requirement** - Calculate required margin for positions
-5. **Percentage Change** - Calculate percentage change between values
+### Core
 
-## Technology Stack
+- **React 19** - UI framework with React Compiler optimizations
+- **TypeScript 5.9** - Type-safe development with strict mode
+- **Vite 7** - Next-generation build tool
+- **pnpm 10** - Fast, disk space efficient package manager
 
-- **Framework**: React 19 + TypeScript
-- **Visualization**: React Flow + ELK.js
-- **State Management**: Zustand
-- **Storage**: Dexie.js (IndexedDB)
-- **Styling**: Tailwind CSS 4
-- **Build Tool**: Vite
-- **Parser**: ts-morph (for future SDK parsing)
+### State & Data
 
-## Phase 2 Roadmap (Coming Next)
+- **Zustand 5** - Lightweight state management (multi-store architecture)
+- **Dexie.js 4** - IndexedDB wrapper for persistent storage
+- **React Router 7** - Client-side routing
 
-- Rust WASM engine integration
-- Dual-engine comparison (TS vs Rust)
-- Error analysis and highlighting
-- Web Worker optimization
-- SDK source code parsing
+### UI & Styling
 
-## Phase 3 Roadmap (Future)
+- **Tailwind CSS 4** - Utility-first CSS framework
+- **Radix UI** - Accessible component primitives
+- **Lucide React** - Icon library
+- **Monaco Editor** - Code editor (VSCode engine)
+- **@tanstack/react-table** - Headless table library
+- **react-resizable-panels** - Resizable panel layouts
 
-- AI-powered formula explanations
-- Snapshot comparison
-- Visual error/performance reports
-- Code export functionality
-- Formula version management
+### Development Tools
 
-## Documentation
+- **ts-morph** - TypeScript AST manipulation for formula parsing
+- **ESLint 9** - Code linting
+- **babel-plugin-react-compiler** - React 19 compiler for optimizations
 
-See `/docs` folder for detailed documentation:
+### Orderly Network SDKs
 
-- `PRD.md` - Product Requirements Document
-- `TECH.md` - Technical Design Document
+- **@orderly.network/perp** - Perpetual contract formulas
+- **@orderly.network/net** - Network utilities
+- **@orderly.network/utils** - Shared utilities
 
-## License
+## 📐 Architecture
+
+### Module-Based Design
+
+The codebase follows a clean module-based architecture with focused, single-responsibility modules:
+
+- **formula-parser**: Extracts metadata from JSDoc annotations and analyzes TypeScript types
+- **formula-executor**: Handles formula execution in isolated Web Workers with multiple engine adapters
+- **formula-datasheet**: Provides tabular formula testing with auto-calculation and dependency tracking
+- **source-loader**: Loads formulas from GitHub, local files, jsDelivr, and npm packages
+- **history-manager**: Manages execution history and regression testing
+- **sdk-registry**: Registry pattern for SDK adapters
+
+### Execution Pattern
+
+- All formula calculations run in isolated Web Workers to prevent UI blocking
+- Typed message protocols for worker communication
+- Support for multiple execution engines (TypeScript, Local NPM, future Rust WASM)
+- Auto-detection of engine based on formula configuration
+- Comprehensive execution metadata (timing, status, engine info)
+
+### Data Models
+
+- **FormulaDefinition**: Complete formula metadata with inputs, outputs, source info
+- **RunRecord**: Execution history with inputs, outputs, timing, and comparison data
+- **CanvasSnapshot**: Saved states for formula parameters and configurations
+- **DataSheetRow**: Spreadsheet row with inputs, outputs, and calculation status
+
+## 🎯 Use Cases
+
+### Formula Development
+
+1. Create formulas with proper JSDoc annotations
+2. Test in datasheet mode with multiple input combinations
+3. View detailed execution logs and timing information
+4. Compare results across different parameter sets
+
+### SDK Validation
+
+1. Load formulas from @orderly.network SDK packages
+2. Execute in both TypeScript and Local NPM engines
+3. Compare results for consistency verification
+4. Track execution history for regression testing
+
+### Formula Library Management
+
+1. Import formulas from GitHub repositories
+2. Upload custom formula files
+3. Configure jsDelivr CDN sources
+4. Organize formulas by categories and tags
+
+## 🔄 Roadmap
+
+### Phase 2: Engine Comparison
+
+- [ ] Rust WASM engine integration
+- [ ] Side-by-side TypeScript vs Rust comparison
+- [ ] Performance benchmarking and visualization
+- [ ] Error analysis and highlighting
+
+### Phase 3: Advanced Features
+
+- [ ] AI-powered formula explanations
+- [ ] Visual diff for formula changes
+- [ ] Advanced performance reports
+- [ ] Formula marketplace
+- [ ] Code export functionality
+- [ ] Advanced debugging tools
+
+## 📄 License
 
 MIT
