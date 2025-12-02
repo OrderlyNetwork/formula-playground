@@ -183,7 +183,8 @@
                 "baseType": "number",
                 "nullable": false,
                 "array": false
-              }
+              },
+              "description": "\nSum of user's account unsettled PNL"
             }
           ]
         }
@@ -303,9 +304,9 @@
   },
   {
     "id": "maxQty",
-    "name": "maxQty",
+    "name": "Max Order QTY",
     "version": "1.0.0",
-    "description": "Maximum order quantity.",
+    "description": "## Max Long Quantity Formula\n\n```\nmax long qty = MIN (\n  base max,\n  (((Total_collateral_value - Other_IMs) / (Max(1 / Max Account Leverage, Base IMR i) + 2 * futures_take_fee_rate * 0.0001) / mark_price_i) * 0.995 - position_qty_this_symbol - sum_buy_order_qty_this_symbol),\n  ((((Total_collateral_value - Other_IMs) / IMR Factor i)^(1/1.8)) / mark_price_i - position_qty_this_symbol - sum_buy_order_qty_this_symbol) / (1 + 2 * futures_take_fee_rate * 0.0001) * 0.995\n)\n```\n\n## Max Short Quantity Formula\n\n```\nmax short qty = MIN (\n  base max,\n  (((Total_collateral_value - Other_IMs) / (Max(1 / Max Account Leverage, Base IMR i) + 2 * futures_take_fee_rate * 0.0001) / mark_price_i) * 0.995 + position_qty_this_symbol - sum_sell_order_qty_this_symbol),\n  ((((Total_collateral_value - Other_IMs) / IMR Factor i)^(1/1.8)) / mark_price_i + position_qty_this_symbol - sum_sell_order_qty_this_symbol) / (1 + 2 * futures_take_fee_rate * 0.0001) * 0.995\n)\n```\n\n## Reduce Only Mode\n\nWhen reduce only is enabled:\n- If `position_qty_i > 0`: max long qty = 0, max short qty = abs(position_qty_i)\n- If `position_qty_i < 0`: max long qty = abs(position_qty_i), max short qty = 0\n- If `position_qty_i = 0`: max long qty = 0, max short qty = 0\n\n## Variable Definitions\n\n| Variable | Description | API Reference |\n|----------|-------------|---------------|\n| `max long qty` | Maximum long quantity for current symbol | |\n| `max short qty` | Maximum short quantity for current symbol | |\n| `base_max` | Maximum quantity limit for opening a single position | `/v1/public/info.base_max` |\n| `Total_collateral_value` | Total value of collateral assets in user account (USDC denominated) | |\n| `Other_IMs` | Initial margin occupied by all other symbols excluding current symbol | |\n| `IMR_i (with_orders)` | Initial margin rate for a single symbol (considering both position/orders notional) | |\n| `Max Account Leverage` | Maximum leverage set by user | `/v1/client/info.max_leverage` |\n| `Base IMR i` | Base initial margin rate for a single symbol | `/v1/public/info` |\n| `IMR Factor i` | IMR calculation factor for a single symbol | `v1/client/info` |\n| `Position Notional i` | Sum of position notional for a single symbol | |\n| `Order Notional i` | Sum of order notional for a single symbol | |\n| `position_notional_with_orders_i` | Sum of position/orders notional for a single symbol | |\n| `mark_price_i` | Mark price for a single symbol | |\n| `position_qty_with_orders_i` | Sum of position/orders quantity for a single symbol | |\n| `position_qty_i` | Position quantity for a single symbol | |\n| `sum_position_qty_buy_orders_i` | Sum of long order quantity for a single symbol [algo orders ignored] | |\n| `sum_position_qty_sell_orders_i` | Sum of short order quantity for a single symbol [algo orders ignored] | |\n| `futures_take_fee_rate` | User's futures taker fee rate | `GET /v1/client/info` |\n\n## Calculation Details\n\n```\nOther_IMs = sum(position_notional_with_orders_i * IMR_i (with_orders)) // excluding current symbol\n\nIMR_i (with_orders) = Max(1 / Max Account Leverage, Base IMR i, IMR Factor i * Abs(Position Notional i + Order Notional i)^(4/5))\n\nposition_notional_with_orders_i = abs(mark_price_i * position_qty_with_orders_i)\n\nposition_qty_with_orders_i = max[abs(position_qty_i + sum_position_qty_buy_orders_i), abs(position_qty_i - sum_position_qty_sell_orders_i)]\n```\n\n## Example Calculation\n\n**Given:**\n- `futures_take_fee_rate = 8`\n- `BTC base max = 20`\n- `Total_collateral_value = 1981.66`\n- `Other_IMs = ETH Initial Margin = 4915.23 * 0.1 = 491.523`\n- `BTC mark_price_i = 25986.2`\n- `BTC position_qty_this_symbol = 0.2`\n- `sum_buy_order_qty_this_symbol = 0.3`\n- `sum_sell_order_qty_this_symbol = -0.5`\n\n**Max Long Quantity:**\n```\nmax long qty = MIN(\n  20 BTC,\n  ((1981.66 - 491.523) / (0.1 + 2 * 8 * 0.0001) / 25986.2 * 0.995 - 0.2 - 0.3) = 0.0615815026 BTC,\n  ((((1981.66 - 491.523) / 0.0000002512)^(1/1.8)) / 25986.2 - 0.2 - 0.3) / (1 + 2 * 8 * 0.0001) * 0.995 = 9.78216039 BTC\n) = 0.0615815026 BTC\n```\n\n**Max Short Quantity:**\n```\nmax short qty = MIN(\n  20 BTC,\n  ((1981.66 - 491.523) / (0.1 + 2 * 8 * 0.0001) / 25986.2 * 0.995 + 0.2 - 0.5) = 0.261581503 BTC,\n  ((((1981.66 - 491.523) / 0.0000002512)^(1/1.8)) / 25986.2 + 0.2 - 0.5) / (1 + 2 * 8 * 0.0001) * 0.995 = 9.98084249726 BTC\n) = 0.261581503 BTC\n```\n\n## Additional Examples\n\n**Base max qty calculation:**\n```\nBase max qty = (1981.66 - 491.523) / (0.1 + 2 * 8 * 0.0001) / 25986.2 * 0.995 = 0.561581503 BTC\n```\n\n**Different position scenarios:**\n\n1. **Short position -0.3 BTC:**\n   - max long qty = 0.561581503 - (-0.3) = 0.861581503\n   - max short qty = 0.561581503 + (-0.3) = 0.261581503\n\n2. **Short position -0.3 BTC + sell orders 0.1:**\n   - max long qty = 0.561581503 - (-0.3) = 0.861581503\n   - max short qty = 0.561581503 + (-0.3) - 0.1 = 0.161581503\n\n3. **Long position 0.3 BTC + buy orders 0.2 + sell orders 0.1:**\n   - max long qty = 0.561581503 - 0.3 - 0.2 = 0.061581503\n   - max short qty = 0.561581503 + 0.3 - 0.1 = 0.761581503\n\n## Special Case: Insufficient Collateral\n\nWhen `totalCollatValue <= newTotalIM`:\n\n```\nnewOrderSize_iter = ITERATE() return max(0, newOrderSize_iter * 99.5% + others)\n```\n\n**ITERATE() Algorithm:**\n```\nITERATE() {\n    iteratorLeverage = min(1 / Max Account Leverage, Base IMR i)\n    iteratorStep = 2\n\n    // First iteration (30 times)\n    for (i = 0; i < 30; i++) {\n        iteratorLeverage = max(0, iteratorLeverage - iteratorStep)\n        newOrderSize1 = (adjustedCollateral - othersIM) * iteratorLeverage / markPrice\n        calculate afterTradeIM\n        if (adjustedCollateral >= afterTradeIM) break\n    }\n\n    leftLeverage = iteratorLeverage\n    rightLeverage = min(maxLeverage_account, leftLeverage + iteratorStep)\n\n    // Binary search (30 times)\n    for (i = 0; i < 30; i++) {\n        midLeverage = (leftLeverage + rightLeverage) / 2\n        newOrderSize2 = (adjustedCollateral - othersIM) * midLeverage / markPrice\n        calculate afterTradeIM\n        precision = (adjustedCollateral - afterTradeIM) / adjustedCollateral\n\n        if (adjustedCollateral > afterTradeIM) {\n            leftLeverage = midLeverage\n            if (0 <= precision <= 0.5%) break\n        } else {\n            rightLeverage = midLeverage\n        }\n    }\n\n    return newOrderSize2\n}\n```",
     "inputs": [
       {
         "key": "side",
@@ -469,10 +470,124 @@
     }
   },
   {
-    "id": "estLiqPrice",
-    "name": "estLiqPrice",
+    "id": "totalUnrealizedROI",
+    "name": "Total Unrealized ROI",
     "version": "1.0.0",
-    "description": "Estimated liquidation price",
+    "description": "## Definition\n\n**Total Unrealized PNL** = Sum of unrealized profit and loss for all current positions of the user\n\n**Total Value** = User's total asset value (denominated in USDC), including assets that cannot be used as collateral\n\n## Example\n\n```\nTotal Unrealized ROI = 200.53 / ( 2982.66 - 200.53 ) * 100% = 7.21%\nTotal Unrealized PNL = 200.53\nTotal Value = 2982.66\n```",
+    "formula": "Total Unrealized ROI = Total Unrealized PNL / ( Total Value - Total Unrealized PNL ) * 100%",
+    "inputs": [
+      {
+        "key": "inputs",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": false,
+          "properties": [
+            {
+              "key": "totalUnrealizedPnL",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "totalValue",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number"
+        }
+      }
+    ],
+    "formulaText": "{\n  const { totalUnrealizedPnL, totalValue } = inputs;\n\n  return new Decimal(totalUnrealizedPnL)\n    .div(totalValue - totalUnrealizedPnL)\n    .toNumber();\n}",
+    "sourceCode": "export function totalUnrealizedROI(inputs: TotalUnrealizedROIInputs) {\n  const { totalUnrealizedPnL, totalValue } = inputs;\n\n  return new Decimal(totalUnrealizedPnL)\n    .div(totalValue - totalUnrealizedPnL)\n    .toNumber();\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "totalUnrealizedROI",
+      "enabled": true
+    }
+  },
+  {
+    "id": "mmr",
+    "name": "Total Maintenance Margin Ratio",
+    "version": "1.0.0",
+    "description": "## Definition\n\n**Total Maintenance Margin Ratio** = User's account maintenance margin ratio\n\n**sum(Position maintenance margin)** = Total maintenance margin of all user positions (denominated in USDC)\n\n**total_position_notional** = Sum of notional value of current positions\n\n**position_qty_i** = Position quantity for a single symbol\n\n**mark_price_i** = Mark price for a single symbol\n\n## Example\n\n```\nTotal Margin Ratio = 505.61 / 10112.43 * 100% = 4.99988628%\ntotal_position_notional = 10112.43\nabs(BTC position notional) = 5197.2\nabs(ETH position notional) = 4915.23\nsum(Position maintenance margin) = 505.61\nBTC position MM = 259.86\nETH position MM = 245.75\n```",
+    "formula": "Total Maintenance Margin Ratio = sum(Position maintenance margin) / total_position_notional * 100%, total_position_notional = sum(abs(position_qty_i * mark_price_i))",
+    "inputs": [
+      {
+        "key": "inputs",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": false,
+          "properties": [
+            {
+              "key": "positionsMMR",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "positionsNotional",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              },
+              "description": "\nNotional sum of all positions,\npositions.totalNotional()"
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number",
+          "nullable": true,
+          "array": false
+        },
+        "description": "number|null"
+      }
+    ],
+    "formulaText": "{\n  // If the user does not have any positions, return null\n  if (inputs.positionsNotional === 0) {\n    return null;\n  }\n  if (inputs.positionsMMR === 0) {\n    return null;\n  }\n  return new Decimal(inputs.positionsMMR)\n    .div(inputs.positionsNotional)\n    .toNumber();\n}",
+    "sourceCode": "export function MMR(inputs: AccountMMRInputs): number | null {\n  // If the user does not have any positions, return null\n  if (inputs.positionsNotional === 0) {\n    return null;\n  }\n  if (inputs.positionsMMR === 0) {\n    return null;\n  }\n  return new Decimal(inputs.positionsMMR)\n    .div(inputs.positionsNotional)\n    .toNumber();\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "MMR",
+      "enabled": true
+    }
+  },
+  {
+    "id": "estLiqPrice",
+    "name": "Est. Position liq. Price",
+    "version": "1.0.0",
+    "description": "## When user has positions:\n\n```\nEst. liq. Position Price = max(mark_price_i + (total_collateral_value - new_total_MM - order_fee) / (abs(position_qty_i + new_order_qty_i) * new_MMRi - (position_qty_i + new_order_qty_i)), 0)\n```\n\n## When user has no positions:\n\n```\nEst. liq. Position Price = max(order_price_i + (total_collateral_value - new_total_MM - order_fee) / (abs(position_qty_i + new_order_qty_i) * new_MMRi - (position_qty_i + new_order_qty_i)), 0)\n```\n\n## Formula Components:\n\n- `order_fee = new_order_qty_i * order_price_i * futures_take_fee_rate`\n- `new_total_MM = sum(abs(position_qty_i * mark_price_i + new_order_qty_i * order_price_i)) * MMRi)`\n- `new_MMRi = Max(Base_MMR_i, (Base_MMR_i / Base_IMR_i) * IMR_Factor_i * Abs(position_qty_i * mark_price_i + new_order_qty_i * limit_price_i)^(4/5))`\n\n## Order Price Determination:\n\n### Market Order:\n- **Long order**: `order_price_i = ask0`\n- **Short order**: `order_price_i = bid0`\n\n### Limit Order:\n\n#### Long order:\n- If `limit_price >= ask0`: `order_price_i = ask0`\n- If `limit_price < ask0`: `order_price_i = limit_price`\n\n#### Short order:\n- If `limit_price <= bid0`: `order_price_i = bid0`\n- If `limit_price > bid0`: `order_price_i = limit_price`\n\n## Parameter Definitions:\n\n| Parameter | Description |\n|-----------|-------------|\n| `Est. Position liq. Price` | Estimated liquidation price for the position |\n| `position_qty_i` | Position quantity for a single symbol |\n| `mark_price_i` | Mark price for a single symbol |\n| `total_collateral_value` | Total asset value of user's account margin (USDC denominated) |\n| `new_order_qty_i` | Symbol quantity when user prepares to open position (positive for long, negative for short) |\n| `new_total_MM` | Sum of current position maintenance margin (including prepared order maintenance margin) |\n| `new_MMR_i` | Maintenance margin rate for a single symbol (including prepared order notional consideration) |\n| `Base_MMR_i` | Base maintenance margin rate for a single symbol |\n| `Base_IMR_i` | Base initial margin rate for a single symbol |\n| `IMR_Factor_i` | IMR calculation factor for a single symbol, from v1/client/info |\n| `Position_Notional_i` | Sum of position notional for a single symbol |\n| `order_fee` | Estimated order fee when user prepares to open position |\n| `futures_take_fee_rate` | User's futures take fee rate, from GET /v1/client/info |\n| `order_price_i` | Estimated execution price when user prepares to open position |\n| `limit_price` | Price entered by user when preparing to open position |\n| `ask0` | Minimum ask price from orderbook |\n| `bid0` | Maximum bid price from orderbook |\n\n## Examples:\n\n### Market Order Example:\nLong BTC qty = 0.1, mark price = 25986.2, ask0 = 26000, BTC position_qty_i = 0.2, ETH position_qty_i = -3\nfutures_take_fee_rate = 0.06%\n\n**Result**: BTC Est. Position liq. Price = 21268.7316\n\n### Limit Order Example 1:\nLong BTC qty = 0.1, mark price = 25986.2, ask0 = 26000, limit price = 25000, BTC position_qty_i = 0.2, ETH position_qty_i = -3\n\n**Result**: BTC Est. Position liq. Price = 21250.9772\n\n### Limit Order Example 2:\nShort BTC qty = -0.1, mark price = 25986.2, bid0 = 25900, limit price = 25000, BTC position_qty_i = 0.2, ETH position_qty_i = -3\n\n**Result**: BTC Est. Position liq. Price = 9102.17368\n\n### No Position Example:\nLong BTC qty = 0.1, mark price = 25986.2, ask0 = 26000, limit price = 25000\n\n**Result**: BTC Est. Position liq. Price = 5472",
     "inputs": [
       {
         "key": "inputs",
@@ -646,6 +761,290 @@
     }
   },
   {
+    "id": "totalNotional",
+    "name": "Total Notional",
+    "version": "1.0.0",
+    "description": "## Term Definitions\n\n- **Total Notional**: Sum of current position notional values\n- **position_qty_i**: Single symbol position quantity\n- **mark_price_i**: Single symbol mark price\n\n## Example\n\n**Total Notional** = 10112.43\n\n**abs(BTC position notional)** = 5197.2\n\n**abs(ETH position notional)** = 4915.23",
+    "formula": "Total Notional = sum ( abs(position_qty_i * mark_price_i) )",
+    "inputs": [
+      {
+        "key": "positions",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": true,
+          "properties": [
+            {
+              "key": "account_id",
+              "type": "string",
+              "factorType": {
+                "baseType": "string",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "symbol",
+              "type": "string",
+              "factorType": {
+                "baseType": "string",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "position_qty",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "cost_position",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "last_sum_unitary_funding",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "pending_long_qty",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "pending_short_qty",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "settle_price",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "average_open_price",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "unrealized_pnl",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "unrealized_pnl_index",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "unrealized_pnl_ROI",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "unsettled_pnl",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "unsettled_pnl_ROI",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "unrealized_pnl_ROI_index",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "mark_price",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "index_price",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "est_liq_price",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "timestamp",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "mmr",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              },
+              "description": "\nMaintenance margin ratio"
+            },
+            {
+              "key": "imr",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "IMR_withdraw_orders",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "MMR_with_orders",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "pnl_24_h",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "fee_24_h",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "fundingFee",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": true,
+                "array": false
+              }
+            },
+            {
+              "key": "leverage",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number",
+          "nullable": false,
+          "array": false
+        },
+        "description": "The total notional value of all positions."
+      }
+    ],
+    "formulaText": "{\n  return positions.reduce((acc, cur) => {\n    return acc + notional(cur.position_qty, cur.mark_price);\n  }, 0);\n}",
+    "sourceCode": "export function totalNotional(positions: API.Position[]): number {\n  return positions.reduce((acc, cur) => {\n    return acc + notional(cur.position_qty, cur.mark_price);\n  }, 0);\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "totalNotional",
+      "enabled": true
+    }
+  },
+  {
     "id": "unrealizedPnL",
     "name": "unrealizedPnL",
     "version": "1.0.0",
@@ -717,9 +1116,10 @@
   },
   {
     "id": "unrealizedPnLROI",
-    "name": "unrealizedPnLROI",
+    "name": "Position unrealized ROI",
     "version": "1.0.0",
-    "description": "Calculates the return on investment (ROI) of a single position's unrealized profit or loss.",
+    "description": "## Term Definitions\n\n- **Position unrealized ROI**: Single symbol unrealized return on investment\n- **Position unrealized PNL**: Single symbol unrealized profit and loss\n- **IMR_i**: Single symbol initial margin rate\n- **Max Account Leverage**: User's current maximum account leverage setting\n- **Base IMR_i**: Single symbol base initial margin rate\n- **IMR Factor_i**: Single symbol IMR calculation factor, from v1/client/info\n- **Position Notional_i**: Single symbol position notional sum\n- **position_qty_i**: Single symbol position quantity\n- **entry_price_i**: Single symbol entry price (avg. open price)\n\n## Example\n\n**Position unrealized ROI** = Position unrealized PNL / (IMR_i * abs(position_qty_i * entry_price_i)) * 100% = 216.69 / (0.1 * abs(-3 * 1710.64)) * 100% = 42.22%\n\n**ETH IMR_i** = Max(1/10, 0.1, 0.0000003754 * abs(-4915.23)^(4/5)) = Max(0.1, 0.1, 0.000337077174) = 0.1\n\n- Max Account Leverage = 10\n- ETH Base IMR_i = 0.1\n- ETH IMR Factor_i = 0.0000003754\n- ETH position_qty_i = -3\n- ETH entry_price_i = 1710.64\n- ETH mark_price_i = 1638.41\n- ETH Position Notional = -3 * 1638.41 = -4915.23\n- ETH Position unrealized PNL = 216.69",
+    "formula": "Position unrealized ROI = Position unrealized PNL / ( IMR_i *  abs(position_qty_i * entry_price_i) ) * 100%, IMR_i = Max(1 / Max Account Leverage, Base IMR i, IMR Factor i * Abs(Position Notional i)^(4/5))",
     "inputs": [
       {
         "key": "inputs",
@@ -1076,9 +1476,10 @@
   },
   {
     "id": "liqPrice",
-    "name": "liqPrice",
+    "name": "Position Liquidation Price",
     "version": "1.0.0",
-    "description": "Calculates the liquidation price of a single position.",
+    "description": "## Term Definitions\n\n- **Position Liq. Price**: Single symbol position liquidation price\n- **total_collateral_value**: Total asset value of user account margin (USDC denominated)\n- **total_notional**: Sum of current position notional values\n- **position_qty_i**: Single symbol position quantity\n- **mark_price_i**: Single symbol mark price\n- **MMR_i**: Single symbol maintenance margin rate\n- **Base MMR_i**: Single symbol base maintenance margin rate\n- **Base IMR_i**: Single symbol base initial margin rate\n- **IMR Factor_i**: Single symbol IMR calculation factor, from v1/client/info\n- **Position Notional_i**: Single symbol position notional sum\n\n## MMR Formula\n\nMMR_i = Max(Base MMR_i, (Base MMR_i / Base IMR_i) * IMR Factor_i * Abs(Position Notional_i)^(4/5))\n\n## Example - BTC Position\n\n**BTC Position Liq. Price** = max(25986.2 + (1981.66 - 505.6215) / (abs(0.2) * 0.05 - 0.2), 0) = 18217.57\n\n- total_collateral_value = 1981.66\n- sum(abs(position_qty_i) * mark_price_i * MMR_i) = 505.6215\n- BTC: abs(position_qty_i) * mark_price_i * MMR_i = 5197.2 * 0.05\n- ETH: abs(position_qty_i) * mark_price_i * MMR_i = 4915.23 * 0.05\n- BTC MMR_i = Max(0.05, (0.05 / 0.1) * 0.0000002512 * 5197.2^(4/5)) = Max(0.05, 0.000117924809) = 0.05\n- position_qty_i = 0.2\n- mark_price_i = 25986.2\n\n## Example - ETH Position\n\n**ETH Position Liq. Price** = max(1638.41 + (1981.66 - 505.6215) / (abs(-3) * 0.05 + 3), 0) = 2106.99365\n\n- ETH MMR_i = Max(0.05, (0.05 / 0.1) * 0.0000003754 * 4915.23^(4/5)) = Max(0.05, 0.000168538587) = 0.05\n- position_qty_i = -3\n- mark_price_i = 1638.41",
+    "formula": "Position Liq. Price = max(mark_price_i + (total_collateral_value - sum(abs(position_qty_i) * mark_price_i * MMR_i)) / (abs(position_qty_i) * MMR_i - position_qty_i), 0)",
     "inputs": [
       {
         "key": "inputs",
@@ -1189,10 +1590,76 @@
     }
   },
   {
-    "id": "unsettlementPnl",
-    "name": "unsettlementPnL",
+    "id": "maintenanceMargin",
+    "name": "Position maintenance margin",
     "version": "1.0.0",
-    "description": "Calculates the unrealized profit or loss of each position.",
+    "description": "## Term Definitions\n\n- **Position maintenance margin**: Single symbol maintenance margin\n- **MMR_i**: Single symbol maintenance margin rate\n- **Base MMR_i**: Single symbol base maintenance margin rate\n- **Base IMR_i**: Single symbol base initial margin rate\n- **IMR Factor_i**: Single symbol IMR calculation factor, from v1/client/info\n- **Position Notional_i**: Single symbol position notional sum\n- **position_qty_i**: Single symbol position quantity\n- **mark_price_i**: Single symbol mark price\n\n## MMR Formula\n\nMMR_i = Max(Base MMR_i, (Base MMR_i / Base IMR_i) * IMR Factor_i * Abs(Position Notional_i)^(4/5))\n\n## Example\n\n**BTC Position maintenance margin** = abs(position_qty_i * mark_price_i * MMR_i) = abs(0.2 * 25986.2 * 0.05) = 259.86\n\n**BTC MMR_i** = Max(0.05, (0.05 / 0.1) * 0.0000002512 * 5197.2^(4/5)) = Max(0.05, 0.000117924809) = 0.05\n\n- BTC Base MMR_i = 0.05\n- BTC Base IMR_i = 0.1\n- BTC IMR Factor_i = 0.0000002512\n- Abs(BTC Position Notional_i) = 5197.2\n- position_qty_i = 0.2\n- mark_price_i = 25986.2",
+    "formula": "Position maintenance margin = abs (position_qty_i  * mark_price_i * MMR_i )",
+    "inputs": [
+      {
+        "key": "inputs",
+        "type": "object",
+        "factorType": {
+          "baseType": "object",
+          "constraints": {},
+          "nullable": false,
+          "array": false,
+          "properties": [
+            {
+              "key": "positionQty",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "markPrice",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "MMR",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "key": "result",
+        "type": "number",
+        "factorType": {
+          "baseType": "number"
+        },
+        "description": "The maintenance margin of the position."
+      }
+    ],
+    "formulaText": "{\n  const { positionQty, markPrice, MMR } = inputs;\n\n  return new Decimal(positionQty).mul(markPrice).mul(MMR).abs().toNumber();\n}",
+    "sourceCode": "export function maintenanceMargin(inputs: MMInputs) {\n  const { positionQty, markPrice, MMR } = inputs;\n\n  return new Decimal(positionQty).mul(markPrice).mul(MMR).abs().toNumber();\n}",
+    "localNpmInfo": {
+      "packageName": "@orderly.network/perp",
+      "functionName": "maintenanceMargin",
+      "enabled": true
+    }
+  },
+  {
+    "id": "unsettlementPnl",
+    "name": "Position Unrealized PNL",
+    "version": "1.0.0",
+    "description": "## Term Definitions\n\n- **Position Unrealized PNL**: Single symbol unrealized profit and loss\n- **position_qty_i**: Single symbol position quantity\n- **mark_price_i**: Single symbol mark price\n- **entry_price_i**: Single symbol entry price (avg. open price)\n\n## Example\n\n**ETH Position Unrealized PNL** = position_qty_i * (mark_price_i - entry_price_i) = -3 * (1638.41 - 1710.64) = 216.69\n\n- ETH position_qty_i = -3\n- ETH mark_price_i = 1638.41\n- ETH entry_price_i = 1710.64",
+    "formula": "Position Unrealized PNL = position_qty_i * (mark_price_i - entry_price_i)",
     "inputs": [
       {
         "key": "inputs",
@@ -1567,9 +2034,10 @@
   },
   {
     "id": "MMR",
-    "name": "MMR",
+    "name": "Position Maintenance Margin Rate",
     "version": "1.0.0",
-    "description": "Calculates the maintenance margin requirement (MMR) of a position.",
+    "description": "## Term Definitions\n\n- **MMR_i**: Single symbol maintenance margin rate\n- **Base MMR_i**: Single symbol base maintenance margin rate\n- **Base IMR_i**: Single symbol base initial margin rate\n- **IMR Factor_i**: Single symbol IMR calculation factor, from v1/client/info\n- **Position Notional_i**: Single symbol position notional sum\n- **position_qty_i**: Single symbol position quantity\n- **mark_price_i**: Single symbol mark price\n\n## Example\n\n**BTC MMR_i** = Max(0.05, (0.05 / 0.1) * 0.0000002512 * 5197.2^(4/5)) = Max(0.05, 0.000117924809) = 0.05\n\n- BTC Base MMR_i = 0.05\n- BTC Base IMR_i = 0.1\n- BTC IMR Factor_i = 0.0000002512\n- Abs(BTC Position Notional_i) = 5197.2\n- position_qty_i = 0.2\n- mark_price_i = 25986.2",
+    "formula": "MMR_i = Max(Base MMR_i, (Base MMR_i / Base IMR_i) * IMR Factor_i * Abs(Position Notional_i)^(4/5))",
     "inputs": [
       {
         "key": "inputs",

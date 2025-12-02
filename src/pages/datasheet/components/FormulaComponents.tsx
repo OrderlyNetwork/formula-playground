@@ -107,7 +107,14 @@ export function FormulaItem({ formula }: { formula: Formula }) {
           {/* <Sigma size={16} /> */}
           <CreationIcon size={16} />
         </div>
-        <div className={cn("truncate flex-1 min-w-0",isActive?'font-semibold text-zinc-900':'text-zinc-600')}>{formula.name}</div>
+        <div
+          className={cn(
+            "truncate flex-1 min-w-0 text-ellipsis h-5",
+            isActive ? "font-semibold text-zinc-900" : "text-zinc-600"
+          )}
+        >
+          {formula.name}
+        </div>
       </div>
       <div className="opacity-0 group-hover:opacity-100 flex items-center ml-2 shrink-0">
         {isPinned ? (

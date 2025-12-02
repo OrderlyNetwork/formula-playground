@@ -5,7 +5,6 @@ import type { ActivePanel } from "./constants";
 import { categories } from "./constants";
 import { PANEL_REGISTRY } from "./panelRegistry";
 import { IconButton } from "./SharedComponents";
-import { Logo } from "./Logo";
 
 interface SidebarProps {
   isOpen: boolean;

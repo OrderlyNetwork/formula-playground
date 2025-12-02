@@ -1,10 +1,7 @@
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useFormulaStore } from "@/store/formulaStore";
 import { Markdown } from "@/components/common/Markdown";
-import type { FormulaDefinition } from "@/types/formula";
 import { useSpreadsheetStore } from "@/store/spreadsheetStore";
-
-
 
 export function FormulaDocs() {
   const propFormula = useSpreadsheetStore((state) => state.currentFormula);
@@ -54,6 +51,8 @@ export function FormulaDocs() {
           )}
         </div>
       </div>
+      {/* 添加横向滚动条支持 */}
+      <ScrollBar orientation="horizontal" />
     </ScrollArea>
   );
 }

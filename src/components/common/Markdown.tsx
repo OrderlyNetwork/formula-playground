@@ -1,4 +1,5 @@
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface MarkdownProps {
   /**
@@ -13,7 +14,8 @@ interface MarkdownProps {
 
 /**
  * A reusable Markdown component that renders markdown content with consistent styling
- * Supports standard markdown elements including headings, lists, code blocks, links, etc.
+ * Supports standard markdown elements including headings, lists, code blocks, links, tables, etc.
+ * Uses remark-gfm for GitHub Flavored Markdown support (tables, strikethrough, task lists)
  */
 export function Markdown({ content, className = "" }: MarkdownProps) {
   return (
@@ -32,10 +34,14 @@ export function Markdown({ content, className = "" }: MarkdownProps) {
         [&_em]:italic
         [&_a]:text-blue-600 [&_a]:underline
         [&_blockquote]:border-l-4 [&_blockquote]:border-gray-300 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:my-2
+        [&_table]:w-full [&_table]:border-collapse [&_table]:my-3
+        [&_th]:border [&_th]:border-gray-300 [&_th]:bg-gray-100 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:text-sm
+        [&_td]:border [&_td]:border-gray-300 [&_td]:px-3 [&_td]:py-2 [&_td]:text-sm
+        [&_tr:hover]:bg-gray-50
+        [&_del]:line-through [&_del]:text-gray-500
         ${className}`}
     >
-      <ReactMarkdown>{content}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
     </div>
   );
 }
-
