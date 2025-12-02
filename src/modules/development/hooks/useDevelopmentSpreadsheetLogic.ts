@@ -11,7 +11,7 @@ import { dataSheetCalculator } from "@/modules/formula-datasheet/services/dataSh
 /**
  * Minimum number of rows to display in development spreadsheet
  */
-const MIN_ROWS = 50;
+const MIN_ROWS = 10;
 
 interface UseDevelopmentSpreadsheetLogicParams {
   formula: FormulaDefinition | null;
@@ -111,7 +111,11 @@ export const useDevelopmentSpreadsheetLogic = ({
           } else if (input.type === "boolean") {
             // Convert to boolean
             const stringValue = String(cellValue);
-            if (stringValue === "" || stringValue === "null" || stringValue === "undefined") {
+            if (
+              stringValue === "" ||
+              stringValue === "null" ||
+              stringValue === "undefined"
+            ) {
               inputs[input.key] = null;
             } else {
               inputs[input.key] = stringValue === "true" || stringValue === "1";
@@ -124,11 +128,13 @@ export const useDevelopmentSpreadsheetLogic = ({
                   ? JSON.parse(cellValue)
                   : cellValue;
             } catch {
-              inputs[input.key] = cellValue === "" || cellValue === null ? null : cellValue;
+              inputs[input.key] =
+                cellValue === "" || cellValue === null ? null : cellValue;
             }
           } else {
             // String or other types - use as-is (convert null and empty string to null)
-            inputs[input.key] = cellValue === "" || cellValue === null ? null : cellValue;
+            inputs[input.key] =
+              cellValue === "" || cellValue === null ? null : cellValue;
           }
         }
 
@@ -136,9 +142,11 @@ export const useDevelopmentSpreadsheetLogic = ({
 
         // Validate parameters before calculation
         const isValid = dataSheetCalculator.preArgsCheck(formula, inputs);
-        
+
         if (!isValid) {
-          console.log(`[Dev Mode] ⚠️ Parameter validation failed - skipping calculation`);
+          console.log(
+            `[Dev Mode] ⚠️ Parameter validation failed - skipping calculation`
+          );
           // Clear result when validation fails
           gridStoreRef.current.setValue(rowId, "result", "", true);
           gridStoreRef.current.setValue(rowId, "executionTime", "", true);

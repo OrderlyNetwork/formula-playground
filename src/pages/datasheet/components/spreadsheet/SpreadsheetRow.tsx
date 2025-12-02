@@ -37,10 +37,7 @@ const SpreadsheetRow: React.FC<SpreadsheetRowProps> = ({
   style,
 }) => {
   return (
-    <div
-      className="flex min-w-max group absolute top-0 left-0 w-full"
-      style={style}
-    >
+    <div className="flex min-w-max group w-full" style={style}>
       {/* Row Number - Sticky Left */}
       <div
         onClick={() => onRowHeaderClick(rowId)}

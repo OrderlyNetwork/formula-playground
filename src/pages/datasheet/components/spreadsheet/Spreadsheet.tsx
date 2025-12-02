@@ -5,7 +5,6 @@ import type { FlattenedPath } from "@/utils/formulaTableUtils";
 import SpreadsheetToolbar from "./SpreadsheetToolbar";
 import SpreadsheetHeader from "./SpreadsheetHeader";
 import SpreadsheetRow from "./SpreadsheetRow";
-import { useSpreadsheetVirtualization } from "./hooks/useSpreadsheetVirtualization";
 
 /**
  * Selection type for rows and columns
@@ -77,9 +76,6 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
   flattenedPaths,
   showToolbar = true,
 }) => {
-  // Use virtualization hook for efficient rendering of large datasets
-  const { parentRef, rowVirtualizer } = useSpreadsheetVirtualization(rowIds);
-
   return (
     <div className="flex flex-col h-full shadow-sm overflow-hidden">
       {/* Toolbar */}
@@ -93,11 +89,8 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
         />
       )}
 
-      {/* Grid Container with Virtual Scrolling */}
-      <div
-        ref={parentRef}
-        className="flex-1 overflow-auto relative scrollbar-thin"
-      >
+      {/* Grid Container */}
+      <div className="flex-1 overflow-auto relative scrollbar-thin">
         {/* Header Row - Sticky */}
         <SpreadsheetHeader
           columns={columns}
@@ -106,32 +99,22 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
           onDeleteColumn={onDeleteColumn}
         />
 
-        {/* Virtualized Data Rows */}
-        <div
-          style={{
-            position: "relative",
-            height: `${rowVirtualizer.getTotalSize()}px`,
-          }}
-        >
-          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-            const rowId = rowIds[virtualRow.index];
+        {/* Data Rows */}
+        <div>
+          {rowIds.map((rowId, index) => {
             const isRowSelected = selectedRowIds.has(rowId);
 
             return (
               <SpreadsheetRow
                 key={rowId}
                 rowId={rowId}
-                rowIndex={virtualRow.index}
+                rowIndex={index}
                 columns={columns}
                 store={gridStore!}
                 isRowSelected={isRowSelected}
                 selectedColIds={selectedColIds}
                 onRowHeaderClick={onRowHeaderClick}
                 onCellClick={onCellClick}
-                style={{
-                  height: `${virtualRow.size}px`,
-                  transform: `translateY(${virtualRow.start}px)`,
-                }}
               />
             );
           })}

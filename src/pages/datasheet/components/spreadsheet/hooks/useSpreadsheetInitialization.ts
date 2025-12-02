@@ -8,7 +8,7 @@ import { generateColumnsFromFormula } from "../spreadsheetUtils";
 /**
  * Minimum number of rows to display in spreadsheet
  */
-const MIN_ROWS = 50;
+const MIN_ROWS = 10;
 
 interface UseSpreadsheetInitializationParams {
   currentFormula: FormulaDefinition | null;
