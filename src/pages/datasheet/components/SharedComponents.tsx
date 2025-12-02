@@ -27,10 +27,10 @@ export function IconButton({
         <TooltipTrigger asChild>
           <button
             className={cn(
-              "h-8 w-8 hover:bg-zinc-500 transition-colors flex items-center justify-center rounded-md",
+              "h-8 w-8 hover:bg-primary/20 transition-colors flex items-center justify-center rounded-md",
               isActive
-                ? "bg-zinc-700 text-white border border-zinc-600"
-                : "text-zinc-400 hover:text-white"
+                ? "bg-primary hover:bg-primary/80 text-white border border-primary"
+                : "text-gray-500 hover:text-primary/80"
             )}
             onClick={onClick}
           >

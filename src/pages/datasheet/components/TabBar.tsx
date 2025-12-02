@@ -74,15 +74,15 @@ function TabComponent({
     >
       <div className="relative">
         {type === "code" ? (
-          <span className="text-purple-600">
+          <span className="text-primary">
             <Sigma size={18} />
           </span>
         ) : (
-          <LayoutGrid className="h-3 w-3 text-purple-600" />
+          <LayoutGrid className="h-3 w-3 text-primary" />
         )}
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/80">
-            <Loader2 className="h-3 w-3 animate-spin text-purple-600" />
+            <Loader2 className="h-3 w-3 animate-spin text-primary" />
           </div>
         )}
       </div>
