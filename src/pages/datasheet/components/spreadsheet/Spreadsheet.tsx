@@ -98,48 +98,43 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
         ref={parentRef}
         className="flex-1 overflow-auto relative scrollbar-thin"
       >
+        {/* Header Row - Sticky */}
+        <SpreadsheetHeader
+          columns={columns}
+          selectedColIds={selectedColIds}
+          onColHeaderClick={onColHeaderClick}
+          onDeleteColumn={onDeleteColumn}
+        />
+
+        {/* Virtualized Data Rows */}
         <div
-          className="inline-block min-w-full"
-          style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+          style={{
+            position: "relative",
+            height: `${rowVirtualizer.getTotalSize()}px`,
+          }}
         >
-          {/* Header Row - Sticky */}
-          <SpreadsheetHeader
-            columns={columns}
-            selectedColIds={selectedColIds}
-            onColHeaderClick={onColHeaderClick}
-            onDeleteColumn={onDeleteColumn}
-          />
+          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+            const rowId = rowIds[virtualRow.index];
+            const isRowSelected = selectedRowIds.has(rowId);
 
-          {/* Virtualized Data Rows */}
-          <div
-            style={{
-              position: "relative",
-              height: `${rowVirtualizer.getTotalSize()}px`,
-            }}
-          >
-            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const rowId = rowIds[virtualRow.index];
-              const isRowSelected = selectedRowIds.has(rowId);
-
-              return (
-                <SpreadsheetRow
-                  key={rowId}
-                  rowId={rowId}
-                  rowIndex={virtualRow.index}
-                  columns={columns}
-                  store={gridStore!}
-                  isRowSelected={isRowSelected}
-                  selectedColIds={selectedColIds}
-                  onRowHeaderClick={onRowHeaderClick}
-                  onCellClick={onCellClick}
-                  style={{
-                    height: `${virtualRow.size}px`,
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
-                />
-              );
-            })}
-          </div>
+            return (
+              <SpreadsheetRow
+                key={rowId}
+                rowId={rowId}
+                rowIndex={virtualRow.index}
+                columns={columns}
+                store={gridStore!}
+                isRowSelected={isRowSelected}
+                selectedColIds={selectedColIds}
+                onRowHeaderClick={onRowHeaderClick}
+                onCellClick={onCellClick}
+                style={{
+                  height: `${virtualRow.size}px`,
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              />
+            );
+          })}
         </div>
       </div>
     </div>

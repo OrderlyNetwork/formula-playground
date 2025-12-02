@@ -87,14 +87,6 @@ export const FormulaDetails = () => {
     }
   }, [id, loading, formulaDefinitions, addTab, setActiveTab]);
 
-  // Silent URL update when activeTabId changes
-  useEffect(() => {
-    if (activeTabId && activeTabId !== id) {
-      const newUrl = `/formula/${activeTabId}`;
-      window.history.pushState(null, "", newUrl);
-    }
-  }, [activeTabId, id]);
-
   const currentFormula = useMemo(() => {
     if (!activeTabId) return undefined;
     return formulaDefinitions.find((f) => f.id === activeTabId);

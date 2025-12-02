@@ -77,16 +77,14 @@ export function FormulaItem({ formula }: { formula: Formula }) {
 
   const handleFormulaClick = () => {
     console.log("FormulaItem: Clicked formula:", formula);
-    // Add formula to tab store
+    // Add formula to tab store (will also set as active if not already open)
     addTab(formula.id, formula.name, "code");
 
-    if (isFormulaDetailsPage) {
-      // If already on details page, just update store (silent URL update handled in details.tsx)
-      useFormulaTabStore.getState().setActiveTab(formula.id);
-    } else {
-      // If on another page (e.g. dashboard, test page), we must navigate
-      navigate(`/formula/${formula.id}`);
-    }
+    // Always navigate to update URL - URL is the single source of truth
+    // The useEffect in details.tsx will sync activeTabId from the URL
+    navigate(`/formula/${formula.id}`, {
+      replace: true,
+    });
   };
 
   return (
