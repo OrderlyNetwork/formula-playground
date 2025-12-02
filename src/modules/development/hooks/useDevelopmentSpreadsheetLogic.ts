@@ -1,9 +1,12 @@
-import { useEffect, useCallback, useRef } from "react";
-import type { FormulaDefinition } from "@/types/formula";
+import React, { useEffect, useCallback, useRef } from "react";
+import type { FormulaDefinition, FormulaScalar } from "@/types/formula";
 import type { FlattenedPath } from "@/utils/formulaTableUtils";
 import type { ColumnDef, RowDef } from "@/types/spreadsheet";
 import { GridStore } from "@/store/spreadsheet";
 import { generateColumnsFromFormula } from "@/pages/datasheet/components/spreadsheet/spreadsheetUtils";
+import { compiledFunctionCache } from "@/modules/development/compiledFunctionCache";
+import DevelopmentResultCell from "@/modules/development/components/DevelopmentResultCell";
+import { dataSheetCalculator } from "@/modules/formula-datasheet/services/dataSheetCalculator";
 
 /**
  * Minimum number of rows to display in development spreadsheet
@@ -56,17 +59,141 @@ export const useDevelopmentSpreadsheetLogic = ({
 
   /**
    * Handle row calculation when cell changes
-   * For development mode, we just log the calculation (no actual execution)
+   * Uses pre-compiled function from cache (compiled during Parse)
    */
   const handleCalculateRow = useCallback(
     async (rowId: string, colId: string) => {
-      console.log(`[Dev Mode] Cell changed: row=${rowId}, col=${colId}`);
+      // Only execute if we have a formula and grid store
+      if (!formula || !gridStoreRef.current) {
+        console.log(
+          `[Dev Mode] Skipping calculation - no formula or grid store`
+        );
+        return;
+      }
 
-      // In development mode, we don't execute formulas automatically
-      // Users can manually test formulas using the execute button
-      // This callback is still needed for GridStore compatibility
+      console.log(
+        `[Dev Mode] Cell changed: row=${rowId}, col=${colId}, executing formula...`
+      );
+
+      const startTime = performance.now();
+
+      try {
+        // Get pre-compiled function from cache
+        const compiledFunc = compiledFunctionCache.get(formula.id);
+
+        if (!compiledFunc) {
+          const errorMsg = `Formula ${formula.id} not compiled. Please click Parse button first.`;
+          console.error(`[Dev Mode] ❌`, errorMsg);
+          gridStoreRef.current.setValue(
+            rowId,
+            "result",
+            `Error: ${errorMsg}`,
+            true
+          );
+          return;
+        }
+
+        // Build inputs object from current row values
+        const inputs: Record<string, FormulaScalar> = {};
+        for (const input of formula.inputs) {
+          const cellValue = gridStoreRef.current.getValue(rowId, input.key);
+
+          // Parse the value based on input type
+          if (input.type === "number") {
+            // Convert to number, handle empty strings and null
+            const stringValue = cellValue?.toString() || "";
+            if (stringValue === "") {
+              inputs[input.key] = null;
+            } else {
+              const parsed = parseFloat(stringValue);
+              inputs[input.key] = isNaN(parsed) ? null : parsed;
+            }
+          } else if (input.type === "boolean") {
+            // Convert to boolean
+            const stringValue = String(cellValue);
+            if (stringValue === "" || stringValue === "null" || stringValue === "undefined") {
+              inputs[input.key] = null;
+            } else {
+              inputs[input.key] = stringValue === "true" || stringValue === "1";
+            }
+          } else if (input.type === "object") {
+            // Try to parse as JSON for object types
+            try {
+              inputs[input.key] =
+                typeof cellValue === "string"
+                  ? JSON.parse(cellValue)
+                  : cellValue;
+            } catch {
+              inputs[input.key] = cellValue === "" || cellValue === null ? null : cellValue;
+            }
+          } else {
+            // String or other types - use as-is (convert null and empty string to null)
+            inputs[input.key] = cellValue === "" || cellValue === null ? null : cellValue;
+          }
+        }
+
+        console.log(`[Dev Mode] Built inputs:`, inputs);
+
+        // Validate parameters before calculation
+        const isValid = dataSheetCalculator.preArgsCheck(formula, inputs);
+        
+        if (!isValid) {
+          console.log(`[Dev Mode] ⚠️ Parameter validation failed - skipping calculation`);
+          // Clear result when validation fails
+          gridStoreRef.current.setValue(rowId, "result", "", true);
+          gridStoreRef.current.setValue(rowId, "executionTime", "", true);
+          return;
+        }
+
+        console.log(`[Dev Mode] ✅ Parameter validation passed, executing...`);
+
+        // Convert inputs to array of arguments in the correct order
+        const args = formula.inputs.map((input) => inputs[input.key]);
+
+        // Execute the pre-compiled function
+        let result = compiledFunc(...args);
+
+        // Handle async functions
+        if (result instanceof Promise) {
+          result = await result;
+        }
+
+        const durationMs = performance.now() - startTime;
+
+        console.log(
+          `[Dev Mode] ✅ Execution successful: ${result} (${durationMs.toFixed(
+            2
+          )}ms)`
+        );
+
+        // Update the result column with the output
+        gridStoreRef.current.setValue(rowId, "result", String(result), true);
+
+        // Also store execution metadata
+        gridStoreRef.current.setValue(
+          rowId,
+          "executionTime",
+          `${durationMs.toFixed(2)}ms`,
+          true
+        );
+      } catch (error) {
+        const durationMs = performance.now() - startTime;
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(
+          `[Dev Mode] ❌ Execution failed (${durationMs.toFixed(2)}ms):`,
+          errorMsg
+        );
+
+        // Write error to result column
+        gridStoreRef.current.setValue(
+          rowId,
+          "result",
+          `Error: ${errorMsg}`,
+          true
+        );
+      }
     },
-    []
+    [formula]
   );
 
   /**
@@ -98,7 +225,16 @@ export const useDevelopmentSpreadsheetLogic = ({
     // Generate columns from formula structure
     const initialColumns =
       flattenedPaths.length > 0
-        ? generateColumnsFromFormula(flattenedPaths)
+        ? generateColumnsFromFormula(
+            flattenedPaths,
+            // Custom ResultCell renderer for development mode
+            (rowId, column, store) =>
+              React.createElement(DevelopmentResultCell, {
+                rowId,
+                column,
+                store,
+              })
+          )
         : [];
 
     // Generate initial rows
@@ -145,7 +281,16 @@ export const useDevelopmentSpreadsheetLogic = ({
     if (!formula || !gridStoreRef.current) return;
 
     if (flattenedPaths.length > 0) {
-      const newColumns = generateColumnsFromFormula(flattenedPaths);
+      const newColumns = generateColumnsFromFormula(
+        flattenedPaths,
+        // Custom ResultCell renderer for development mode
+        (rowId, column, store) =>
+          React.createElement(DevelopmentResultCell, {
+            rowId,
+            column,
+            store,
+          })
+      );
       setColumns(newColumns);
       setColumnsReady(true);
     }

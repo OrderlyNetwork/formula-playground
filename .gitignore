@@ -26,3 +26,4 @@ dist-ssr
 test-formulas.json
 .claude
 .cursor
+.pnpm-store

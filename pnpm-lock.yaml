@@ -65,6 +65,9 @@ importers:
       es-toolkit:
         specifier: ^1.42.0
         version: 1.42.0
+      esbuild-wasm:
+        specifier: ^0.24.2
+        version: 0.24.2
       highlight.js:
         specifier: ^11.10.0
         version: 11.11.1
@@ -1483,6 +1486,11 @@ packages:
 
   es-toolkit@1.42.0:
     resolution: {integrity: sha512-SLHIyY7VfDJBM8clz4+T2oquwTQxEzu263AyhVK4jREOAwJ+8eebaa4wM3nlvnAqhDrMm2EsA6hWHaQsMPQ1nA==}
+
+  esbuild-wasm@0.24.2:
+    resolution: {integrity: sha512-03/7Z1gD+ohDnScFztvI4XddTAbKVmMEzCvvkBpQdWKEXJ+73dTyeNrmdxP1Q0zpDMFjzUJwtK4rLjqwiHbzkw==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   esbuild@0.25.11:
     resolution: {integrity: sha512-KohQwyzrKTQmhXDW1PjCv3Tyspn9n5GcY2RTDqeORIdIJY8yKIF7sTSopFmn/wpMPW4rdPXI0UE5LJLuq3bx0Q==}
@@ -3618,6 +3626,8 @@ snapshots:
       tapable: 2.3.0
 
   es-toolkit@1.42.0: {}
+
+  esbuild-wasm@0.24.2: {}
 
   esbuild@0.25.11:
     optionalDependencies:

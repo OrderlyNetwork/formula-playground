@@ -78,8 +78,6 @@ export const useSpreadsheetCalculation = (
         // Reconstruct formula inputs for tracking
         const inputs = reconstructFormulaInputs(currentRowData, currentFormula);
 
-        console.log("inputs", inputs, currentRowData);
-
         if (!dataSheetCalculator.preArgsCheck(currentFormula, inputs)) {
           return;
         }

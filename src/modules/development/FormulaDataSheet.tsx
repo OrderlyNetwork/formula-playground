@@ -136,13 +136,11 @@ export const FormulaDataSheet = () => {
     [deleteColumnAction]
   );
 
-  console.log("------->>>parsedFormulas", formula, flattenedPaths);
-
   // Show placeholder if no formula is available
   if (!formula) {
     return (
       <div className="h-full flex items-center justify-center text-gray-500">
-        No formula available for testing
+        No formula available for testing, Please parse the formula first
       </div>
     );
   }

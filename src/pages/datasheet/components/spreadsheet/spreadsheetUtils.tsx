@@ -11,9 +11,17 @@ export const generateId = () => Math.random().toString(36).substr(2, 9);
 
 /**
  * Generate columns from formula flattened paths
+ * @param flattenedPaths - Flattened formula input paths
+ * @param createResultCellRenderer - Optional callback to create custom ResultCell renderer
+ *                                    If not provided, uses default ResultCell component
  */
 export const generateColumnsFromFormula = (
-  flattenedPaths: FlattenedPath[]
+  flattenedPaths: FlattenedPath[],
+  createResultCellRenderer?: (
+    rowId: string,
+    column: ColumnDef,
+    store: GridStore
+  ) => React.ReactElement
 ): ColumnDef[] => {
   const columns: ColumnDef[] = [];
 
@@ -57,10 +65,11 @@ export const generateColumnsFromFormula = (
     editable: false,
     sticky: "right",
     // className:'flex-1',
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    render: (rowId: string, column: ColumnDef, _: GridStore) => {
-      return <ResultCell rowId={rowId} column={column} />;
-    },
+    render: createResultCellRenderer
+      ? createResultCellRenderer
+      : (rowId: string, column: ColumnDef, _: GridStore) => {
+          return <ResultCell rowId={rowId} column={column} />;
+        },
   });
 
   return columns;

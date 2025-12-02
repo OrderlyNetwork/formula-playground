@@ -4,6 +4,12 @@ import type { FormulaExecutionResult } from "../types/executor";
 import type { RunRecord } from "../types/history";
 import { useUserCodeStore } from "./userCodeStore";
 import { BaseFormulaStore } from "./BaseFormulaStore";
+import { codeCompiler } from "@/modules/formula-executor/code-compiler";
+import { CodeExecutionUtils } from "@/modules/formula-executor/utils/code-execution-utils";
+import {
+  compiledFunctionCache,
+  hashSourceCode,
+} from "@/modules/development/compiledFunctionCache";
 
 /**
  * Multiline TypeScript sample used as the default content when the
@@ -23,6 +29,29 @@ export function add(a: number, b: number): number {
   return a + b;
 }
 `;
+
+/**
+ * Extract executable function from compiled JavaScript code
+ * The compiled code (in CJS format) uses: exports.functionName = ...
+ *
+ * @param jsCode - Compiled JavaScript code
+ * @returns Executable function
+ */
+// eslint-disable-next-line @typescript-eslint/ban-types
+function extractFunctionFromCompiledCode(jsCode: string): Function {
+  try {
+    // Use shared utilities for safe execution and function extraction
+    const wrappedCode = CodeExecutionUtils.createSafeExecutionContext(jsCode);
+
+    return CodeExecutionUtils.executeWrappedCode(wrappedCode);
+  } catch (error) {
+    throw new Error(
+      `Failed to extract function: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
+}
 
 /**
  * Developer mode store
@@ -248,11 +277,46 @@ export const useDeveloperStore = create<DeveloperStore>((set, get) => ({
         creationType: "parsed" as const,
       }));
 
+      // ===== NEW: Pre-compile all formulas during parse =====
+      console.log("[Dev Mode] Pre-compiling formulas...");
+      const sourceHash = hashSourceCode(trimmed);
+
+      for (const formula of markedDefs) {
+        if (!formula.sourceCode) continue;
+
+        try {
+          // Compile TypeScript to JavaScript
+          const cacheKey = `${formula.id}:${formula.version}`;
+          const jsCode = await codeCompiler.compileTypeScript(
+            formula.sourceCode,
+            cacheKey
+          );
+
+          // Extract executable function
+          const func = extractFunctionFromCompiledCode(jsCode);
+
+          console.log("------->>>func", func);
+
+          // Store in cache
+          compiledFunctionCache.set(formula.id, func, sourceHash);
+          console.log(`[Dev Mode] ✅ Pre-compiled formula: ${formula.id}`);
+        } catch (error) {
+          const errorMsg =
+            error instanceof Error ? error.message : String(error);
+          console.warn(
+            `[Dev Mode] ⚠️ Failed to pre-compile formula ${formula.id}:`,
+            errorMsg
+          );
+          // Don't fail the entire parse if one formula fails to compile
+          // It will be compiled on-demand during execution
+        }
+      }
+
       // Replace all formulas with newly parsed ones (single file editing mode)
       // Each Parse completely replaces the formula list with what's in the current code
       set({
         parsedFormulas: markedDefs,
-        parseSuccess: `✅ Successfully parsed ${markedDefs.length} formula(s)`,
+        parseSuccess: `✅ Successfully parsed and compiled ${markedDefs.length} formula(s)`,
         loading: false,
       });
 
@@ -279,6 +343,10 @@ export const useDeveloperStore = create<DeveloperStore>((set, get) => ({
    * This resets the code editor, parsed formulas, selections, inputs, and results
    */
   clearCode: () => {
+    // Clear compiled function cache
+    compiledFunctionCache.clear();
+    console.log("[Dev Mode] Compiled function cache cleared");
+
     set({
       // Clear code editor state
       codeInput: "",
