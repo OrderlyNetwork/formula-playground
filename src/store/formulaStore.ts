@@ -105,7 +105,7 @@ export const useFormulaStore = create<FormulaStore>((set, get) => ({
       // Load from config file (formulas.json)
       let configFormulas: FormulaDefinition[] = [];
       try {
-        const response = await fetch("/formulas.json");
+        const response = await fetch(`${import.meta.env.BASE_URL}formulas.json`);
         if (response.ok) {
           configFormulas = await response.json();
           // Mark config formulas with creationType if not set

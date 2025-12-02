@@ -57,7 +57,7 @@ export function PlaygroundPage() {
       if (count === 0) {
         // Try to fetch config file to see if it has formulas
         try {
-          const response = await fetch("/formulas.json");
+          const response = await fetch(`${import.meta.env.BASE_URL}formulas.json`);
           if (response.ok) {
             const configFormulas = await response.json();
             if (configFormulas.length === 0) {
