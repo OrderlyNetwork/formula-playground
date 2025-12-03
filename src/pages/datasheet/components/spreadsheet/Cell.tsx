@@ -53,6 +53,9 @@ const Cell: React.FC<CellProps> = ({
   });
 
   useEffect(() => {
+    // Guard: exit early if store is not available (race condition during mount/unmount)
+    if (!store) return;
+
     // 1. Initial Value from GridStore (for non-result columns)
     const initialVal = store.getValue(rowId, column.id);
     if (inputRef.current) {
@@ -83,24 +86,11 @@ const Cell: React.FC<CellProps> = ({
     return () => unsubscribe();
   }, [rowId, column.id, store, column.type, column.render, calculationResult]);
 
-  const handleFocus = () => {
-    if (onCellClick) {
-      onCellClick(rowId, column.id);
-    }
-  };
-
-  // --- Rendering Logic ---
-
-  const isEditable = column.editable !== false;
-
-  // Calculate background color based on selection state and editability
-  const bgClass = isSelected
-    ? "bg-blue-50"
-    : !isEditable
-    ? "bg-gray-50"
-    : "bg-white";
-
+  // Memoized custom cell element (must be called unconditionally for hooks rules)
   const innerElement = useMemo(() => {
+    // Guard: return null if store is not available
+    if (!store) return null;
+
     if (typeof column.render === "function") {
       return column.render(rowId, column, store);
     }
@@ -119,6 +109,34 @@ const Cell: React.FC<CellProps> = ({
     return null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowId, column, store, isSelected, onCellClick, _forceUpdateCounter]);
+
+  // Early return if store is not available (prevents race condition errors)
+  // Must be placed after all hooks to comply with React rules of hooks
+  if (!store) {
+    return (
+      <div
+        className="h-[40px] relative border-r border-b border-grid-border box-border bg-gray-50"
+        style={{ width: column.width, ...style }}
+      />
+    );
+  }
+
+  const handleFocus = () => {
+    if (onCellClick) {
+      onCellClick(rowId, column.id);
+    }
+  };
+
+  // --- Rendering Logic ---
+
+  const isEditable = column.editable !== false;
+
+  // Calculate background color based on selection state and editability
+  const bgClass = isSelected
+    ? "bg-blue-50"
+    : !isEditable
+    ? "bg-gray-50"
+    : "bg-white";
 
   const containerClass = cn(
     "h-[40px] relative border-r border-b border-grid-border box-border overflow-hidden transition-colors focus-within:inset-ring-2 focus-within:inset-ring-blue-500 focus-within:z-10 [&:has([data-popover-open])]:inset-ring-2 [&:has([data-popover-open])]:inset-ring-blue-500 [&:has([data-popover-open])]:z-10",

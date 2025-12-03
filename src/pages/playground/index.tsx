@@ -23,6 +23,10 @@ import { parseUrlList } from "@/lib/urls";
 import { useFormulaUrlSync } from "./hooks/useFormulaUrlSync";
 import { FormulaDataSheet } from "@/modules/formula-datasheet/formulaDataSheet";
 
+// Router basename derived from Vite's base config (build-time constant)
+// Moved to module level to prevent unnecessary router recreation on re-renders
+const ROUTER_BASENAME = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 /**
  * PlaygroundPage
  *
@@ -144,9 +148,6 @@ export function PlaygroundPage() {
   );
 
   // Create router once; wrap pages with RootLayout to place Toolbar inside Router
-  // Use basename from Vite's base config for GitHub Pages deployment
-  const basename = import.meta.env.BASE_URL.replace(/\/$/, "");
-
   const router = useMemo(
     () =>
       createBrowserRouter(
@@ -161,9 +162,9 @@ export function PlaygroundPage() {
             ],
           },
         ],
-        { basename } // Set basename for GitHub Pages deployment
+        { basename: ROUTER_BASENAME } // Set basename for GitHub Pages deployment
       ),
-    [RootLayout, basename]
+    [RootLayout]
   );
 
   return (
