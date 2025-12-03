@@ -102,6 +102,13 @@ export class TypeAnalyzer {
   private isNumericWrapperType(tsType: Type): boolean {
     const typeText = tsType.getText();
 
+    // If type text starts with '{', it's an inline object type literal, not a numeric wrapper
+    // This prevents object types like { totalCollateral: Decimal; } from being
+    // incorrectly identified as numeric wrappers just because they contain "Decimal" in property types
+    if (typeText.trim().startsWith("{")) {
+      return false;
+    }
+
     // Check for decimal.js-light (Decimal) and other numeric wrapper types
     // The type might appear as an import path or direct type name
     return /decimal\.js-light|\.default|Decimal|BigNumber|Big|BN/.test(

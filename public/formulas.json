@@ -94,12 +94,32 @@
     "inputs": [
       {
         "key": "inputs",
-        "type": "number",
+        "type": "object",
         "factorType": {
-          "baseType": "number",
+          "baseType": "object",
           "constraints": {},
           "nullable": false,
-          "array": false
+          "array": false,
+          "properties": [
+            {
+              "key": "totalCollateral",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "totalInitialMarginWithOrders",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            }
+          ]
         }
       }
     ],
@@ -131,12 +151,80 @@
     "inputs": [
       {
         "key": "inputs",
-        "type": "number",
+        "type": "object",
         "factorType": {
-          "baseType": "number",
+          "baseType": "object",
           "constraints": {},
           "nullable": false,
-          "array": false
+          "array": false,
+          "properties": [
+            {
+              "key": "USDCHolding",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              }
+            },
+            {
+              "key": "nonUSDCHolding",
+              "type": "object",
+              "factorType": {
+                "baseType": "object",
+                "nullable": false,
+                "array": true,
+                "properties": [
+                  {
+                    "key": "holding",
+                    "type": "number",
+                    "factorType": {
+                      "baseType": "number",
+                      "nullable": false,
+                      "array": false
+                    }
+                  },
+                  {
+                    "key": "indexPrice",
+                    "type": "number",
+                    "factorType": {
+                      "baseType": "number",
+                      "nullable": false,
+                      "array": false
+                    }
+                  },
+                  {
+                    "key": "collateralCap",
+                    "type": "number",
+                    "factorType": {
+                      "baseType": "number",
+                      "nullable": false,
+                      "array": false
+                    }
+                  },
+                  {
+                    "key": "collateralRatio",
+                    "type": "number",
+                    "factorType": {
+                      "baseType": "number",
+                      "nullable": false,
+                      "array": false
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "key": "unsettlementPnL",
+              "type": "number",
+              "factorType": {
+                "baseType": "number",
+                "nullable": false,
+                "array": false
+              },
+              "description": "\nSum of user's account unsettled PNL"
+            }
+          ]
         }
       }
     ],
