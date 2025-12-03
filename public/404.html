@@ -2,24 +2,22 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>formula-playground</title>
-    <!-- Single Page Application routing handler -->
-    <!-- This script converts GitHub Pages 404 redirects to client-side routing -->
+    <title>Redirecting...</title>
+    <!-- Single Page Application 404 handler for GitHub Pages -->
+    <!-- Saves the current path to sessionStorage and redirects to index.html -->
     <script type="text/javascript">
-      // Get current path and redirect to index.html, preserving path information
-      (function(){
-        var redirect = sessionStorage.redirect;
-        delete sessionStorage.redirect;
-        if (redirect && redirect != location.href) {
-          history.replaceState(null, null, redirect);
-        }
-      })();
+      // Store the current location in sessionStorage before redirecting
+      // This allows the SPA to restore the correct route after loading
+      sessionStorage.redirect = location.href;
     </script>
+    <!-- Redirect to the base path where index.html is located -->
+    <!-- Use meta refresh as fallback, JavaScript redirect is primary -->
+    <meta http-equiv="refresh" content="0;URL='/formula-playground/'" />
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="text/javascript">
+      // Primary redirect using JavaScript for faster response
+      location.replace('/formula-playground/');
+    </script>
   </body>
 </html>

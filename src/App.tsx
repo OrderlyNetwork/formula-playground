@@ -11,18 +11,25 @@ import { useAppInit } from "./hooks/useAppInit";
 import { Loader2 } from "lucide-react";
 
 function App() {
-  const router = createBrowserRouter([
-    {
-      element: <RootLayout />,
-      children: [
-        { path: "/", element: <DatabaseDashboard /> },
-        { path: "/formula/:id/test", element: <FormulaTestPage /> },
-        { path: "/formula/:id", element: <FormulaDetails /> },
-        { path: "/new", element: <DevPage /> },
-        { path: "*", element: <DatabaseDashboard /> },
-      ],
-    },
-  ]);
+  // Create router with basename from Vite's base config
+  // In production: /formula-playground, in development: empty string
+  const basename = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+  const router = createBrowserRouter(
+    [
+      {
+        element: <RootLayout />,
+        children: [
+          { path: "/", element: <DatabaseDashboard /> },
+          { path: "/formula/:id/test", element: <FormulaTestPage /> },
+          { path: "/formula/:id", element: <FormulaDetails /> },
+          { path: "/new", element: <DevPage /> },
+          { path: "*", element: <DatabaseDashboard /> },
+        ],
+      },
+    ],
+    { basename } // Set basename for GitHub Pages deployment
+  );
 
   return (
     <>

@@ -57,7 +57,9 @@ export function PlaygroundPage() {
       if (count === 0) {
         // Try to fetch config file to see if it has formulas
         try {
-          const response = await fetch(`${import.meta.env.BASE_URL}formulas.json`);
+          const response = await fetch(
+            `${import.meta.env.BASE_URL}formulas.json`
+          );
           if (response.ok) {
             const configFormulas = await response.json();
             if (configFormulas.length === 0) {
@@ -142,20 +144,26 @@ export function PlaygroundPage() {
   );
 
   // Create router once; wrap pages with RootLayout to place Toolbar inside Router
+  // Use basename from Vite's base config for GitHub Pages deployment
+  const basename = import.meta.env.BASE_URL.replace(/\/$/, "");
+
   const router = useMemo(
     () =>
-      createBrowserRouter([
-        {
-          element: <RootLayout />,
-          children: [
-            { path: "/", element: <UserLayout /> },
-            { path: "/formula/:id", element: <UserLayout /> },
-            { path: "/dev", element: <DeveloperLayout /> },
-            { path: "*", loader: () => redirect("/") },
-          ],
-        },
-      ]),
-    [RootLayout]
+      createBrowserRouter(
+        [
+          {
+            element: <RootLayout />,
+            children: [
+              { path: "/", element: <UserLayout /> },
+              { path: "/formula/:id", element: <UserLayout /> },
+              { path: "/dev", element: <DeveloperLayout /> },
+              { path: "*", loader: () => redirect("/") },
+            ],
+          },
+        ],
+        { basename } // Set basename for GitHub Pages deployment
+      ),
+    [RootLayout, basename]
   );
 
   return (
