@@ -229,55 +229,48 @@ export function HistoryPanel() {
                     return (
                       <div
                         key={snapshot.id}
-                        className="group relative w-full px-2.5 py-1.5 text-xs hover:bg-blue-50 transition-colors"
+                        className="group relative w-full text-xs"
                       >
-                        <div className="w-full relative">
-                          <div className="flex justify-between items-start">
-                            {isEditing ? (
-                              <input
-                                ref={inputRef}
-                                type="text"
-                                value={editingName}
-                                onChange={(e) => setEditingName(e.target.value)}
-                                onBlur={() => saveEditing(snapshot.id)}
-                                onKeyDown={(e) => handleKeyDown(e, snapshot.id)}
-                                className="flex-1 text-gray-900 font-medium bg-white border border-blue-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                onClick={(e) => e.stopPropagation()}
-                              />
-                            ) : (
-                              <button
-                                onClick={(e) => handleNameClick(e, snapshot)}
-                                className="text-left flex-1"
-                                title="Double-click to edit name"
-                              >
-                                <span className="text-gray-900 font-medium">
-                                  {snapshot.name}
-                                </span>
-                              </button>
-                            )}
-
-                            {!isEditing && (
-                              <div className="flex items-center gap-2">
-                                {/* Delete button - visible on hover */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    deleteDatasheetSnapshot(snapshot.id);
-                                  }}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-red-100 rounded text-red-600 absolute bottom-0 right-0"
-                                  title="Delete snapshot"
-                                >
-                                  <Trash2 size={12} strokeWidth={1.5} />
-                                </button>
-                              </div>
-                            )}
+                        {isEditing ? (
+                          <div className="px-2.5 py-1.5">
+                            <input
+                              ref={inputRef}
+                              type="text"
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onBlur={() => saveEditing(snapshot.id)}
+                              onKeyDown={(e) => handleKeyDown(e, snapshot.id)}
+                              className="w-full text-gray-900 font-medium bg-white border border-blue-300 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              onClick={(e) => e.stopPropagation()}
+                            />
                           </div>
-                          {!isEditing && (
+                        ) : (
+                          <button
+                            onClick={(e) => handleNameClick(e, snapshot)}
+                            className="w-full text-left px-2.5 py-1.5 hover:bg-blue-50 transition-colors cursor-pointer rounded-md"
+                            title="Click to replay, double-click to edit name"
+                          >
+                            <div className="flex justify-between items-start">
+                              <span className="text-gray-900 font-medium">
+                                {snapshot.name}
+                              </span>
+                              {/* Delete button - visible on hover */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteDatasheetSnapshot(snapshot.id);
+                                }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-red-100 rounded text-red-600 flex-shrink-0"
+                                title="Delete snapshot"
+                              >
+                                <Trash2 size={12} strokeWidth={1.5} />
+                              </button>
+                            </div>
                             <div className="text-[11px] text-gray-600 mt-1 line-clamp-2">
                               {displayText}
                             </div>
-                          )}
-                        </div>
+                          </button>
+                        )}
                       </div>
                     );
                   })}

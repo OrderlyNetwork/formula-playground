@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { DatasheetSnapshot } from "../types/history";
 import { datasheetSnapshotManager } from "../modules/history-manager";
 import { useSpreadsheetStore } from "./spreadsheetStore";
+import { toast } from "sonner";
 
 interface HistoryStore {
   // State
@@ -86,6 +87,8 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
   },
 
   // Save datasheet snapshot
+  // IMPORTANT: Only saves cell data, NOT structure (rows/columns)
+  // Structure is always derived from current formula definitions
   saveDatasheetSnapshot: async (
     data: Record<string, Record<string, unknown>>,
     activeFormulaId?: string
@@ -94,6 +97,7 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
     const name = formatTimestampName(timestamp);
 
     // Deep clone data to avoid reference issues
+    // Data format: formulaId -> rowId -> columnId -> cellValue
     const snapshotData = JSON.parse(JSON.stringify(data)) as Record<
       string,
       Record<string, unknown>
@@ -124,66 +128,113 @@ export const useHistoryStore = create<HistoryStore>((set, get) => ({
   // Replay a datasheet snapshot - restore datasheet state
   replayDatasheetSnapshot: async (snapshotId: string) => {
     try {
-      const snapshot = await datasheetSnapshotManager.getSnapshotById(snapshotId);
+      const snapshot = await datasheetSnapshotManager.getSnapshotById(
+        snapshotId
+      );
       if (!snapshot) {
         console.error("Datasheet snapshot not found:", snapshotId);
         return;
       }
 
       const spreadsheetStore = useSpreadsheetStore.getState();
+      const warnings: string[] = [];
 
       // Restore data for each formula
       Object.entries(snapshot.data).forEach(([formulaId, rowsData]) => {
         if (typeof rowsData !== "object" || rowsData === null) return;
 
-        // 1. Reconstruct rows from snapshot data keys
-        // The snapshot keys are the row IDs. We need to restore them to the store
-        // so the UI knows what rows to render.
-        const rowIds = Object.keys(rowsData);
-        const rows = rowIds.map((id) => ({ id }));
+        // IMPORTANT: Use CURRENT structure (rows/columns) from formula definition
+        // DO NOT reconstruct structure from snapshot data keys
+        // This ensures formula evolution doesn't break snapshots
 
-        // Update the rows in the spreadsheet store
-        spreadsheetStore.setTabRows(formulaId, rows);
+        // 1. Get current rows for this formula (from existing state or default)
+        const currentRows = spreadsheetStore.getTabRows(formulaId) || [];
+        const currentColumns = spreadsheetStore.getTabColumns(formulaId) || [];
+
+        // If no current structure exists, we can't restore data
+        if (currentRows.length === 0) {
+          warnings.push(
+            `Formula "${formulaId}" has no rows defined. Data not restored.`
+          );
+          return;
+        }
 
         // 2. Get or create GridStore for this tab
-        // If the tab hasn't been visited, GridStore might not exist.
-        // We create it so we can populate the data.
         let gridStore = spreadsheetStore.getTabGridStore(formulaId);
 
         if (!gridStore) {
-          // Use current columns if available, otherwise empty (will be synced when tab opens)
-          const columns = spreadsheetStore.getTabColumns(formulaId);
-
-          // Create new GridStore with a dummy callback (will be updated when component mounts)
+          // Create new GridStore with current structure
           gridStore = spreadsheetStore.getOrCreateTabGridStore(
             formulaId,
-            rows,
-            columns,
-            async () => { } // No-op callback
+            currentRows,
+            currentColumns,
+            async () => {} // No-op callback
           );
         } else {
-          // If it exists, sync the new row structure
-          const columns = spreadsheetStore.getTabColumns(formulaId);
-          gridStore.syncStructure(rows, columns);
+          // Sync with current structure (in case it changed)
+          gridStore.syncStructure(currentRows, currentColumns);
         }
 
-        // 3. Populate data into GridStore
-        Object.entries(rowsData).forEach(([rowId, colValues]) => {
-          if (typeof colValues === "object" && colValues !== null) {
-            Object.entries(colValues).forEach(([colId, value]) => {
-              // We use silent=true to avoid triggering calculations during restore
-              // The UI will trigger necessary updates when it renders
-              gridStore!.setValue(rowId, colId, value as any, true);
-            });
+        // 3. Populate data into EXISTING rows/columns structure
+        // Only restore data for cells that exist in current structure
+        const unmappedRows = new Set<string>();
+        const unmappedColumns = new Set<string>();
+
+        Object.entries(rowsData).forEach(([snapshotRowId, colValues]) => {
+          if (typeof colValues !== "object" || colValues === null) return;
+
+          // Check if this row exists in current structure
+          const rowExists = currentRows.some((row) => row.id === snapshotRowId);
+          if (!rowExists) {
+            unmappedRows.add(snapshotRowId);
+            return; // Skip this row - it doesn't exist in current structure
           }
+
+          Object.entries(colValues).forEach(([colId, value]) => {
+            // Check if this column exists in current structure
+            const columnExists = currentColumns.some((col) => col.id === colId);
+            if (!columnExists) {
+              unmappedColumns.add(colId);
+              return; // Skip this cell - column doesn't exist in current structure
+            }
+
+            // Restore cell value (silent=true to avoid triggering calculations)
+            gridStore!.setValue(snapshotRowId, colId, value as any, true);
+          });
         });
+
+        // Log warnings for unmapped data
+        if (unmappedRows.size > 0) {
+          warnings.push(
+            `Formula "${formulaId}": ${unmappedRows.size} row(s) from snapshot not found in current structure`
+          );
+        }
+        if (unmappedColumns.size > 0) {
+          warnings.push(
+            `Formula "${formulaId}": ${
+              unmappedColumns.size
+            } column(s) from snapshot not found in current structure (${Array.from(
+              unmappedColumns
+            ).join(", ")})`
+          );
+        }
+
+        // 4. Trigger batch update notification to refresh UI
+        // This is crucial when the current tab is the same as the snapshot formula
+        // Silent mode (used above) doesn't trigger UI updates, so we need to manually notify
+        gridStore.notifyBatchUpdate();
       });
 
-      // If there was an active formula in the snapshot, we could optionally switch to it
-      // if (snapshot.activeFormulaId) {
-      //   // Logic to switch active tab if desired
-      // }
-
+      // Show warnings if any data couldn't be restored
+      if (warnings.length > 0) {
+        console.warn("Snapshot replay warnings:", warnings);
+        toast.warning("Snapshot partially restored", {
+          description: warnings.join("\n"),
+          duration: 5000,
+        });
+      } else {
+        toast.success("Snapshot restored successfully");
+      }
     } catch (error) {
       console.error("Failed to replay datasheet snapshot:", error);
     }

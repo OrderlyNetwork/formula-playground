@@ -24,12 +24,35 @@ export interface RunRecord {
 
 /**
  * @description Datasheet snapshot - manually saved datasheet state
- * Stores formula parameters/inputs for the datasheet.
+ *
+ * IMPORTANT: Snapshots only store pure cell data, NOT structure (rows/columns).
+ * When replaying:
+ * - Row/column structure comes from current formula definition
+ * - Only cell values are restored into the current structure
+ * - This ensures formula evolution doesn't break old snapshots
+ *
+ * Data format: formulaId -> rowId -> columnId -> cellValue
+ * Example:
+ * {
+ *   "funding_rate_calc_v1": {
+ *     "row_abc123": {
+ *       "symbol": "BTC_USDT",
+ *       "price": 50000,
+ *       "quantity": 1.5
+ *     },
+ *     "row_def456": { ... }
+ *   }
+ * }
  */
 export interface DatasheetSnapshot {
   id: string; // UUID
   timestamp: number; // Save timestamp
   name: string; // Display name (formatted timestamp string)
-  data: Record<string, Record<string, unknown>>; // Snapshot data (formulaId -> data)
+  /**
+   * Pure cell data only (no structure)
+   * Structure: formulaId -> rowId -> columnId -> cellValue
+   * Only contains user input data for editable columns
+   */
+  data: Record<string, Record<string, Record<string, unknown>>>;
   activeFormulaId?: string; // ID of the formula active when snapshot was taken
 }

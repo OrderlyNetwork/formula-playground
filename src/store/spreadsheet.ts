@@ -236,4 +236,19 @@ export class GridStore {
       }
     });
   }
+
+  /**
+   * Trigger notifications for all cells that have data
+   * Useful after batch updates (e.g., snapshot restoration) to refresh UI
+   */
+  public notifyBatchUpdate() {
+    // Notify all cells that have listeners (typically visible/rendered cells)
+    this.listeners.forEach((listenerSet, key) => {
+      const value = this.data.get(key) ?? "";
+      listenerSet.forEach((fn) => fn(value));
+    });
+
+    // Also notify global change listeners
+    this.notifyGlobalChange();
+  }
 }
