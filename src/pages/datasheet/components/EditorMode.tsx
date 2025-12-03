@@ -12,7 +12,9 @@ export const EditorMode = () => {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button className="h-full hover:bg-gray-200 px-2 text-gray-600">{`Mode: ${mode}`}</button>
+        <button className="h-full hover:bg-gray-200 px-2 text-gray-600">{`Mode: ${
+          mode.charAt(0).toUpperCase() + mode.slice(1)
+        }`}</button>
       </PopoverTrigger>
       <PopoverContent
         className="w-30 shadow-none rounded text-xs p-2 border border-purple-500"
@@ -22,10 +24,10 @@ export const EditorMode = () => {
           <button
             className={cn(
               "hover:text-gray-800 px-2 text-gray-600 w-full p-1 text-left",
-              mode === "Playground" ? "bg-gray-100" : ""
+              mode === "playground" ? "bg-gray-100" : ""
             )}
             onClick={() => {
-              setMode("Playground");
+              setMode("playground");
               setOpen(false);
             }}
           >
@@ -34,10 +36,10 @@ export const EditorMode = () => {
           <button
             className={cn(
               "hover:text-gray-800 px-2 text-gray-600 w-full p-1 text-left",
-              mode === "Development" ? "bg-gray-100" : ""
+              mode === "development" ? "bg-gray-100" : ""
             )}
             onClick={() => {
-              setMode("Development");
+              setMode("development");
               setOpen(false);
             }}
           >

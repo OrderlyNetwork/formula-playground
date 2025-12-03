@@ -55,7 +55,10 @@ const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
     try {
 
       const spreadsheetStore = useSpreadsheetStore.getState();
-      const snapshotData: Record<string, Record<string, unknown>> = {};
+      const snapshotData: Record<
+        string,
+        Record<string, Record<string, unknown>>
+      > = {};
 
 
       formulaDefinitions.forEach(formula => {

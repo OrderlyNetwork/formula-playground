@@ -152,7 +152,7 @@ export function HistoryPanel() {
   const { addTab } = useFormulaTabStore();
 
   const handleNameClick = (
-    e: React.MouseEvent<HTMLButtonElement>,
+    e: React.MouseEvent<HTMLElement>,
     snapshot: DatasheetSnapshot
   ) => {
     const now = Date.now();
@@ -245,7 +245,9 @@ export function HistoryPanel() {
                             />
                           </div>
                         ) : (
-                          <button
+                          <div
+                            role="button"
+                            tabIndex={0}
                             onClick={(e) => handleNameClick(e, snapshot)}
                             className="w-full text-left px-2.5 py-1.5 hover:bg-blue-50 transition-colors cursor-pointer rounded-md"
                             title="Click to replay, double-click to edit name"
@@ -269,7 +271,7 @@ export function HistoryPanel() {
                             <div className="text-[11px] text-gray-600 mt-1 line-clamp-2">
                               {displayText}
                             </div>
-                          </button>
+                          </div>
                         )}
                       </div>
                     );
