@@ -1,5 +1,5 @@
 "use client";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, BookOpen, Divide } from "lucide-react";
 import { useMemo } from "react";
 import { useFormulaTabStore } from "@/store/formulaTabStore";
 import {
@@ -8,7 +8,6 @@ import {
 } from "@/store/preArgsCheckStore";
 import { cn } from "@/lib/utils";
 import { Version } from "./version";
-import { EditorMode } from "./EditorMode";
 
 export function StatusBar() {
   const activeTab = useFormulaTabStore((state) => state.getActiveTab());
@@ -44,9 +43,20 @@ export function StatusBar() {
       </div>
 
       <div className="flex items-center h-full px-2 gap-4">
-        {/* <EditorMode /> */}
-
-        <Version />
+        <div className="flex items-center gap-1 text-gray-700">
+          {/* <BookOpen size={12} /> */}
+          <a
+            href="https://deepwiki.com/OrderlyNetwork/js-sdk"
+            target="_blank"
+            className="hover:text-blue-600"
+          >
+            <span className="text-xs">DeepWiki</span>
+          </a>
+        </div>
+        {/* <div className="w-[1px] h-1/3 bg-gray-200"></div> */}
+        <div className="flex items-center gap-1 text-gray-700">
+          <Version />
+        </div>
       </div>
     </div>
   );
