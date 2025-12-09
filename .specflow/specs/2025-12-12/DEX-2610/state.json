@@ -1,0 +1,17 @@
+{
+  "title": "[SDK] adjust default volume chart setting",
+  "figmaUrls": [],
+  "workflowId": "standard",
+  "gitBranch": "",
+  "activeNodeId": "req-analysis",
+  "createAtDate": "2025-12-08T12:03:23.609Z",
+  "owner": "leo@orderly.network",
+  "history": [
+    {
+      "nodeId": "req-analysis",
+      "updateAtDate": "2025-12-08T12:03:23.609Z",
+      "updateBy": "leo@orderly.network"
+    }
+  ],
+  "jiraIssueUrl": "https://orderly-network.atlassian.net/browse/DEX-2610"
+}

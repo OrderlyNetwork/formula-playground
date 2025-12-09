@@ -1,0 +1,64 @@
+name: "Headless Development Workflow"
+description: "Headless development workflow for SpecFlow (no UI components)"
+id: "headless"
+version: "1.0"
+
+# 定义整个流程的节点图
+nodes:
+  # 1. 需求分析节点
+  - id: "req-analysis"
+    label: "需求分析"
+    type: "review"
+    assets:
+      prompt: "prompts/01-req.txt" # AI 指令
+      template: "templates/req-tpl.md" # 结构约束
+    output: "01-req.md" # 落盘文件
+    validation:
+      required_headers: ["详细描述", "功能验收标准"]
+    next: ["design-draft"]
+
+  # 2. 技术设计节点
+  - id: "design-draft"
+    label: "技术设计"
+    type: "generator"
+    assets:
+      prompt: "prompts/02-design.txt"
+      template: "templates/tech-tpl.md" # 使用技术方案模板，不包含UI设计
+    # 上下文引用：AI 生成设计时，自动读取 'req-analysis' 节点的产出
+    context_refs: ["req-analysis"]
+    output: "02-design.md"
+    validation:
+      required_headers: ["架构设计", "API集成", "数据模型"]
+    next: ["design-review"]
+
+  # 3. 人工评审节点
+  - id: "design-review"
+    label: "设计评审"
+    type: "review"
+    target_file: "02-design.md"
+    actions:
+      approve: "impl-code"
+      reject: "design-draft" # 驳回则退回设计阶段
+
+  # 4. 代码实现节点 (生成影子文件)
+  - id: "impl-code"
+    label: "代码实现"
+    type: "generator"
+    assets:
+      prompt: "prompts/03-code.txt"
+    output: "03-impl-shadow.md" # 不直接覆盖 src，而是生成影子文件
+    next: ["adoption-calc"]
+
+  # 5. 扩展节点：采纳率分析
+  - id: "adoption-calc"
+    label: "采纳率分析"
+    type: "script-runner"
+    config:
+      command: "python3 scripts/calc_adoption.py"
+      timeout: 10000
+    # 定义该节点产出的指标，用于 Dashboard 展示
+    metrics:
+      - key: "rate"
+        label: "代码采纳率"
+        type: "percentage"
+    next: ["end"]

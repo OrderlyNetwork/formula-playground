@@ -123,7 +123,6 @@ pnpm generate:formulas
 - **Radix UI** - Accessible component primitives
 - **Lucide React** - Icon library
 - **Monaco Editor** - Code editor (VSCode engine)
-- **@tanstack/react-table** - Headless table library
 - **react-resizable-panels** - Resizable panel layouts
 
 ### Development Tools
