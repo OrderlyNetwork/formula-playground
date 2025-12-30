@@ -54,6 +54,7 @@ const SpreadsheetContainer: React.FC<SpreadsheetContainerProps> = ({
     getOrCreateTabGridStore,
     addColumnAction,
     deleteColumnAction,
+    updateColumnAction,
     toggleRowSelection,
     toggleColumnSelection,
     updateSelectionOnCellClick,
@@ -122,6 +123,15 @@ const SpreadsheetContainer: React.FC<SpreadsheetContainerProps> = ({
     deleteColumnAction(formulaId, colId);
   };
 
+  /**
+   * Handle column resize
+   * @param colId - Column ID to resize
+   * @param width - New width
+   */
+  const handleColumnResize = (colId: string, width: number) => {
+    updateColumnAction(formulaId, colId, { width });
+  };
+
   // Render the stateless Spreadsheet component with all necessary props
   return (
     <Spreadsheet
@@ -135,6 +145,7 @@ const SpreadsheetContainer: React.FC<SpreadsheetContainerProps> = ({
       onColHeaderClick={handleColHeaderClick}
       onCellClick={handleCellClick}
       onDeleteColumn={handleDeleteColumn}
+      onColumnResize={handleColumnResize}
       onAddRow={addRow}
       onAddColumn={addColumn}
       onClearDataSheet={handleClearDataSheet}

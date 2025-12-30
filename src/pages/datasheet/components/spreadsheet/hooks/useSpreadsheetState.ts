@@ -36,6 +36,9 @@ export const useSpreadsheetState = (
   const deleteColumnAction = useSpreadsheetStore(
     (state) => state.deleteTabColumn
   );
+  const updateColumnAction = useSpreadsheetStore(
+    (state) => state.updateTabColumn
+  );
   const toggleRowSelection = useSpreadsheetStore(
     (state) => state.toggleRowSelection
   );
@@ -81,6 +84,7 @@ export const useSpreadsheetState = (
     getOrCreateTabGridStore,
     addColumnAction,
     deleteColumnAction,
+    updateColumnAction,
     toggleRowSelection,
     toggleColumnSelection,
     updateSelectionOnCellClick,

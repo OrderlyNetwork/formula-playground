@@ -171,7 +171,17 @@ interface SpreadsheetState {
   /** Add a column for a specific tab */
   addTabColumn: (formulaId: string, afterColId?: string) => void;
   /** Delete a column for a specific tab */
+  /** Delete a column for a specific tab */
   deleteTabColumn: (formulaId: string, colId: string) => void;
+  /** Update a column for a specific tab */
+  updateTabColumn: (
+    formulaId: string,
+    colId: string,
+    updates: Partial<ColumnDef>
+  ) => void;
+
+  /** Update a column (legacy - global) */
+  updateColumn: (colId: string, updates: Partial<ColumnDef>) => void;
 
   // Selection operations
   toggleRowSelection: (rowId: string) => void;
@@ -722,6 +732,42 @@ export const useSpreadsheetStore = create<SpreadsheetState>((set, get) => ({
         },
         selection: newSelection,
       };
+    }),
+
+  /**
+   * Update a column for a specific tab
+   */
+  updateTabColumn: (formulaId, colId, updates) =>
+    set((state) => {
+      const currentColumns = state.tabColumns[formulaId] || [];
+      const index = currentColumns.findIndex((c) => c.id === colId);
+
+      if (index === -1) return {};
+
+      const newCols = [...currentColumns];
+      newCols[index] = { ...newCols[index], ...updates };
+
+      return {
+        tabColumns: {
+          ...state.tabColumns,
+          [formulaId]: newCols,
+        },
+      };
+    }),
+
+  /**
+   * Update a column (legacy - global)
+   */
+  updateColumn: (colId, updates) =>
+    set((state) => {
+      const index = state.columns.findIndex((c) => c.id === colId);
+
+      if (index === -1) return {};
+
+      const newCols = [...state.columns];
+      newCols[index] = { ...newCols[index], ...updates };
+
+      return { columns: newCols };
     }),
 
   // Toggle row selection

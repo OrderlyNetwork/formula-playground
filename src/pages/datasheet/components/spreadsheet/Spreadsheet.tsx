@@ -36,6 +36,8 @@ export interface SpreadsheetProps {
   onCellClick: (rowId: string, colId: string) => void;
   /** Callback when column is deleted */
   onDeleteColumn: (colId: string) => void;
+  /** Callback when column is resized */
+  onColumnResize: (colId: string, width: number) => void;
   /** Callback when add row button is clicked */
   onAddRow: () => void;
   /** Callback when add column button is clicked */
@@ -70,6 +72,7 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
   onColHeaderClick,
   onCellClick,
   onDeleteColumn,
+  onColumnResize,
   onAddRow,
   onAddColumn,
   onClearDataSheet,
@@ -97,6 +100,7 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
           selectedColIds={selectedColIds}
           onColHeaderClick={onColHeaderClick}
           onDeleteColumn={onDeleteColumn}
+          onColumnResize={onColumnResize}
         />
 
         {/* Data Rows */}
