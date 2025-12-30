@@ -8,47 +8,52 @@ nodes:
   # 1. 需求分析节点
   - id: "req-analysis"
     label: "需求分析"
+    description: "需求分析"
     type: "review"
-    assets:
-      prompt: "prompts/req.txt" # AI 指令
-      template: # 结构约束
-        - "templates/req-tpl.md"
-        - "templates/test-tpl.md"
-    output: # 落盘文件
-      - "req.md"
-      - "test.md"
-    validation:
-      required_headers: ["详细描述", "功能验收标准","Desktop版本","mWeb版本"]
+    items:
+      - prompt: "prompts/req.md" # AI 指令
+        template: "templates/req-tpl.md" # 结构约束
+        output: "req.md" # 落盘文件
+        validation:
+          score_threshold: 80
+          required_fields: ["详细描述", "功能验收标准","Desktop版本","mWeb版本"]
+      
     next: ["ux-design"]
 
-  - id: "ux-design"
-    label: "UI/UX设计"
-    type: "generator"
-    editor: "ui-designer"
-    assets:
-      prompt: "prompts/ux.txt"
-      template: "templates/ux-tpl.md"
-    output: "ux.md"
-    next: ["tech-design"]
-    validation:
-      required_headers: []
 
   # 2. 技术设计节点
   - id: "tech-design"
     label: "技术设计"
-    type: "generator"
-    assets:
-      prompt: "prompts/tech.txt"
-      template: "templates/tech-tpl.md"
+    description: "技术设计"
+    type: "review"
+    items:
+      - prompt: "prompts/tech.txt"
+        template: "templates/tech-tpl.md"
+        output: "tech.md"
     # 上下文引用：AI 生成设计时，自动读取 'req-analysis' 节点的产出
     context_refs: ["req-analysis"]
-    output: "tech.md"
     next: ["design-review"]
+    
+  - id: "ux-design"
+    label: "UI/UX设计"
+    description: "UI/UX设计"
+    type: "generator"
+    editor: "ui-designer"
+    items:
+      - prompt: "prompts/ux.md"
+        template: "templates/ux-tpl.md"
+        output: "ux.md"
+        validation:
+          required_fields: []
+    next: ["tech-design"]
+
 
   # 3. 人工评审节点
   - id: "design-review"
     label: "设计评审"
+    description: "设计评审"
     type: "review"
+    items: []
     target_file: "02-design.md"
     actions:
       approve: "impl-code"
@@ -57,16 +62,19 @@ nodes:
   # 4. 代码实现节点 (生成影子文件)
   - id: "impl-code"
     label: "代码实现"
+    description: "代码实现"
     type: "generator"
-    assets:
-      prompt: "prompts/03-code.txt"
-    output: "03-impl-shadow.md" # 不直接覆盖 src，而是生成影子文件
+    items:
+      - prompt: "prompts/03-code.txt"
+        output: "03-impl-shadow.md" # 不直接覆盖 src，而是生成影子文件
     next: ["adoption-calc"]
 
   # 5. 扩展节点：采纳率分析
   - id: "adoption-calc"
     label: "采纳率分析"
+    description: "采纳率分析"
     type: "script-runner"
+    items: []
     config:
       command: "python3 scripts/calc_adoption.py"
       timeout: 10000

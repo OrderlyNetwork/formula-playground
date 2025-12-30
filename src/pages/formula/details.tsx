@@ -93,7 +93,7 @@ export const FormulaDetails = () => {
   }, [activeTabId, formulaDefinitions]);
 
   useEffect(() => {
-    console.log("------->>>currentFormula", currentFormula);
+    // console.log("------->>>currentFormula", currentFormula);
     setCurrentFormula(currentFormula);
   }, [currentFormula, setCurrentFormula]);
 

@@ -1,0 +1,34 @@
+{
+  "versions": [
+    {
+      "id": "v4.8.1",
+      "name": "v4.8.1 (Stable)",
+      "version": "4.8.1",
+      "type": "release",
+      "jsdelivrUrl": "https://cdn.jsdelivr.net/npm/@orderly.network/perp@4.8.1/dist/index.js",
+      "packageName": "@orderly.network/perp",
+      "description": "Current stable release"
+    },
+    {
+      "id": "dev-main",
+      "name": "dev (main branch)",
+      "version": "dev",
+      "type": "dev",
+      "jsdelivrUrl": "https://cdn.jsdelivr.net/gh/orderly-network/perp-sdk@main/dist/index.js",
+      "packageName": "@orderly.network/perp",
+      "description": "Development branch"
+    },
+    {
+      "id": "local-v1",
+      "name": "Local Build v1",
+      "version": "local-v1",
+      "type": "local",
+      "sourcePath": "/dist/formulas-v1.js",
+      "packageName": "@orderly.network/perp",
+      "description": "Local development build v1",
+      "globalNamespace": "formulas",
+      "globalKey": "v1"
+    }
+  ],
+  "defaultVersion": "v4.8.1"
+}

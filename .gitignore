@@ -27,3 +27,4 @@ test-formulas.json
 .claude
 .cursor
 .pnpm-store
+.specflow

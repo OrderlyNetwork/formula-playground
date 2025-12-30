@@ -3,6 +3,7 @@ import { DataSourceManager, dataSourceManager } from "@/config/dataSources";
 import { useFormulaStore } from "@/store/formulaStore";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useDataSourceStore } from "@/store/dataSourceStore";
+import { useAppStore } from "@/store/appStore";
 
 interface AppInitState {
   isReady: boolean;
@@ -21,11 +22,15 @@ export function useAppInit(): AppInitState {
   const loadUserDataSources = useDataSourceStore(
     (state) => state.loadDataSources
   );
+  const loadVersionConfigs = useAppStore((state) => state.loadVersionConfigs);
 
   useEffect(() => {
     const init = async () => {
       try {
         dataSourceManager.apiBaseURL = apiBaseURL;
+        setStatusMessage("Loading version configurations...");
+        await loadVersionConfigs();
+
         setStatusMessage("Loading data sources...");
         DataSourceManager.prepare();
         await dataSourceManager.fetchAll();
@@ -48,7 +53,12 @@ export function useAppInit(): AppInitState {
     };
 
     init();
-  }, [loadFormulasFromAllSources, loadUserDataSources, apiBaseURL]);
+  }, [
+    loadFormulasFromAllSources,
+    loadUserDataSources,
+    apiBaseURL,
+    loadVersionConfigs,
+  ]);
 
   return { isReady, error, statusMessage };
 }

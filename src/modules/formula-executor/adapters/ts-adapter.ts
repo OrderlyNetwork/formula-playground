@@ -9,6 +9,8 @@ import { CacheManager } from "../cache-manager";
 import { codeCompiler } from "../code-compiler";
 import { CodeExecutionUtils } from "../utils/code-execution-utils";
 import { ErrorUtils } from "../utils/error-utils";
+import { getFunctionFromGlobal } from "../../../services/localCodeLoader";
+import { useAppStore } from "../../../store/appStore";
 
 // Inline formula implementations for MVP
 const calculateFundingFee = (
@@ -96,7 +98,7 @@ export class TSAdapter implements SDKAdapter {
 
   /**
    * Execute a formula with given inputs
-   * Priority: user source code -> jsDelivr (if enabled) -> hardcoded implementation -> error
+   * Priority: user source code -> local code (global) -> global version jsDelivr -> formula jsdelivr -> hardcoded implementation -> error
    */
   async execute(
     formula: FormulaDefinition,
@@ -112,8 +114,48 @@ export class TSAdapter implements SDKAdapter {
     try {
       let func: Function | undefined;
 
-      // Priority 2: Try jsDelivr if configured and enabled
-      if (formula.jsdelivrInfo?.enabled && formula.jsdelivrInfo.url) {
+      // Priority 2: Try local code from global scope (if current version is local)
+      const { currentVersionConfig } = useAppStore.getState();
+      if (currentVersionConfig?.type === "local") {
+        const globalFunc = getFunctionFromGlobal(
+          formula.jsdelivrInfo?.functionName || formula.id,
+          currentVersionConfig.globalNamespace || "formulas",
+          currentVersionConfig.globalKey
+        );
+        if (globalFunc) {
+          func = globalFunc;
+        }
+      }
+
+      // Priority 3: Try global version jsDelivr URL (if current version is release/dev)
+      if (!func && currentVersionConfig) {
+        if (
+          (currentVersionConfig.type === "release" ||
+            currentVersionConfig.type === "dev") &&
+          currentVersionConfig.jsdelivrUrl
+        ) {
+          try {
+            // Use the function name from formula or fallback to formula ID
+            const functionName =
+              formula.jsdelivrInfo?.functionName || formula.id;
+            func = await this.sandbox.loadFromJsDelivr(
+              currentVersionConfig.jsdelivrUrl,
+              functionName,
+              formula.id,
+              currentVersionConfig.version
+            );
+          } catch (error) {
+            console.warn(
+              `Failed to load from global version jsDelivr, trying formula-specific:`,
+              error
+            );
+            func = undefined;
+          }
+        }
+      }
+
+      // Priority 4: Try formula-specific jsDelivr if configured and enabled
+      if (!func && formula.jsdelivrInfo?.enabled && formula.jsdelivrInfo.url) {
         try {
           func = await this.sandbox.loadFromJsDelivr(
             formula.jsdelivrInfo.url,
@@ -123,14 +165,14 @@ export class TSAdapter implements SDKAdapter {
           );
         } catch (error) {
           console.warn(
-            `Failed to load from jsDelivr, falling back to hardcoded:`,
+            `Failed to load from formula jsDelivr, falling back to hardcoded:`,
             error
           );
           func = undefined;
         }
       }
 
-      // Priority 3: Fallback to hardcoded implementation
+      // Priority 5: Fallback to hardcoded implementation
       if (!func) {
         func = this.formulaMap.get(formula.id);
       }
@@ -273,7 +315,7 @@ export class TSAdapter implements SDKAdapter {
         "Failed to extract function from compiled code",
         {
           formulaId: _formula.id,
-          errorMessage: error instanceof Error ? error.message : String(error)
+          errorMessage: error instanceof Error ? error.message : String(error),
         }
       );
     }

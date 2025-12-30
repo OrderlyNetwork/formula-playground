@@ -19,9 +19,14 @@ export class SyncFormulaExecutor {
     this.localAdapter = new LocalNpmAdapter();
 
     // Set initial adapter info when first adapter is created
-    // Default to TS adapter on initialization
-    const { setAdapterInfo } = useAppStore.getState();
-    setAdapterInfo(this.localAdapter.name, this.localAdapter.version);
+    // Use version config if available, otherwise use default
+    const { setAdapterInfo, currentVersionConfig } = useAppStore.getState();
+    if (currentVersionConfig) {
+      const displayName = currentVersionConfig.packageName || "SDK";
+      setAdapterInfo(displayName, currentVersionConfig.version);
+    } else {
+      setAdapterInfo(this.localAdapter.name, this.localAdapter.version);
+    }
   }
 
   /**
@@ -76,12 +81,24 @@ export class SyncFormulaExecutor {
     const selectedEngine = this.determineEngine(formula, engine);
 
     // Update adapter info in app store when switching engines
-    const { setAdapterInfo } = useAppStore.getState();
+    // Use version config if available, otherwise use adapter defaults
+    const { setAdapterInfo, currentVersionConfig } = useAppStore.getState();
     if (selectedEngine === "ts") {
-      setAdapterInfo(this.tsAdapter.name, this.tsAdapter.version);
+      if (currentVersionConfig) {
+        const displayName =
+          currentVersionConfig.packageName || "TypeScript SDK";
+        setAdapterInfo(displayName, currentVersionConfig.version);
+      } else {
+        setAdapterInfo(this.tsAdapter.name, this.tsAdapter.version);
+      }
       return this.tsAdapter.execute(formula, inputs);
     } else if (selectedEngine === "local") {
-      setAdapterInfo(this.localAdapter.name, this.localAdapter.version);
+      if (currentVersionConfig) {
+        const displayName = currentVersionConfig.packageName || "Local NPM SDK";
+        setAdapterInfo(displayName, currentVersionConfig.version);
+      } else {
+        setAdapterInfo(this.localAdapter.name, this.localAdapter.version);
+      }
       return this.localAdapter.execute(formula, inputs);
     } else {
       // Rust WASM will be implemented in Phase 2

@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { useMatch } from "react-router";
 import { useEffect } from "react";
+import type { VersionConfig, VersionConfigFile } from "../types/version";
+import {
+  loadVersionConfig,
+  getDefaultVersion,
+  getVersionById,
+} from "../services/versionConfigService";
 
 export type AppMode = "playground" | "development";
 
@@ -32,6 +38,11 @@ export interface AppState {
   adapterVersion: string | null;
   adapterName: string | null;
 
+  // Version configuration management
+  versionConfigs: VersionConfigFile | null;
+  currentVersionConfig: VersionConfig | null;
+  isLoadingVersionConfigs: boolean;
+
   // Existing actions
   setMode: (mode: AppMode) => void;
   toggleMode: () => void;
@@ -48,6 +59,12 @@ export interface AppState {
 
   // Adapter version actions
   setAdapterInfo: (name: string, version: string) => void;
+
+  // Version configuration actions
+  loadVersionConfigs: () => Promise<void>;
+  setCurrentVersion: (versionId: string) => void;
+  setVersionConfigs: (configs: VersionConfigFile) => void;
+  setCurrentVersionConfig: (config: VersionConfig | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -64,10 +81,17 @@ export const useAppStore = create<AppState>((set) => ({
   adapterVersion: null,
   adapterName: null,
 
+  // Version configuration initial state
+  versionConfigs: null,
+  currentVersionConfig: null,
+  isLoadingVersionConfigs: false,
+
   // Existing actions
   setMode: (mode: AppMode) => set({ mode }),
   toggleMode: () =>
-    set((s) => ({ mode: s.mode === "playground" ? "development" : "playground" })),
+    set((s) => ({
+      mode: s.mode === "playground" ? "development" : "playground",
+    })),
   openCodeInput: () => set({ showCodeInput: true }),
   closeCodeInput: () => set({ showCodeInput: false }),
 
@@ -86,6 +110,52 @@ export const useAppStore = create<AppState>((set) => ({
   // Adapter version actions
   setAdapterInfo: (name: string, version: string) =>
     set({ adapterName: name, adapterVersion: version }),
+
+  // Version configuration actions
+  loadVersionConfigs: async () => {
+    set({ isLoadingVersionConfigs: true });
+    try {
+
+      const config = await loadVersionConfig();
+      const defaultVersion = getDefaultVersion(config);
+      set({
+        versionConfigs: config,
+        currentVersionConfig: defaultVersion || null,
+        isLoadingVersionConfigs: false,
+      });
+      // Update adapter info based on default version
+      if (defaultVersion) {
+        const { setAdapterInfo } = useAppStore.getState();
+        setAdapterInfo(
+          defaultVersion.packageName || "SDK",
+          defaultVersion.version
+        );
+      }
+    } catch (error) {
+      console.error("Failed to load version configs:", error);
+      set({ isLoadingVersionConfigs: false });
+    }
+  },
+
+  setCurrentVersion: (versionId: string) => {
+    const state = useAppStore.getState();
+    if (!state.versionConfigs) return;
+
+
+    const version = getVersionById(state.versionConfigs, versionId);
+    if (version) {
+      set({ currentVersionConfig: version });
+      // Update adapter info
+      const { setAdapterInfo } = useAppStore.getState();
+      setAdapterInfo(version.packageName || "SDK", version.version);
+    }
+  },
+
+  setVersionConfigs: (configs: VersionConfigFile) =>
+    set({ versionConfigs: configs }),
+
+  setCurrentVersionConfig: (config: VersionConfig | null) =>
+    set({ currentVersionConfig: config }),
 }));
 
 /**

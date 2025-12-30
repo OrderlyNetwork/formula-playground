@@ -136,17 +136,32 @@ export class BaseFormulaStore {
   }> {
     return this.withErrorHandling(async () => {
       // Update adapter info in app store before execution
-      const { setAdapterInfo } = useAppStore.getState();
+      const { setAdapterInfo, currentVersionConfig } = useAppStore.getState();
+
       if (engine === "ts") {
-        setAdapterInfo("TypeScript SDK", "1.0.0");
+        // Use current version config if available
+        if (currentVersionConfig) {
+          const displayName =
+            currentVersionConfig.packageName || "TypeScript SDK";
+          setAdapterInfo(displayName, currentVersionConfig.version);
+        } else {
+          setAdapterInfo("TypeScript SDK", "1.0.0");
+        }
       } else if (engine === "local") {
         // For local engine, we'll use the perp package version
         // This matches the LocalNpmAdapter's version property
-        try {
-          const perpModule = await import("@orderly.network/perp");
-          setAdapterInfo("Local NPM SDK", perpModule.version || "unknown");
-        } catch {
-          setAdapterInfo("Local NPM SDK", "unknown");
+        // But if there's a version config, use that instead
+        if (currentVersionConfig) {
+          const displayName =
+            currentVersionConfig.packageName || "Local NPM SDK";
+          setAdapterInfo(displayName, currentVersionConfig.version);
+        } else {
+          try {
+            const perpModule = await import("@orderly.network/perp");
+            setAdapterInfo("Local NPM SDK", perpModule.version || "unknown");
+          } catch {
+            setAdapterInfo("Local NPM SDK", "unknown");
+          }
         }
       }
 

@@ -9,6 +9,9 @@ export default defineConfig({
   // Set base path for GitHub Pages deployment
   // Use /formula-playground/ as base path in production environment
   base: process.env.NODE_ENV === "production" ? "/formula-playground/" : "/",
+  server: {
+    port: 3005,
+  },
   plugins: [
     react({
       babel: {
