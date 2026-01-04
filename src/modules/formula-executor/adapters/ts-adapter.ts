@@ -97,6 +97,24 @@ export class TSAdapter implements SDKAdapter {
   }
 
   /**
+   * Print current running script namespace/URL for testing
+   * @param formulaId - Formula ID being executed
+   * @param scriptSource - Script source type (local, jsdelivr, hardcoded, etc.)
+   * @param namespaceOrUrl - Namespace path or URL
+   */
+  private printScriptNamespace(
+    formulaId: string,
+    scriptSource: string,
+    namespaceOrUrl: string
+  ): void {
+    console.log(`[TSAdapter] Formula "${formulaId}" is using script from:`, {
+      scriptSource,
+      namespaceOrUrl,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  /**
    * Execute a formula with given inputs
    * Priority: user source code -> local code (global) -> global version jsDelivr -> formula jsdelivr -> hardcoded implementation -> error
    */
@@ -106,6 +124,11 @@ export class TSAdapter implements SDKAdapter {
   ): Promise<FormulaExecutionResult> {
     // Priority 1: User-provided source code (from developer mode parsing)
     if (formula.sourceCode && formula.creationType === "parsed") {
+      this.printScriptNamespace(
+        formula.id,
+        "user-source-code",
+        "compiled-from-user-input"
+      );
       return await this.executeUserCode(formula, inputs);
     }
 
@@ -113,17 +136,26 @@ export class TSAdapter implements SDKAdapter {
 
     try {
       let func: Function | undefined;
+      let scriptSource: string | undefined;
+      let namespaceOrUrl: string | undefined;
 
       // Priority 2: Try local code from global scope (if current version is local)
       const { currentVersionConfig } = useAppStore.getState();
       if (currentVersionConfig?.type === "local") {
+        const namespace = currentVersionConfig.globalNamespace || "formulas";
+        const key = currentVersionConfig.globalKey;
+        const namespacePath = key
+          ? `window.${namespace}.${key}`
+          : `window.${namespace}`;
         const globalFunc = getFunctionFromGlobal(
           formula.jsdelivrInfo?.functionName || formula.id,
-          currentVersionConfig.globalNamespace || "formulas",
-          currentVersionConfig.globalKey
+          namespace,
+          key
         );
         if (globalFunc) {
           func = globalFunc;
+          scriptSource = "local-global-namespace";
+          namespaceOrUrl = namespacePath;
         }
       }
 
@@ -144,6 +176,8 @@ export class TSAdapter implements SDKAdapter {
               formula.id,
               currentVersionConfig.version
             );
+            scriptSource = "version-jsdelivr-url";
+            namespaceOrUrl = currentVersionConfig.jsdelivrUrl;
           } catch (error) {
             console.warn(
               `Failed to load from global version jsDelivr, trying formula-specific:`,
@@ -163,6 +197,8 @@ export class TSAdapter implements SDKAdapter {
             formula.id,
             formula.jsdelivrInfo.version
           );
+          scriptSource = "formula-jsdelivr-url";
+          namespaceOrUrl = formula.jsdelivrInfo.url;
         } catch (error) {
           console.warn(
             `Failed to load from formula jsDelivr, falling back to hardcoded:`,
@@ -175,6 +211,15 @@ export class TSAdapter implements SDKAdapter {
       // Priority 5: Fallback to hardcoded implementation
       if (!func) {
         func = this.formulaMap.get(formula.id);
+        if (func) {
+          scriptSource = "hardcoded-implementation";
+          namespaceOrUrl = "inline-formula-map";
+        }
+      }
+
+      // Print script namespace for testing
+      if (scriptSource && namespaceOrUrl) {
+        this.printScriptNamespace(formula.id, scriptSource, namespaceOrUrl);
       }
 
       // No implementation found
