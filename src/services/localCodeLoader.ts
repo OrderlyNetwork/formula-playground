@@ -74,62 +74,95 @@ export async function loadLocalCode(sourcePath: string): Promise<string> {
  * @param code - JavaScript code to inject
  * @param namespace - Global namespace (e.g., "formulas")
  * @param key - Namespace key (e.g., "v1")
+ * @returns Promise that resolves when code injection and execution is complete
  */
 export function injectCodeToGlobal(
   code: string,
   namespace: string = "formulas",
   key?: string
-): void {
-  // Ensure namespace exists
-  const global = window || globalThis;
-  if (!(global as any)[namespace]) {
-    (global as any)[namespace] = {};
-  }
-
-  // If key is provided, ensure the key exists in namespace
-  if (key) {
-    if (!(global as any)[namespace][key]) {
-      (global as any)[namespace][key] = {};
-    }
-  }
-
-  try {
-    // Wrap code in IIFE that receives the target namespace
-    // This allows the code to export to the correct namespace
-    const targetPath = key ? `${namespace}.${key}` : namespace;
-    const wrappedCode = `
-      (function() {
-        var target = window.${targetPath};
-        ${code}
-      })();
-    `;
-
-    // Use dynamic script injection for better isolation
-    const script = document.createElement("script");
-    script.textContent = wrappedCode;
-
-    // Insert before first script or at end of head
-    const firstScript = document.head.querySelector("script");
-    if (firstScript) {
-      document.head.insertBefore(script, firstScript);
-    } else {
-      document.head.appendChild(script);
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // Ensure namespace exists
+    const global = window || globalThis;
+    if (!(global as any)[namespace]) {
+      (global as any)[namespace] = {};
     }
 
-    // Remove script after execution (cleanup)
-    setTimeout(() => {
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
+    // If key is provided, ensure the key exists in namespace
+    if (key) {
+      if (!(global as any)[namespace][key]) {
+        (global as any)[namespace][key] = {};
       }
-    }, 0);
-  } catch (error) {
-    console.error("Failed to inject code to global scope:", error);
-    throw new Error(
-      `Failed to inject code: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
-  }
+    }
+
+    try {
+      // Get target namespace
+      const targetNamespace = key
+        ? (global as any)[namespace][key]
+        : (global as any)[namespace];
+
+      // Create CommonJS-compatible environment
+      const module = { exports: {} };
+      const exports = module.exports;
+
+      // Mock require() for known dependencies
+      const mockRequire = (moduleName: string) => {
+        if (moduleName === "@orderly.network/utils") {
+          if ((window as any).OrderlyUtils) {
+            return (window as any).OrderlyUtils;
+          }
+          throw new Error(
+            "Dependency @orderly.network/utils not found. Please ensure it is loaded first."
+          );
+        }
+        if (moduleName === "@orderly.network/types") {
+          if ((window as any).OrderlyTypes) {
+            return (window as any).OrderlyTypes;
+          }
+          return {}; // Safe fallback for types
+        }
+        throw new Error(
+          `Unsupported module: ${moduleName}. Available: @orderly.network/utils, @orderly.network/types`
+        );
+      };
+
+      // Execute code using Function constructor for better error handling
+      // This provides a controlled environment similar to eval but safer
+      const executeCode = new Function(
+        "require",
+        "module",
+        "exports",
+        "__targetNamespace__",
+        `
+          'use strict';
+          ${code}
+          return module.exports;
+        `
+      );
+
+      // Execute the code
+      const result = executeCode(mockRequire, module, exports, targetNamespace);
+
+      // Copy all exported properties to the target namespace
+      for (const exportKey in result) {
+        if (result.hasOwnProperty(exportKey)) {
+          targetNamespace[exportKey] = result[exportKey];
+        }
+      }
+
+      // Resolve on next tick to ensure all assignments are complete
+      setTimeout(() => resolve(), 0);
+    } catch (error) {
+      console.error("Failed to inject code to global scope:", error);
+      reject(
+        new Error(
+          `Failed to inject code: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        )
+      );
+    }
+  });
 }
 
 /**
@@ -144,15 +177,42 @@ export async function loadAndInjectLocalCode(
     throw new Error("Version config is not a local type or missing sourcePath");
   }
 
+  // Ensure required dependencies are available globally before loading local code
+  await ensureDependenciesAvailable();
+
   // Load code
   const code = await loadLocalCode(versionConfig.sourcePath);
 
-  // Inject to global scope
-  injectCodeToGlobal(
+  // Inject to global scope and wait for completion
+  await injectCodeToGlobal(
     code,
     versionConfig.globalNamespace || "formulas",
     versionConfig.globalKey
   );
+}
+
+/**
+ * @description Ensure required dependencies are available in global scope
+ * This is needed for CommonJS modules that use require()
+ */
+async function ensureDependenciesAvailable(): Promise<void> {
+  // Check if dependencies are already loaded
+  if ((window as any).OrderlyUtils) {
+    return; // Already loaded
+  }
+
+  try {
+    // Dynamically import @orderly.network/utils and expose it globally
+    const utils = await import("@orderly.network/utils");
+    (window as any).OrderlyUtils = utils;
+  } catch (error) {
+    console.error("Failed to load required dependencies:", error);
+    throw new Error(
+      `Failed to load @orderly.network/utils: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
 }
 
 /**
