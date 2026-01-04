@@ -8,6 +8,9 @@ import {
   getVersionById,
 } from "../services/versionConfigService";
 
+// LocalStorage key for persisting selected version
+const VERSION_STORAGE_KEY = "formula-playground:selected-version";
+
 export type AppMode = "playground" | "development";
 
 // Playground Left Panel Categories
@@ -115,21 +118,32 @@ export const useAppStore = create<AppState>((set) => ({
   loadVersionConfigs: async () => {
     set({ isLoadingVersionConfigs: true });
     try {
-
       const config = await loadVersionConfig();
-      const defaultVersion = getDefaultVersion(config);
+
+      // Try to restore last selected version from localStorage
+      const savedVersionId = localStorage.getItem(VERSION_STORAGE_KEY);
+      let versionToUse: VersionConfig | null = null;
+
+      if (savedVersionId) {
+        // Check if saved version still exists in config
+        versionToUse = getVersionById(config, savedVersionId) || null;
+      }
+
+      // Fallback to default version if no saved version or saved version not found
+      if (!versionToUse) {
+        versionToUse = getDefaultVersion(config) || null;
+      }
+
       set({
         versionConfigs: config,
-        currentVersionConfig: defaultVersion || null,
+        currentVersionConfig: versionToUse,
         isLoadingVersionConfigs: false,
       });
-      // Update adapter info based on default version
-      if (defaultVersion) {
+
+      // Update adapter info based on selected version
+      if (versionToUse) {
         const { setAdapterInfo } = useAppStore.getState();
-        setAdapterInfo(
-          defaultVersion.packageName || "SDK",
-          defaultVersion.version
-        );
+        setAdapterInfo(versionToUse.packageName || "SDK", versionToUse.version);
       }
     } catch (error) {
       console.error("Failed to load version configs:", error);
@@ -141,13 +155,36 @@ export const useAppStore = create<AppState>((set) => ({
     const state = useAppStore.getState();
     if (!state.versionConfigs) return;
 
-
     const version = getVersionById(state.versionConfigs, versionId);
     if (version) {
       set({ currentVersionConfig: version });
+
+      // Save to localStorage
+      try {
+        localStorage.setItem(VERSION_STORAGE_KEY, versionId);
+      } catch (error) {
+        console.warn("Failed to save version to localStorage:", error);
+      }
+
       // Update adapter info
       const { setAdapterInfo } = useAppStore.getState();
       setAdapterInfo(version.packageName || "SDK", version.version);
+
+      // Reload formulas from version-specific config
+      // Import dynamically to avoid circular dependencies
+      import("@/store/formulaStore")
+        .then(({ useFormulaStore }) => {
+          const { loadFormulasFromAllSources } = useFormulaStore.getState();
+          loadFormulasFromAllSources().catch((error) => {
+            console.error(
+              "Failed to reload formulas after version change:",
+              error
+            );
+          });
+        })
+        .catch((error) => {
+          console.error("Failed to import formulaStore:", error);
+        });
     }
   },
 

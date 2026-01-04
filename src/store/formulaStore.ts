@@ -102,10 +102,39 @@ export const useFormulaStore = create<FormulaStore>((set, get) => ({
       // Load from IndexedDB
       const dbFormulas = await db.formulas.toArray();
 
-      // Load from config file (formulas.json)
+      // Load from config file (formulas.json or version-specific config)
       let configFormulas: FormulaDefinition[] = [];
       try {
-        const response = await fetch(`${import.meta.env.BASE_URL}formulas.json`);
+        // Get current version and its config path
+        const { currentVersionConfig, versionConfigs } = (
+          await import("@/store/appStore")
+        ).useAppStore.getState();
+        let formulasUrl = `${import.meta.env.BASE_URL}formulas.json`; // default fallback
+
+        if (currentVersionConfig?.formulaConfigPath) {
+          // Use version-specific formula config if available
+          formulasUrl = `${import.meta.env.BASE_URL}${
+            currentVersionConfig.formulaConfigPath
+          }`;
+          console.log(
+            `Loading formulas from version-specific config: ${currentVersionConfig.formulaConfigPath}`
+          );
+        } else if (versionConfigs && currentVersionConfig) {
+          // Check if version has formulaConfigPath in versionConfigs
+          const versionEntry = versionConfigs.versions.find(
+            (v) => v.id === currentVersionConfig.id
+          );
+          if (versionEntry?.formulaConfigPath) {
+            formulasUrl = `${import.meta.env.BASE_URL}${
+              versionEntry.formulaConfigPath
+            }`;
+            console.log(
+              `Loading formulas from version config: ${versionEntry.formulaConfigPath}`
+            );
+          }
+        }
+
+        const response = await fetch(formulasUrl);
         if (response.ok) {
           configFormulas = await response.json();
           // Mark config formulas with creationType if not set

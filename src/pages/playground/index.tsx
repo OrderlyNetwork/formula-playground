@@ -93,7 +93,7 @@ export function PlaygroundPage() {
    */
   const promptForGitHubUrls = useCallback((): string[] | null => {
     const input = window.prompt(
-      "请输入 GitHub 地址列表（每行一个，支持 raw/blob/tree 链接）"
+      "Enter GitHub URL list (one per line, supports raw/blob/tree links)"
     );
     const urls = parseUrlList(input);
     return urls.length > 0 ? urls : null;
@@ -116,10 +116,10 @@ export function PlaygroundPage() {
       if (res.success) {
         setNeedsImport(false);
       } else {
-        alert(`导入失败: ${res.error}`);
+        alert(`Import failed: ${res.error}`);
       }
     } catch (e) {
-      alert(`导入过程中出现异常: ${String(e)}`);
+      alert(`An exception occurred during import: ${String(e)}`);
     } finally {
       setBusy(false);
     }
@@ -188,14 +188,15 @@ function ImportBanner(props: {
   return (
     <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-3 flex items-center justify-between">
       <p className="text-sm text-yellow-800">
-        检测到本地没有公式列表。请先从 GitHub 拉取源码并解析。
+        No formula list detected locally. Please pull and parse source code from
+        GitHub first.
       </p>
       <button
         className="px-3 py-1.5 rounded bg-yellow-600 text-white text-sm disabled:opacity-50"
         onClick={onImport}
         disabled={busy}
       >
-        {busy ? "处理中..." : "从 GitHub 拉取并解析"}
+        {busy ? "Processing..." : "Pull and Parse from GitHub"}
       </button>
     </div>
   );

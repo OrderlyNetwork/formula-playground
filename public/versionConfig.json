@@ -7,7 +7,8 @@
       "type": "release",
       "jsdelivrUrl": "https://cdn.jsdelivr.net/npm/@orderly.network/perp@4.8.1/dist/index.js",
       "packageName": "@orderly.network/perp",
-      "description": "Current stable release"
+      "description": "Current stable release",
+      "formulaConfigPath": "versions/4.8.1/formulas.json"
     },
     {
       "id": "dev-main",
@@ -16,7 +17,8 @@
       "type": "dev",
       "jsdelivrUrl": "https://cdn.jsdelivr.net/gh/orderly-network/perp-sdk@main/dist/index.js",
       "packageName": "@orderly.network/perp",
-      "description": "Development branch"
+      "description": "Development branch",
+      "formulaConfigPath": "versions/dev/formulas.json"
     },
     {
       "id": "local-v1",
@@ -28,6 +30,18 @@
       "description": "Local development build v1",
       "globalNamespace": "formulas",
       "globalKey": "v1"
+    },
+    {
+      "id": "local-v2",
+      "name": "local-v2 (local)",
+      "version": "local-v2",
+      "type": "local",
+      "packageName": "formula-playground",
+      "description": "Generated local version",
+      "formulaConfigPath": "versions/local-v2/formulas.json",
+      "sourcePath": "/dist/local-v2.js",
+      "globalNamespace": "formulas",
+      "globalKey": "local-v2"
     }
   ],
   "defaultVersion": "v4.8.1"

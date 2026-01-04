@@ -16,9 +16,17 @@
  * Default output path: public/formulas.json
  */
 
-import { readFileSync, writeFileSync, statSync, readdirSync } from "fs";
+import {
+  readFileSync,
+  writeFileSync,
+  statSync,
+  readdirSync,
+  mkdirSync,
+  existsSync,
+} from "fs";
 import { join, dirname, resolve, extname } from "path";
 import type { FormulaDefinition } from "../types/formula.js";
+import type { VersionConfigFile, VersionConfig } from "../types/version.js";
 import { Project, SourceFile } from "ts-morph";
 import { toSnakeCase } from "../lib/utils.js";
 import { FormulaParser } from "../modules/formula-parser/index.js";
@@ -118,23 +126,107 @@ function extractFunctionNames(sourceFile: SourceFile): Map<string, string> {
 }
 
 /**
- * Parse command line arguments
- * @returns Parsed arguments: { sourcePath, outputPath }
+ * Update versionConfig.json with formulaConfigPath for the specified version
+ * @param version - Version identifier
+ * @param type - Version type (release, dev, local)
+ * @param packageName - Package name from package.json
+ * @param formulaConfigPath - Relative path to formulas.json (e.g., "versions/4.8.1/formulas.json")
  */
-function parseArgs(): { sourcePath: string; outputPath: string } {
+function updateVersionConfig(
+  version: string,
+  type: "release" | "dev" | "local",
+  packageName: string,
+  formulaConfigPath: string
+): void {
+  const versionConfigPath = resolve("public/versionConfig.json");
+
+  let versionConfig: VersionConfigFile;
+
+  try {
+    const content = readFileSync(versionConfigPath, "utf-8");
+    versionConfig = JSON.parse(content);
+  } catch (_error) {
+    console.warn("⚠️  versionConfig.json not found, creating new one");
+    versionConfig = {
+      versions: [],
+      defaultVersion: version,
+    };
+  }
+
+  // Find existing version entry
+  const existingVersionIndex = versionConfig.versions.findIndex(
+    (v: VersionConfig) => v.version === version || v.id === version
+  );
+
+  if (existingVersionIndex !== -1) {
+    // Update existing version entry
+    versionConfig.versions[existingVersionIndex].formulaConfigPath =
+      formulaConfigPath;
+    console.log(`  ✓ Updated existing version entry: ${version}`);
+  } else {
+    // Add new version entry
+    const newVersion: VersionConfig = {
+      id: version,
+      name: `${version} (${type})`,
+      version: version,
+      type: type,
+      packageName: packageName,
+      description: `Generated ${type} version`,
+      formulaConfigPath: formulaConfigPath,
+    };
+
+    // Add type-specific fields
+    if (type === "release") {
+      newVersion.jsdelivrUrl = `https://cdn.jsdelivr.net/npm/${packageName}@${version}/dist/index.js`;
+    } else if (type === "dev") {
+      newVersion.jsdelivrUrl = `https://cdn.jsdelivr.net/gh/orderly-network/perp-sdk@${version}/dist/index.js`;
+    } else if (type === "local") {
+      newVersion.sourcePath = `/dist/${version}.js`;
+      newVersion.globalNamespace = "formulas";
+      newVersion.globalKey = version;
+    }
+
+    versionConfig.versions.push(newVersion);
+    console.log(`  ✓ Added new version entry: ${version} (${type})`);
+  }
+
+  // Write updated versionConfig.json
+  writeFileSync(
+    versionConfigPath,
+    JSON.stringify(versionConfig, null, 2),
+    "utf-8"
+  );
+  console.log(`  ✓ Updated versionConfig.json`);
+}
+
+/**
+ * Parse command line arguments
+ * @returns Parsed arguments: { sourcePath, outputPath, version, type }
+ */
+function parseArgs(): {
+  sourcePath: string;
+  outputPath: string;
+  version?: string;
+  type: "release" | "dev" | "local";
+} {
   const args = process.argv.slice(2);
 
   if (args.length === 0) {
     console.error("Error: Source path is required");
     console.error(
-      "Usage: pnpm generate:formulas <source-path> [--output <output-path>]"
+      "Usage: pnpm generate:formulas <source-path> [--version <version>] [--type <release|dev|local>] [--output <output-path>]"
     );
-    console.error("  Default output: public/formulas.json");
+    console.error(
+      "  Default output: public/formulas.json (or public/versions/{version}/formulas.json if --version is provided)"
+    );
+    console.error("  Default type: release");
     process.exit(1);
   }
 
   let sourcePath = "";
   let outputPath = "";
+  let version: string | undefined = undefined;
+  let type: "release" | "dev" | "local" = "release";
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -145,6 +237,32 @@ function parseArgs(): { sourcePath: string; outputPath: string } {
         i++; // Skip next argument as it's the value
       } else {
         console.error("Error: --output requires a value");
+        process.exit(1);
+      }
+    } else if (arg === "--version" || arg === "-v") {
+      if (i + 1 < args.length) {
+        version = args[i + 1];
+        i++; // Skip next argument as it's the value
+      } else {
+        console.error("Error: --version requires a value");
+        process.exit(1);
+      }
+    } else if (arg === "--type" || arg === "-t") {
+      if (i + 1 < args.length) {
+        const typeValue = args[i + 1];
+        if (
+          typeValue === "release" ||
+          typeValue === "dev" ||
+          typeValue === "local"
+        ) {
+          type = typeValue;
+        } else {
+          console.error("Error: --type must be one of: release, dev, local");
+          process.exit(1);
+        }
+        i++; // Skip next argument as it's the value
+      } else {
+        console.error("Error: --type requires a value");
         process.exit(1);
       }
     } else if (!sourcePath && !arg.startsWith("-")) {
@@ -159,20 +277,35 @@ function parseArgs(): { sourcePath: string; outputPath: string } {
 
   // Set default output path if not provided
   if (!outputPath) {
-    outputPath = "public/formulas.json";
+    if (version) {
+      // If version is provided, output to versioned directory
+      outputPath = `public/versions/${version}/formulas.json`;
+    } else {
+      // Otherwise use default path for backward compatibility
+      outputPath = "public/formulas.json";
+    }
   }
 
-  return { sourcePath: resolve(sourcePath), outputPath: resolve(outputPath) };
+  return {
+    sourcePath: resolve(sourcePath),
+    outputPath: resolve(outputPath),
+    version,
+    type,
+  };
 }
 
 /**
  * Main CLI function
  */
 async function main() {
-  const { sourcePath, outputPath } = parseArgs();
+  const { sourcePath, outputPath, version, type } = parseArgs();
 
   console.log(`📂 Source path: ${sourcePath}`);
   console.log(`📄 Output path: ${outputPath}`);
+  if (version) {
+    console.log(`🔖 Version: ${version}`);
+    console.log(`📦 Type: ${type}`);
+  }
 
   // Check if source path exists
   try {
@@ -181,7 +314,7 @@ async function main() {
       console.error(`Error: ${sourcePath} is not a file or directory`);
       process.exit(1);
     }
-  } catch (error) {
+  } catch (_error) {
     console.error(`Error: Source path does not exist: ${sourcePath}`);
     process.exit(1);
   }
@@ -328,6 +461,13 @@ async function main() {
     console.log(`  ✓ ${formula.id} -> ${functionName} (${packageName})`);
   }
 
+  // Create output directory if it doesn't exist
+  const outputDir = dirname(outputPath);
+  if (!existsSync(outputDir)) {
+    mkdirSync(outputDir, { recursive: true });
+    console.log(`\n📁 Created directory: ${outputDir}`);
+  }
+
   // Write output JSON file
   try {
     const outputContent = JSON.stringify(enhancedFormulas, null, 2);
@@ -338,6 +478,24 @@ async function main() {
   } catch (error) {
     console.error("Error writing output file:", error);
     process.exit(1);
+  }
+
+  // Update versionConfig.json if version is provided
+  if (version) {
+    try {
+      // Calculate relative path from public directory
+      const publicDir = resolve("public");
+      const relativeConfigPath = outputPath.startsWith(publicDir)
+        ? outputPath.substring(publicDir.length + 1).replace(/\\/g, "/")
+        : outputPath;
+
+      updateVersionConfig(version, type, packageName, relativeConfigPath);
+    } catch (error) {
+      console.error("Error updating versionConfig.json:", error);
+      console.warn(
+        "⚠️  Formula config was generated but versionConfig.json was not updated"
+      );
+    }
   }
 }
 

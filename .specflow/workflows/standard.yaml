@@ -5,71 +5,92 @@ version: "1.0"
 
 # 定义整个流程的节点图
 nodes:
-  # 1. 需求分析节点
+  # 1. 需求分析节点 (文档生成 + 自动审查)
   - id: "req-analysis"
     label: "需求分析"
     description: "需求分析"
-    type: "review"
-    items:
-      - prompt: "prompts/req.md" # AI 指令
-        template: "templates/req-tpl.md" # 结构约束
-        output: "req.md" # 落盘文件
-        validation:
-          score_threshold: 80
-          required_fields: ["详细描述", "功能验收标准","Desktop版本","mWeb版本"]
-      
+    type: "document"
+    # 生成配置
+    generation:
+      enabled: true
+      editor: "req-editor"
+      prompt: "prompts/req.md" # AI 生成指令
+      template: "templates/req-tpl.md" # 结构约束
+      output: "req.md" # 落盘文件
+      validation:
+        required_fields: ["详细描述", "功能验收标准","Desktop版本","mWeb版本"]
+    # 审查配置
+    review:
+      enabled: true
+      mode: "auto"
+      trigger: "on_complete"
+      scoreThreshold: 80
+      blockTransition: true
+      prompt: "prompts/req.md" # AI 审查指令 (可以与生成指令相同或不同)
+      output: "req.md" # 要审查的文件
     next: ["ux-design"]
 
-
-  # 2. 技术设计节点
-  - id: "tech-design"
-    label: "技术设计"
-    description: "技术设计"
-    type: "review"
-    items:
-      - prompt: "prompts/tech.txt"
-        template: "templates/tech-tpl.md"
-        output: "tech.md"
-    # 上下文引用：AI 生成设计时，自动读取 'req-analysis' 节点的产出
-    context_refs: ["req-analysis"]
-    next: ["design-review"]
-    
+  # 2. UI/UX设计节点 (文档生成)
   - id: "ux-design"
     label: "UI/UX设计"
     description: "UI/UX设计"
-    type: "generator"
-    editor: "ui-designer"
-    items:
-      - prompt: "prompts/ux.md"
-        template: "templates/ux-tpl.md"
-        output: "ux.md"
-        validation:
-          required_fields: []
+    type: "document"
+    generation:
+      enabled: true
+      editor: "ui-designer"
+      prompt: "prompts/ux.md"
+      template: "templates/ux-tpl.md"
+      output: "ux.md"
+      validation:
+        required_fields: []
     next: ["tech-design"]
 
+  # 3. 技术设计节点 (文档生成 + 自动审查)
+  - id: "tech-design"
+    label: "技术设计"
+    description: "技术设计"
+    type: "document"
+    # 上下文引用：AI 生成设计时，自动读取 'req-analysis' 节点的产出
+    context_refs: ["req-analysis"]
+    generation:
+      enabled: true
+      prompt: "prompts/tech.txt"
+      template: "templates/tech-tpl.md"
+      output: "tech.md"
+    review:
+      enabled: true
+      mode: "auto"
+      trigger: "on_complete"
+      scoreThreshold: 70
+      prompt: "prompts/tech.txt"
+      output: "tech.md"
+    next: ["design-review"]
 
-  # 3. 人工评审节点
+  # 4. 人工评审节点 (仅审查 + 手动审批)
   - id: "design-review"
     label: "设计评审"
     description: "设计评审"
-    type: "review"
-    items: []
-    target_file: "02-design.md"
-    actions:
-      approve: "impl-code"
-      reject: "tech-design" # 驳回则退回设计阶段
+    type: "document"
+    generation:
+      enabled: false
+    review:
+      enabled: true
+      mode: "manual"
+      output: "tech.md"  # 指定要审查的文件
+    next: ["impl-code"]  # 评审完成后进入实现阶段
 
-  # 4. 代码实现节点 (生成影子文件)
+  # 5. 代码实现节点 (生成影子文件)
   - id: "impl-code"
     label: "代码实现"
     description: "代码实现"
-    type: "generator"
-    items:
-      - prompt: "prompts/03-code.txt"
-        output: "03-impl-shadow.md" # 不直接覆盖 src，而是生成影子文件
+    type: "document"
+    generation:
+      enabled: true
+      prompt: "prompts/03-code.txt"
+      output: "03-impl-shadow.md" # 不直接覆盖 src，而是生成影子文件
     next: ["adoption-calc"]
 
-  # 5. 扩展节点：采纳率分析
+  # 6. 扩展节点：采纳率分析
   - id: "adoption-calc"
     label: "采纳率分析"
     description: "采纳率分析"

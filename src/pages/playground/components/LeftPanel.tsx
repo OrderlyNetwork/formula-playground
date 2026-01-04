@@ -18,7 +18,7 @@ export function LeftPanel() {
     useState<CategoryType>("formulas");
 
   // State for source code dialog
-  const [sourceCodeDialogOpen, setSourceCodeDialogOpen] = useState(false);
+  // const [sourceCodeDialogOpen, setSourceCodeDialogOpen] = useState(false);
 
   /**
    * Render content based on active category
@@ -26,12 +26,7 @@ export function LeftPanel() {
   const renderCategoryContent = () => {
     switch (activeCategory) {
       case "formulas":
-        return (
-          <FormulasPanel
-            sourceCodeDialogOpen={sourceCodeDialogOpen}
-            setSourceCodeDialogOpen={setSourceCodeDialogOpen}
-          />
-        );
+        return <FormulasPanel />;
 
       case "datasource":
         return <DataSourcePanel />;

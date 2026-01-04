@@ -10,7 +10,8 @@
     "build:check": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "generate:formulas": "tsx src/scripts/generateFormulaConfig.ts"
+    "generate:formulas": "tsx src/scripts/generateFormulaConfig.ts",
+    "generate:formulas:versioned": "tsx src/scripts/generateFormulaConfig.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

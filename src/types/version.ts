@@ -33,6 +33,8 @@ export interface VersionConfig {
   globalNamespace?: string;
   /** Global key for local versions (e.g., "v1") */
   globalKey?: string;
+  /** Path to version-specific formula configuration (relative to public directory) */
+  formulaConfigPath?: string;
 }
 
 /**
