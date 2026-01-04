@@ -160,8 +160,17 @@ function updateVersionConfig(
 
   if (existingVersionIndex !== -1) {
     // Update existing version entry
-    versionConfig.versions[existingVersionIndex].formulaConfigPath =
-      formulaConfigPath;
+    const existingVersion = versionConfig.versions[existingVersionIndex];
+    existingVersion.formulaConfigPath = formulaConfigPath;
+    
+    // Update sourcePath for local type if needed
+    if (type === "local") {
+      const configDir = dirname(formulaConfigPath).replace(/\\/g, "/");
+      existingVersion.sourcePath = `/${configDir}/index.js`;
+      existingVersion.globalNamespace = existingVersion.globalNamespace || "formulas";
+      existingVersion.globalKey = existingVersion.globalKey || version;
+    }
+    
     console.log(`  ✓ Updated existing version entry: ${version}`);
   } else {
     // Add new version entry
@@ -181,7 +190,11 @@ function updateVersionConfig(
     } else if (type === "dev") {
       newVersion.jsdelivrUrl = `https://cdn.jsdelivr.net/gh/orderly-network/perp-sdk@${version}/dist/index.js`;
     } else if (type === "local") {
-      newVersion.sourcePath = `/dist/${version}.js`;
+      // For local type, sourcePath should point to the JS file in the same directory as formulas.json
+      // formulaConfigPath format: "versions/${version}/formulas.json"
+      // sourcePath should be: "/versions/${version}/index.js"
+      const configDir = dirname(formulaConfigPath).replace(/\\/g, "/");
+      newVersion.sourcePath = `/${configDir}/index.js`;
       newVersion.globalNamespace = "formulas";
       newVersion.globalKey = version;
     }

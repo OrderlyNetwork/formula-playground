@@ -9,6 +9,16 @@
 export type VersionType = "release" | "dev" | "local";
 
 /**
+ * @description Dependency configuration for loading external packages from jsDelivr
+ */
+export interface DependencyConfig {
+  /** Package name (e.g., "@orderly.network/utils") */
+  packageName: string;
+  /** Package version (e.g., "2.8.1") */
+  version: string;
+}
+
+/**
  * @description Version configuration interface
  * Defines a single version configuration that can be selected for formula execution
  */
@@ -35,6 +45,8 @@ export interface VersionConfig {
   globalKey?: string;
   /** Path to version-specific formula configuration (relative to public directory) */
   formulaConfigPath?: string;
+  /** Dependencies to load from jsDelivr for local versions */
+  dependencies?: DependencyConfig[];
 }
 
 /**

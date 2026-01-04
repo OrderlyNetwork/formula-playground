@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import {
   Sigma,
   Play,
@@ -10,7 +11,9 @@ import {
   Check,
   Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useAppStore } from "@/store/appStore";
+import { useFormulaStore } from "@/store/formulaStore";
 import type { VersionConfig } from "@/types/version";
 import { loadAndInjectLocalCode } from "@/services/localCodeLoader";
 import { cn } from "@/lib/utils";
@@ -48,6 +51,7 @@ function getVersionTypeBadgeColor(type: VersionConfig["type"]) {
 }
 
 function EmptyState() {
+  const navigate = useNavigate();
   const {
     versionConfigs,
     currentVersionConfig,
@@ -85,6 +89,21 @@ function EmptyState() {
 
       // Set the current version
       setCurrentVersion(version.id);
+
+      // Load formulas for the selected version
+      await useFormulaStore.getState().loadFormulasFromAllSources();
+
+      // Get the first formula from the loaded formulas
+      const formulas = useFormulaStore.getState().formulaDefinitions;
+
+      if (formulas.length === 0) {
+        // Show toast if no formulas available
+        toast.error("该版本暂无可用公式");
+        return;
+      }
+
+      // Navigate to the first formula's detail page
+      navigate(`/formula/${formulas[0].id}`);
     } catch (err) {
       console.error("Failed to switch version:", err);
       setError(
