@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { useAppStore } from "@/store/appStore";
 import { useFormulaStore } from "@/store/formulaStore";
+import { useFormulaTabStore } from "@/store/formulaTabStore";
 import type { VersionConfig } from "@/types/version";
 import { loadAndInjectLocalCode } from "@/services/localCodeLoader";
 import { cn } from "@/lib/utils";
@@ -82,6 +83,9 @@ function EmptyState() {
     setError(null);
 
     try {
+      // Close all tabs from the previous version and clear tab records
+      useFormulaTabStore.getState().closeAllTabs();
+
       // If it's a local version, load and inject the code
       if (version.type === "local") {
         await loadAndInjectLocalCode(version);
