@@ -1,26 +1,15 @@
 {
   "versions": [
     {
-      "id": "v4.8.1",
-      "name": "v4.8.1 (Stable)",
-      "version": "4.8.1",
+      "id": "npm",
+      "name": "npm (v4.8.10)",
+      "version": "npm",
       "type": "release",
-      "jsdelivrUrl": "https://cdn.jsdelivr.net/npm/@orderly.network/perp@4.8.1/dist/index.js",
       "packageName": "@orderly.network/perp",
       "description": "Current stable release",
-      "formulaConfigPath": "versions/4.8.1/formulas.json"
+      "formulaConfigPath": "versions/npm/formulas.json",
+      "jsdelivrUrl": "https://cdn.jsdelivr.net/npm/@orderly.network/perp@npm/dist/index.js"
     },
-    {
-      "id": "dev-main",
-      "name": "dev (main branch)",
-      "version": "dev",
-      "type": "dev",
-      "jsdelivrUrl": "https://cdn.jsdelivr.net/gh/orderly-network/perp-sdk@main/dist/index.js",
-      "packageName": "@orderly.network/perp",
-      "description": "Development branch",
-      "formulaConfigPath": "versions/dev/formulas.json"
-    },
-    
     {
       "id": "isolate-margin",
       "name": "isolate-margin (local)",
@@ -34,5 +23,5 @@
       "globalKey": "isolate-margin"
     }
   ],
-  "defaultVersion": "v4.8.1"
+  "defaultVersion": "npm"
 }

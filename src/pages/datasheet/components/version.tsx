@@ -22,7 +22,7 @@ export const Version = () => {
         {adapterName && adapterVersion ? (
           <span className="underline decoration-dotted">
             {adapterName}{" "}
-            <span className="text-gray-500">v{adapterVersion}</span>
+            <span className="text-gray-500">{adapterVersion}</span>
           </span>
         ) : (
           <span className="text-gray-400 italic">Not initialized</span>
