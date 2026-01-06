@@ -245,7 +245,15 @@ const InputCell: React.FC<InputCellProps> = ({
 
     if (inputRef.current && column.editable !== false) {
       const val = inputRef.current.value;
-      store.setValue(rowId, column.id, val);
+      const currentVal = store.getValue(rowId, column.id);
+
+      // Only setValue if:
+      // 1. Value is different from current (includes clearing existing values)
+      // 2. Skip if both are empty (avoid unnecessary calculation)
+      if (val !== currentVal) {
+        store.setValue(rowId, column.id, val);
+      }
+
       // Switch to resolved value on blur
       const resolved = resolveValue(val, dataSourceData);
       inputRef.current.value = resolved;
