@@ -6,6 +6,7 @@ import {
   ListX,
   PanelRightClose,
   PanelRightOpen,
+  Play,
 } from "lucide-react";
 import type { FlattenedPath } from "@/utils/formulaTableUtils";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,8 @@ interface SpreadsheetToolbarProps {
   onAddRow: () => void;
   onAddColumn: () => void;
   onClearDataSheet: () => void;
+  /** Callback to manually trigger calculation for selected rows or all rows with data */
+  onManualCalculate?: () => void;
 }
 
 /**
@@ -44,6 +47,7 @@ const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
   onAddRow,
   onAddColumn,
   onClearDataSheet,
+  onManualCalculate,
 }) => {
   const togglePanel = useFormulaLogStore((state) => state.togglePanel);
   const isLogPanelOpen = useFormulaLogStore((state) => state.isOpen);
@@ -53,15 +57,13 @@ const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
 
   const handleTakeSnapshot = useCallback(async () => {
     try {
-
       const spreadsheetStore = useSpreadsheetStore.getState();
       const snapshotData: Record<
         string,
         Record<string, Record<string, unknown>>
       > = {};
 
-
-      formulaDefinitions.forEach(formula => {
+      formulaDefinitions.forEach((formula) => {
         const gridStore = spreadsheetStore.getTabGridStore(formula.id);
         if (gridStore) {
           const data = gridStore.getAllData();
@@ -111,13 +113,26 @@ const SpreadsheetToolbar: React.FC<SpreadsheetToolbarProps> = ({
             flattenedPaths && flattenedPaths.length > 0
               ? "Columns are defined by formula inputs"
               : selection?.type === "column"
-                ? "Add Column After Selected"
-                : "Add Column at End"
+              ? "Add Column After Selected"
+              : "Add Column at End"
           }
         >
           <BetweenVerticalStart size={20} />
           {/* <ArrowRight size={14} className="text-green-600" />
         <span>Add Column {selection?.type === "column" ? "(Insert)" : ""}</span> */}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="p-1 w-7 h-7"
+          title={
+            selection?.type === "row"
+              ? "Calculate selected row"
+              : "Calculate all rows with data"
+          }
+          onClick={onManualCalculate}
+        >
+          <Play size={20} />
         </Button>
         <div className="h-6 w-px bg-gray-300 mx-2"></div>
         <div className="flex gap-1">

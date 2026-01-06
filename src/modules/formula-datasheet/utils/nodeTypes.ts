@@ -114,12 +114,28 @@ export function validateValueForFactorType(
         return { isValid: true };
       }
 
-      const num = Number(value);
-      if (isNaN(num)) {
-        return { isValid: false, error: "Value must be a valid number" };
+      let num: number;
+
+      // If value is already a number, use it directly
+      if (typeof value === "number") {
+        num = value;
+      }
+      // If value is a string, try to convert to number
+      else if (typeof value === "string") {
+        num = Number(value);
+        if (isNaN(num)) {
+          return { isValid: false, error: "Value must be a valid number" };
+        }
+      }
+      // For other types (boolean, object, etc.), return error
+      else {
+        return {
+          isValid: false,
+          error: "Value must be a number or numeric string",
+        };
       }
 
-      // Check constraints
+      // Check constraints with the resolved number
       if (
         factorType.constraints?.min !== undefined &&
         num < factorType.constraints.min

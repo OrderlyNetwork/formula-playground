@@ -15,6 +15,15 @@ export interface DataConflictInfo {
 
 export type ConflictResolution = "merge" | "replace-url" | "replace-db" | "cancel";
 
+/**
+ * Callback info when data is restored from URL or DB
+ */
+export interface DataRestoredInfo {
+  formulaId: string;
+  rowIds: string[];
+  source: "url" | "db" | "snapshot";
+}
+
 class DataFlowManager {
   private static instance: DataFlowManager;
   private currentFormulaId: string | null = null;
@@ -23,6 +32,7 @@ class DataFlowManager {
   // Callbacks
   private onUrlUpdate: ((params: URLSearchParams) => void) | null = null;
   private onConflictHandler: ((info: DataConflictInfo) => Promise<ConflictResolution>) | null = null;
+  private onDataRestoredHandler: ((info: DataRestoredInfo) => void) | null = null;
 
   private constructor() {}
 
@@ -39,6 +49,21 @@ class DataFlowManager {
 
   registerConflictHandler(handler: (info: DataConflictInfo) => Promise<ConflictResolution>) {
     this.onConflictHandler = handler;
+  }
+
+  /**
+   * Register a handler to be called when data is restored from URL/DB
+   * @param handler - Callback function receiving the restored data info
+   */
+  registerDataRestoredHandler(handler: (info: DataRestoredInfo) => void) {
+    this.onDataRestoredHandler = handler;
+  }
+
+  /**
+   * Unregister the data restored handler
+   */
+  unregisterDataRestoredHandler() {
+    this.onDataRestoredHandler = null;
   }
 
   /**
@@ -120,6 +145,21 @@ class DataFlowManager {
         const newCompressed = this.compressData(finalData);
         if (newCompressed !== compressedUrlData) {
            this.triggerUrlUpdate(formulaId, newCompressed);
+        }
+
+        // 5. Notify that data has been restored (for auto-calculation)
+        const rowIds = Object.keys(finalData);
+        if (rowIds.length > 0 && this.onDataRestoredHandler) {
+          // Determine source
+          const source = urlDataCount > 0 ? "url" : "db";
+          // Use setTimeout to ensure UI is updated before calculation starts
+          setTimeout(() => {
+            this.onDataRestoredHandler?.({
+              formulaId,
+              rowIds,
+              source,
+            });
+          }, 100);
         }
       }
 
@@ -211,6 +251,20 @@ class DataFlowManager {
         if (formulaId === this.currentFormulaId) {
            const compressed = this.compressData(validData);
            this.triggerUrlUpdate(formulaId, compressed);
+        }
+
+        // 6. Notify that data has been restored (for auto-calculation)
+        // Only trigger for the current active formula
+        const rowIds = Object.keys(validData);
+        if (rowIds.length > 0 && formulaId === this.currentFormulaId && this.onDataRestoredHandler) {
+          // Use setTimeout to ensure UI is updated before calculation starts
+          setTimeout(() => {
+            this.onDataRestoredHandler?.({
+              formulaId,
+              rowIds,
+              source: "snapshot",
+            });
+          }, 100);
         }
       }
 

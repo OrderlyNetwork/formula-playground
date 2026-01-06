@@ -573,12 +573,28 @@ export function validateValueForFactorType(
 } {
   // Basic validation logic
   if (factorType.baseType === "number") {
-    if (value === "") return { isValid: true }; // Allow empty strings for number inputs
-    const numValue = Number(value);
-    if (isNaN(numValue)) {
-      return { isValid: false, error: "Must be a valid number" };
+    // Allow empty strings for number inputs (user clearing the field)
+    if (value === "") return { isValid: true };
+
+    let numValue: number;
+
+    // If value is already a number, use it directly
+    if (typeof value === "number") {
+      numValue = value;
+    }
+    // If value is a string, try to convert to number
+    else if (typeof value === "string") {
+      numValue = Number(value);
+      if (isNaN(numValue)) {
+        return { isValid: false, error: "Must be a valid number" };
+      }
+    }
+    // For other types, return error
+    else {
+      return { isValid: false, error: "Must be a number or numeric string" };
     }
 
+    // Check constraints with the resolved number
     if (
       factorType.constraints?.min !== undefined &&
       numValue < factorType.constraints.min
@@ -607,9 +623,14 @@ export function validateValueForFactorType(
   }
 
   if (factorType.baseType === "string") {
+    // Strict type check for string type - no conversion
+    if (typeof value !== "string") {
+      return { isValid: false, error: "Must be a string" };
+    }
+
     if (
       factorType.constraints?.enum &&
-      !factorType.constraints.enum.includes(String(value))
+      !factorType.constraints.enum.includes(value)
     ) {
       return {
         isValid: false,
@@ -619,7 +640,7 @@ export function validateValueForFactorType(
 
     if (
       factorType.constraints?.pattern &&
-      !new RegExp(factorType.constraints.pattern).test(String(value))
+      !new RegExp(factorType.constraints.pattern).test(value)
     ) {
       return { isValid: false, error: "Format is invalid" };
     }

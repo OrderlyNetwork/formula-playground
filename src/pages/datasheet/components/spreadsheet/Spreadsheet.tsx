@@ -44,6 +44,8 @@ export interface SpreadsheetProps {
   onAddColumn: () => void;
   /** Callback when clear datasheet button is clicked */
   onClearDataSheet: () => void;
+  /** Callback to manually trigger calculation for selected rows or all rows with data */
+  onManualCalculate?: () => void;
   /** Optional flattened paths for toolbar display */
   flattenedPaths?: FlattenedPath[];
   /** Whether to show toolbar */
@@ -76,6 +78,7 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
   onAddRow,
   onAddColumn,
   onClearDataSheet,
+  onManualCalculate,
   flattenedPaths,
   showToolbar = true,
 }) => {
@@ -89,6 +92,7 @@ const Spreadsheet: React.FC<SpreadsheetProps> = ({
           onAddRow={onAddRow}
           onAddColumn={onAddColumn}
           onClearDataSheet={onClearDataSheet}
+          onManualCalculate={onManualCalculate}
         />
       )}
 

@@ -321,7 +321,38 @@ class DataSheetCalculator {
       return true;
     }
 
-    // Validate number, string, boolean
+    // Special handling for number type: allow string-to-number conversion
+    if (expectedType === "number") {
+      // If already a number, valid
+      if (typeof value === "number") {
+        return true;
+      }
+      // If string, try to convert
+      if (typeof value === "string") {
+        const num = Number(value);
+        if (!isNaN(num)) {
+          return true; // Conversion successful
+        }
+        // Conversion failed
+        this.addValidationError(
+          formulaId,
+          field,
+          `Expected number at path: ${path}, got non-numeric string: "${value}"`,
+          path
+        );
+        return false;
+      }
+      // Other types (boolean, object, etc.) are invalid
+      this.addValidationError(
+        formulaId,
+        field,
+        `Expected number at path: ${path}, got: ${actualType}`,
+        path
+      );
+      return false;
+    }
+
+    // Validate string, boolean - strict type checking (no conversion)
     if (actualType !== expectedType) {
       this.addValidationError(
         formulaId,
