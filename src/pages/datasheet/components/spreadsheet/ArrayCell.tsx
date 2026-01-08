@@ -72,18 +72,19 @@ export const ArrayCell: React.FC<ArrayCellProps> = ({
   const handleSave = () => {
     if (!gridStore) return;
 
-    try {
-      const parsedValue = JSON.parse(editValue);
-      if (Array.isArray(parsedValue)) {
-        // Convert array to JSON string for storage (CellValue type constraint)
-        gridStore.setValue(rowId, column.id, JSON.stringify(parsedValue));
-        setIsPopoverOpen(false);
-      } else {
-        alert("Invalid array format. Please enter a valid JSON array.");
-      }
-    } catch {
-      alert("Invalid JSON format. Please check your input.");
+    const trimmedValue = editValue.trim();
+
+    // Empty editor → clear the cell (no value)
+    if (trimmedValue === "") {
+      gridStore.setValue(rowId, column.id, "");
+      setIsPopoverOpen(false);
+      return;
     }
+
+    // "[]" → explicit empty array
+    // Other values → save as-is (no forced JSON parse)
+    gridStore.setValue(rowId, column.id, trimmedValue);
+    setIsPopoverOpen(false);
   };
 
   const handleCancel = () => {
@@ -176,7 +177,12 @@ export const ArrayCell: React.FC<ArrayCellProps> = ({
             </div>
 
             <div className="flex gap-2 justify-end pt-2 border-t px-2">
-              <Button variant="ghost" size={"sm"} className="h-7" onClick={handleCancel}>
+              <Button
+                variant="ghost"
+                size={"sm"}
+                className="h-7"
+                onClick={handleCancel}
+              >
                 Cancel
               </Button>
               <Button size={"sm"} className="h-7" onClick={handleSave}>

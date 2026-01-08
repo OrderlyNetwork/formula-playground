@@ -51,8 +51,10 @@ class DataSheetCalculator {
     }
 
     if (Array.isArray(value)) {
+      // Empty arrays are considered valid values (user explicitly set [])
+      // Non-empty arrays need at least one valid element
       return (
-        value.length > 0 &&
+        value.length === 0 ||
         value.some((item) => this.hasValidValue(item as FormulaScalar))
       );
     }
@@ -184,15 +186,10 @@ class DataSheetCalculator {
         return false;
       }
 
-      // For non-nullable arrays, check if array is empty
-      if (factorType.nullable !== true && value.length === 0) {
-        this.addValidationError(
-          formulaId,
-          field,
-          `Array cannot be empty at path: ${path}`,
-          path
-        );
-        return false;
+      // Empty arrays are allowed - they represent valid empty data
+      // Skip element validation for empty arrays
+      if (value.length === 0) {
+        return true;
       }
 
       // Validate each array element
